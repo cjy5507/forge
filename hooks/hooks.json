@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/state-restore.mjs",
+            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/context-manager.mjs",
             "timeout": 5
           }
         ]
