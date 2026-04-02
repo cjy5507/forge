@@ -1,25 +1,44 @@
 #!/usr/bin/env node
-// Forge Hook: SubagentStart — tracks live subagents and injects Forge harness context
+// Forge Hook: SubagentStart — tracks medium/full tier subagents and injects compact context
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
   appendRecent,
+  readActiveTier,
   readForgeState,
+  recommendedAgentsFor,
   resolvePhase,
+  tierAtLeast,
   updateRuntimeState,
 } from './lib/forge-state.mjs';
 
 async function main() {
+  const envTier = process.env.FORGE_TIER;
+  if (envTier === 'off' || envTier === 'light') {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
   const input = await readStdin();
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
+  const tier = readActiveTier(cwd, state, input);
 
   try {
+    if (!tierAtLeast(tier, 'medium')) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
     const startedAt = new Date().toISOString();
+    const phaseId = state ? resolvePhase(state).id : 'develop';
+    const recommended = recommendedAgentsFor({ tier, taskType: 'feature', phaseId });
 
     updateRuntimeState(cwd, current => ({
       ...current,
+      active_tier: tier,
+      recommended_agents: current.recommended_agents?.length ? current.recommended_agents : recommended,
       active_agents: {
         ...current.active_agents,
         [input?.agent_id || `unknown-${Date.now()}`]: {
@@ -36,6 +55,10 @@ async function main() {
         type: input?.agent_type || 'unknown',
         at: startedAt,
       }),
+      stats: {
+        ...current.stats,
+        agent_calls: (current.stats.agent_calls || 0) + 1,
+      },
       last_event: {
         name: 'SubagentStart',
         at: startedAt,
@@ -47,13 +70,12 @@ async function main() {
       return;
     }
 
-    const phase = resolvePhase(state);
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'SubagentStart',
-        additionalContext: `[Forge Harness] You are a tracked subagent in phase ${phase.id}. Respect code-rules, keep evidence explicit, and report concrete outputs before stopping.`,
+        additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]`,
       },
     }));
   } catch (error) {

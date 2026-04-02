@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Forge Hook: PostToolUseFailure — records failed tool executions and feeds recovery guidance back into the turn
+// Forge Hook: PostToolUseFailure — low-cost failure logging with tier-aware guidance
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
-import { appendRecent, updateRuntimeState } from './lib/forge-state.mjs';
+import { appendRecent, readActiveTier, readForgeState, updateRuntimeState } from './lib/forge-state.mjs';
 
 function classifyFailure(input) {
   const toolName = String(input?.tool_name || 'unknown');
@@ -12,33 +12,43 @@ function classifyFailure(input) {
   const combined = `${toolName} ${toolInput} ${errorText}`.toLowerCase();
 
   if (toolName === 'Bash' && /(vitest|jest|playwright|npm test|pnpm test|yarn test|test)/.test(combined)) {
-    return 'Test command failed. Reproduce one failing target, capture the first real assertion or stack trace, then change code before re-running the full suite.';
+    return 'Test command failed. Reproduce one failing target, capture the first real assertion or stack trace, then retry narrowly.';
   }
 
   if (toolName === 'Bash' && /(next build|build|tsc|typecheck)/.test(combined)) {
-    return 'Build/typecheck failed. Fix the first compile error, then re-run the narrowest build or typecheck command that proves the correction.';
+    return 'Build or typecheck failed. Fix the first compile error, then re-run the smallest proving command.';
   }
 
   if (toolName === 'Bash' && /(eslint|lint)/.test(combined)) {
-    return 'Lint failed. Fix the reported violations and align the change with .forge/code-rules.md before re-running lint.';
+    return 'Lint failed. Fix reported violations before retrying.';
   }
 
   if (toolName === 'Bash' && /(git worktree|rebase|merge)/.test(combined)) {
-    return 'Git/worktree operation failed. Inspect the branch/worktree state before retrying; do not repeat the same command blindly.';
+    return 'Git/worktree operation failed. Inspect repo state before retrying.';
   }
 
   if (toolName === 'Task' || toolName === 'Agent') {
-    return 'Agent/task execution failed. Inspect the delegated output, tighten the task boundary, and retry with concrete acceptance criteria.';
+    return 'Delegation failed. Tighten scope and acceptance criteria before retrying.';
   }
 
-  return 'Tool execution failed. Identify the first causal error, adjust the approach, and avoid repeating the same failing command unchanged.';
+  return 'Tool execution failed. Adjust approach before repeating the same command.';
 }
 
 async function main() {
+  const envTier = process.env.FORGE_TIER;
+  if (envTier === 'off') {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
   const input = await readStdin();
   const cwd = input?.cwd || '.';
+  const state = readForgeState(cwd);
+  const tier = readActiveTier(cwd, state, input);
 
   try {
+    const commandText = String(input?.tool_input?.command || input?.error || '');
+    const testLike = /(test|vitest|jest|playwright)/i.test(commandText);
     const guidance = classifyFailure(input);
     const entry = {
       at: new Date().toISOString(),
@@ -50,7 +60,14 @@ async function main() {
 
     updateRuntimeState(cwd, current => ({
       ...current,
+      active_tier: tier,
       recent_failures: appendRecent(current.recent_failures, entry),
+      stats: {
+        ...current.stats,
+        failure_count: (current.stats.failure_count || 0) + 1,
+        test_runs: testLike ? (current.stats.test_runs || 0) + 1 : current.stats.test_runs || 0,
+        test_failures: testLike ? (current.stats.test_failures || 0) + 1 : current.stats.test_failures || 0,
+      },
       last_event: {
         name: 'PostToolUseFailure',
         at: entry.at,
@@ -62,7 +79,7 @@ async function main() {
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'PostToolUseFailure',
-        additionalContext: `[Forge Failure Loop] ${guidance}`,
+        additionalContext: tier === 'light' ? '[Forge] failure logged' : `[Forge Failure Loop] ${guidance}`,
       },
     }));
   } catch (error) {

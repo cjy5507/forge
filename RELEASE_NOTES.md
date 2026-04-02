@@ -7,6 +7,7 @@ Initial public marketplace-ready release.
 ### Highlights
 
 - Added phase-gated build and repair workflows
+- Added adaptive light / medium / full harness tiers
 - Added runtime stop guard and subagent lifecycle tracking
 - Added tool-failure recovery guidance
 - Added Codex-facing plugin manifest metadata

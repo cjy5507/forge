@@ -40,12 +40,16 @@ function writeState(cwd, overrides = {}) {
   writeFileSync(join(cwd, '.forge', 'state.json'), `${JSON.stringify(state, null, 2)}\n`);
 }
 
-function runHook(scriptName, cwd, payload = {}) {
+function runHook(scriptName, cwd, payload = {}, options = {}) {
   const scriptPath = join(FORGE_ROOT, 'scripts', scriptName);
   const result = spawnSync(process.execPath, [scriptPath], {
     cwd,
     input: JSON.stringify({ cwd, ...payload }),
     encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...(options.env || {}),
+    },
   });
 
   expect(result.status).toBe(0);
@@ -117,21 +121,49 @@ describe('forge harness hooks', () => {
 
     const output = runHook('state-restore.mjs', cwd);
     expect(output.hookSpecificOutput.hookEventName).toBe('SessionStart');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Phase: security');
+    expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
+    expect(output.hookSpecificOutput.additionalContext).toContain('security');
 
     const normalized = JSON.parse(readFileSync(join(cwd, '.forge', 'state.json'), 'utf8'));
     expect(normalized.phase_id).toBe('security');
     expect(normalized.phase_index).toBe(5);
   });
 
-  it('denies writes when harness prerequisites are missing', () => {
+  it('denies high-risk writes when harness prerequisites are missing in full tier', () => {
     const cwd = makeWorkspace();
     writeState(cwd, { spec_approved: false, design_approved: false });
 
-    const output = runHook('fact-check.mjs', cwd, { tool_name: 'Write' });
+    const output = runHook('fact-check.mjs', cwd, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: 'package.json',
+        content: '{"dependencies":{"new-lib":"1.0.0"}}',
+      },
+    }, {
+      env: { FORGE_TIER: 'full' },
+    });
+
     expect(output.hookSpecificOutput.hookEventName).toBe('PreToolUse');
     expect(output.hookSpecificOutput.permissionDecision).toBe('deny');
-    expect(output.hookSpecificOutput.permissionDecisionReason).toContain('Missing prerequisites');
+    expect(output.hookSpecificOutput.permissionDecisionReason).toContain('Missing');
+  });
+
+  it('becomes a no-op in light tier for write guards', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd);
+
+    const output = runHook('fact-check.mjs', cwd, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: 'src/utils/formatDate.ts',
+        content: 'export function formatDate() {}',
+      },
+    }, {
+      env: { FORGE_TIER: 'light' },
+    });
+
+    expect(output.suppressOutput).toBe(true);
+    expect(output.hookSpecificOutput).toBeUndefined();
   });
 
   it('tracks subagent lifecycle in runtime state', () => {
@@ -153,6 +185,7 @@ describe('forge harness hooks', () => {
     const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
     expect(runtime.active_agents['agent-1'].status).toBe('stopped');
     expect(runtime.recent_agents[0].kind).toBe('subagent-stop');
+    expect(runtime.stats.agent_calls).toBe(1);
   });
 
   it('blocks premature stop while work is still active', () => {
@@ -162,6 +195,8 @@ describe('forge harness hooks', () => {
     const output = runHook('stop-guard.mjs', cwd, {
       last_assistant_message: 'Implemented the change and moving on.',
       stop_hook_active: false,
+    }, {
+      env: { FORGE_TIER: 'full' },
     });
 
     expect(output.decision).toBe('block');
@@ -180,5 +215,9 @@ describe('forge harness hooks', () => {
 
     expect(output.hookSpecificOutput.hookEventName).toBe('PostToolUseFailure');
     expect(output.hookSpecificOutput.additionalContext).toContain('Test command failed');
+
+    const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
+    expect(runtime.stats.failure_count).toBe(1);
+    expect(runtime.stats.test_failures).toBe(1);
   });
 });

@@ -19,6 +19,7 @@ Forge is a harness-engineering plugin for teams who want more than ad-hoc prompt
 It adds:
 
 - build mode and repair mode routing
+- adaptive light / medium / full intervention tiers
 - persistent `.forge/` project state
 - stop guards that prevent silent workflow death
 - tracked subagent lifecycle and runtime failure history

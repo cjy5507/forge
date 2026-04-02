@@ -1,12 +1,24 @@
 #!/usr/bin/env node
-// Forge Hook: PreToolUse (Write|Edit) — denies writes when the Forge harness is missing prerequisites
+// Forge Hook: PreToolUse (Write|Edit) — adaptive, risk-based evidence gate
 
 import { existsSync, readdirSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
-import { readForgeState, resolvePhase } from './lib/forge-state.mjs';
+import {
+  detectWriteRisk,
+  readActiveTier,
+  readForgeState,
+  resolvePhase,
+  tierAtLeast,
+} from './lib/forge-state.mjs';
 
 async function main() {
+  const envTier = process.env.FORGE_TIER;
+  if (envTier === 'off' || envTier === 'light') {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
   const input = await readStdin();
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
@@ -18,8 +30,15 @@ async function main() {
 
   try {
     const phase = resolvePhase(state);
+    const tier = readActiveTier(cwd, state, input);
+    const risk = detectWriteRisk(input);
 
-    if (phase.index < resolvePhase({ phase_id: 'develop' }).index) {
+    if (!tierAtLeast(tier, 'medium') || phase.index < resolvePhase({ phase_id: 'develop' }).index) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    if (tier === 'medium' && risk.level === 'low') {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
     }
@@ -53,13 +72,25 @@ async function main() {
     }
 
     if (missing.length > 0) {
+      if (tier === 'full' || risk.level === 'high') {
+        console.log(JSON.stringify({
+          continue: true,
+          suppressOutput: true,
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason: `Forge ${tier} guard blocked ${risk.level}-risk write during ${phase.id}. Missing: ${missing.join(', ')}.`,
+          },
+        }));
+        return;
+      }
+
       console.log(JSON.stringify({
         continue: true,
         suppressOutput: true,
         hookSpecificOutput: {
           hookEventName: 'PreToolUse',
-          permissionDecision: 'deny',
-          permissionDecisionReason: `Forge guard blocked code writes during ${phase.id}. Missing prerequisites: ${missing.join(', ')}.`,
+          additionalContext: `[Forge] ${tier} ${risk.level} write (${risk.reason}) missing ${missing.join(', ')}`,
         },
       }));
       return;
@@ -70,7 +101,7 @@ async function main() {
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
-        additionalContext: '[Forge Fact Checker] Harness prerequisites are present. Verify imports, APIs, and contracts before writing.',
+        additionalContext: `[Forge] ${tier} ${risk.level} write (${risk.reason})`,
       },
     }));
   } catch (error) {

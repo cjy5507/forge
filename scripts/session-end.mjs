@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Forge Hook: SessionEnd — snapshots a final runtime event for resume visibility
+// Forge Hook: SessionEnd — snapshot runtime stats for later comparison
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
   appendRecent,
+  readActiveTier,
   readForgeState,
   resolvePhase,
   summarizePendingWork,
@@ -17,15 +18,21 @@ async function main() {
 
   try {
     const state = readForgeState(cwd);
+    const tier = readActiveTier(cwd, state, input);
     const endedAt = new Date().toISOString();
 
     updateRuntimeState(cwd, current => ({
       ...current,
+      active_tier: tier,
       recent_agents: appendRecent(current.recent_agents, {
         kind: 'session-end',
         phase: state ? resolvePhase(state).id : 'none',
         at: endedAt,
       }),
+      stats: {
+        ...current.stats,
+        last_finished_at: endedAt,
+      },
       last_event: {
         name: 'SessionEnd',
         at: endedAt,

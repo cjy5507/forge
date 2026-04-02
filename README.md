@@ -8,6 +8,7 @@ Forge is a harness-engineering plugin that turns an agent into a phase-gated vir
 - Persists `.forge/` state across sessions
 - Tracks active subagents and recent failures
 - Guards code-writing when design prerequisites are missing
+- Adapts automatically across light, medium, and full intervention tiers
 - Uses role prompts for CEO, PM, CTO, QA, Security, and Troubleshooter workflows
 
 ## Plugin layout
@@ -74,6 +75,7 @@ Forge ships with Context7 configured in `.mcp.json`.
 - `Build a harness for this repo with Forge`
 - `Use forge to diagnose and fix this project`
 - `forge status`
+- `forge stats`
 - `forge resume`
 - `Run a Forge A/B evaluation for this task`
 

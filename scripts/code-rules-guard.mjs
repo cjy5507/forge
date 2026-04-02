@@ -1,13 +1,28 @@
 #!/usr/bin/env node
-// Forge Hook: PostToolUse (Write|Edit) — injects code-rules context after code changes
+// Forge Hook: PostToolUse (Write|Edit) — full-tier code-rules reminder
 
 import { existsSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
+import { detectWriteRisk, readActiveTier, readForgeState, tierAtLeast } from './lib/forge-state.mjs';
 
 async function main() {
+  const envTier = process.env.FORGE_TIER;
+  if (envTier === 'off' || envTier === 'light' || envTier === 'medium') {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
   const input = await readStdin();
   const cwd = input?.cwd || '.';
+  const state = readForgeState(cwd);
+  const tier = readActiveTier(cwd, state, input);
+  const risk = detectWriteRisk(input);
+
+  if (!tierAtLeast(tier, 'full') || risk.level === 'low') {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
 
   try {
     const rulesFile = `${cwd}/.forge/code-rules.md`;
@@ -21,7 +36,7 @@ async function main() {
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'PostToolUse',
-        additionalContext: '[Forge Code Rules] Re-check naming, imports, file structure, and patterns against .forge/code-rules.md before moving on.',
+        additionalContext: `[Forge] rules full ${risk.level} → re-check .forge/code-rules.md`,
       },
     }));
   } catch (error) {

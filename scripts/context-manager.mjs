@@ -6,6 +6,12 @@ import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 
 async function main() {
+  const envTier = process.env.FORGE_TIER;
+  if (envTier === 'off' || envTier === 'light') {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
   const input = await readStdin();
   const cwd = input?.cwd || '.';
 

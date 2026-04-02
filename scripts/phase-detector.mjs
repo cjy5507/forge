@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Forge Hook: UserPromptSubmit — detects forge-related messages and injects phase context
+// Forge Hook: UserPromptSubmit — detects forge-related messages and updates adaptive tier/runtime
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
+  compactForgeContext,
   readForgeState,
   resolvePhase,
-  summarizePendingWork,
+  updateAdaptiveTier,
   writeForgeState,
 } from './lib/forge-state.mjs';
 
@@ -28,20 +29,22 @@ async function main() {
     return;
   }
 
-  let context = '[Forge] New project request detected. Use forge:intake to begin.';
-
+  let context = '[Forge] full intake 0/7 ×spec ×design';
   const state = readForgeState(cwd);
+
   if (state) {
     try {
       const normalized = writeForgeState(cwd, state);
+      const adaptive = updateAdaptiveTier(cwd, { state: normalized, message });
       const phase = resolvePhase(normalized);
       const currentSkill = phase.id === 'complete' ? 'status' : phase.id;
-      const pending = summarizePendingWork(normalized);
-      context = `[Forge] Resuming "${normalized.project}". Current phase: ${phase.id} (#${phase.index}). Pending: ${pending.join(', ')}. Use forge:${currentSkill} to continue.`;
+      context = `${compactForgeContext(normalized, adaptive.runtime)} → forge:${currentSkill} [${adaptive.recommendedAgents.join(', ')}]`;
     } catch (error) {
       handleHookError(error, 'phase-detector');
       return;
     }
+  } else {
+    updateAdaptiveTier(cwd, { state: null, message });
   }
 
   console.log(JSON.stringify({

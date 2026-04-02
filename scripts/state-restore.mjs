@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Forge Hook: SessionStart — restores .forge/ state and injects current phase context
+// Forge Hook: SessionStart — restores .forge/ state and injects compact adaptive context
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
-  isProjectActive,
+  compactForgeContext,
   readForgeState,
-  summarizePendingWork,
+  readRuntimeState,
+  updateRuntimeState,
   writeForgeState,
 } from './lib/forge-state.mjs';
 
@@ -22,16 +23,17 @@ async function main() {
 
   try {
     const normalized = writeForgeState(cwd, state);
-    const pending = summarizePendingWork(normalized);
+    updateRuntimeState(cwd, current => ({
+      ...current,
+      active_tier: normalized.tier,
+      stats: {
+        ...current.stats,
+        started_at: current.stats.started_at || normalized.created_at || new Date().toISOString(),
+        session_count: (current.stats.session_count || 0) + 1,
+      },
+    }));
 
-    const context = [
-      `[Forge] Active project: ${normalized.project || 'unnamed'}`,
-      `Phase: ${normalized.phase_id} (#${normalized.phase_index})`,
-      `Status: ${normalized.status}`,
-      `Spec approved: ${normalized.spec_approved ? 'Yes' : 'No'}`,
-      `Design approved: ${normalized.design_approved ? 'Yes' : 'No'}`,
-      isProjectActive(normalized) ? `Pending: ${pending.join(', ')}` : 'Project is not active',
-    ].filter(Boolean).join(' | ');
+    const context = compactForgeContext(normalized, readRuntimeState(cwd));
 
     console.log(JSON.stringify({
       continue: true,

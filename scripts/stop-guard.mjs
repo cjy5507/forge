@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Forge Hook: Stop — blocks premature main-agent termination while a Forge project is still active
+// Forge Hook: Stop — only blocks termination in full tier
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
@@ -7,13 +7,21 @@ import {
   appendRecent,
   isProjectActive,
   messageLooksInteractive,
+  readActiveTier,
   readForgeState,
   resolvePhase,
   summarizePendingWork,
+  tierAtLeast,
   updateRuntimeState,
 } from './lib/forge-state.mjs';
 
 async function main() {
+  const envTier = process.env.FORGE_TIER;
+  if (envTier === 'off' || envTier === 'light' || envTier === 'medium') {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
   const input = await readStdin();
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
@@ -24,6 +32,12 @@ async function main() {
   }
 
   try {
+    const tier = readActiveTier(cwd, state, input);
+    if (!tierAtLeast(tier, 'full')) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
     const phase = resolvePhase(state);
     const lastMessage = String(input?.last_assistant_message || '');
     const interactive = messageLooksInteractive(lastMessage);
@@ -41,14 +55,13 @@ async function main() {
       },
     }));
 
-    const alreadyBlocked = input?.stop_hook_active === true;
-    if (interactive || alreadyBlocked) {
+    if (interactive || input?.stop_hook_active === true) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
     }
 
     const pending = summarizePendingWork(state);
-    const reason = `[Forge Stop Guard] Project "${state.project || 'unnamed'}" is still active in phase ${phase.id}. Pending: ${pending.join(', ')}. Continue by advancing the phase, dispatching the next step, or explicitly asking the client for approval before stopping.`;
+    const reason = `[Forge Stop Guard] Project "${state.project || 'unnamed'}" is still active in phase ${phase.id}. Pending: ${pending.join(', ')}.`;
 
     updateRuntimeState(cwd, current => ({
       ...current,
@@ -56,6 +69,10 @@ async function main() {
         block_count: (runtime.stop_guard?.block_count || 0) + 1,
         last_reason: reason,
         last_message: lastMessage,
+      },
+      stats: {
+        ...current.stats,
+        stop_block_count: (current.stats.stop_block_count || 0) + 1,
       },
       last_event: {
         name: 'StopBlocked',

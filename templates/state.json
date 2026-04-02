@@ -5,6 +5,8 @@
   "phase_id": "intake",
   "phase_index": 0,
   "phase_name": "intake",
+  "tier": "medium",
+  "mode": "build",
   "status": "pending",
   "created_at": "",
   "updated_at": "",
@@ -15,6 +17,18 @@
   "tasks": [],
   "holes": [],
   "pr_queue": [],
+  "stats": {
+    "started_at": "",
+    "last_prompt_at": "",
+    "last_finished_at": "",
+    "session_count": 0,
+    "agent_calls": 0,
+    "rollback_count": 0,
+    "failure_count": 0,
+    "stop_block_count": 0,
+    "test_runs": 0,
+    "test_failures": 0
+  },
   "version_tag": "v1",
   "rollback_tags": []
 }

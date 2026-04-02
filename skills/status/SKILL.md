@@ -23,13 +23,15 @@ Shows the current state of the Forge project at a glance — phase, progress, ac
    - Phase 4-5: QA + fix (70-90%)
    - Phase 6: delivery (90-100%)
 4. Read .forge/holes/ directory for known issues count by severity
-5. Read .forge/tasks/ for active task status
+5. Read `.forge/runtime.json` for active tier, recommended agents, and metrics
+6. Read .forge/tasks/ for active task status
 6. Display dashboard:
 
 ```
 Forge 진행 현황: {{PROJECT_NAME}}
 ┌─────────────────────────────────┐
 │ Phase: {{N}}/7 ({{phase_name}})│
+│ Tier: {{light|medium|full}}    │
 │ {{progress_bar}} {{X}}%        │
 │                                │
 │ ✅ 완료: {{completed_items}}    │
@@ -42,12 +44,13 @@ Forge 진행 현황: {{PROJECT_NAME}}
 │   minor: {{minor_count}}       │
 │                                │
 │ ❓ 의뢰인 확인 필요: {{N}}      │
+│ 🤖 추천 에이전트: {{agents}}    │
 │ 🏷️ 최신 태그: {{latest_tag}}   │
 └─────────────────────────────────┘
 ```
 </Steps>
 
 <Tool_Usage>
-- Read: .forge/state.json, .forge/holes/*.md, .forge/tasks/*.md
+- Read: .forge/state.json, .forge/runtime.json, .forge/holes/*.md, .forge/tasks/*.md
 - Bash: git tag -l "forge/*" --sort=-version:refname | head -1
 </Tool_Usage>
