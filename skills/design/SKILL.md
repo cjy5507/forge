@@ -1,6 +1,6 @@
 ---
 name: design
-description: Use when Forge reaches the design phase or the user asks for technical architecture, UI spec, contracts, or code rules before implementation. Trigger on requests for architecture design, component specification, design tokens, interface contracts, or phased pre-build planning.
+description: "Use when Forge reaches the design phase or the user asks for technical architecture, UI spec, contracts, or code rules before implementation. Trigger on requests for architecture design, component specification, design tokens, interface contracts, or phased pre-build planning."
 ---
 
 <Purpose>

@@ -1,6 +1,6 @@
 ---
 name: skip
-description: Skip to a specific Forge phase. Use when the user says "forge skip", "skip to develop", "phase 건너뛰기", or wants to bypass non-essential phases for their current task.
+description: "Skip to a specific Forge phase. Use when the user says \"forge skip\", \"skip to develop\", \"phase 건너뛰기\", or wants to bypass non-essential phases for their current task."
 ---
 
 <Purpose>

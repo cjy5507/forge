@@ -1,6 +1,6 @@
 ---
 name: cancel
-description: Use when canceling or cleaning up an active Forge project. Removes worktrees, clears state, preserves code already merged to main.
+description: "Use when canceling or cleaning up an active Forge project. Removes worktrees, clears state, preserves code already merged to main."
 ---
 
 <Purpose>

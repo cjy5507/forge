@@ -1,6 +1,6 @@
 ---
 name: stats
-description: Use when the user asks for Forge metrics, harness overhead, with/without comparisons, stop-block counts, agent-call counts, failure history, or prompts like "forge stats", "measure Forge", "show harness metrics", and "compare with baseline".
+description: "Use when the user asks for Forge metrics, harness overhead, with/without comparisons, stop-block counts, agent-call counts, failure history, or prompts like \"forge stats\", \"measure Forge\", \"show harness metrics\", and \"compare with baseline\"."
 ---
 
 <Purpose>

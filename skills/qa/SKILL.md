@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Use when Forge begins quality assurance. QA engineer runs functional, visual, contract, regression, and edge-case tests against the spec.
+description: "Use when Forge begins quality assurance. QA engineer runs functional, visual, contract, regression, and edge-case tests against the spec."
 ---
 
 <Purpose>

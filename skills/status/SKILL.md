@@ -1,6 +1,6 @@
 ---
 name: status
-description: Use whenever the user asks for Forge progress, current phase, active agents, pending blockers, or "where are we now?" prompts such as "forge status", "진행 상황", "어디까지 됐어?", "what phase is this in?", or "show the harness state".
+description: "Use whenever the user asks for Forge progress, current phase, active agents, pending blockers, or \"where are we now?\" prompts such as \"forge status\", \"진행 상황\", \"어디까지 됐어?\", \"what phase is this in?\", or \"show the harness state\"."
 ---
 
 <Purpose>

@@ -1,6 +1,6 @@
 ---
 name: ignite
-description: MANDATORY Forge entry point. Use when the user explicitly says "forge", "포지", "build a harness", "set up Forge", asks Forge to build a new product, or asks Forge to diagnose/fix/analyze an existing project. If the request is for a phased team workflow, build-vs-repair routing, or harness-based execution, you must start here.
+description: "MANDATORY Forge entry point. Use when the user explicitly says \"forge\", \"포지\", \"build a harness\", \"set up Forge\", asks Forge to build a new product, or asks Forge to diagnose/fix/analyze an existing project. If the request is for a phased team workflow, build-vs-repair routing, or harness-based execution, you must start here."
 ---
 
 <Purpose>

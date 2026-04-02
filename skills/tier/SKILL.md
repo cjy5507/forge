@@ -1,6 +1,6 @@
 ---
 name: tier
-description: View or change the current Forge tier level. Use when user says "forge tier", "show tier", "tier 변경", "set tier to light/medium/full", or wants to understand or control the guardrail level.
+description: "View or change the current Forge tier level. Use when user says \"forge tier\", \"show tier\", \"tier 변경\", \"set tier to light/medium/full\", or wants to understand or control the guardrail level."
 ---
 
 <Purpose>

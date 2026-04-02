@@ -1,6 +1,6 @@
 ---
 name: intake
-description: Use when Forge receives a new project request. CEO evaluates feasibility, scope, and information completeness before starting discovery.
+description: "Use when Forge receives a new project request. CEO evaluates feasibility, scope, and information completeness before starting discovery."
 ---
 
 <Purpose>

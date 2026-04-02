@@ -1,6 +1,6 @@
 ---
 name: resume
-description: Use whenever the user wants to continue an existing Forge run after a pause, restart, compaction, or interruption. Triggers include "forge resume", "continue Forge", "이어서 해줘", "pick up where we left off", and any request to continue the active `.forge/` state.
+description: "Use whenever the user wants to continue an existing Forge run after a pause, restart, compaction, or interruption. Triggers include \"forge resume\", \"continue Forge\", \"이어서 해줘\", \"pick up where we left off\", and any request to continue the active `.forge/` state."
 ---
 
 <Purpose>

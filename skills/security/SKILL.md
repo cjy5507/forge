@@ -1,6 +1,6 @@
 ---
 name: security
-description: Use when Forge performs security review. Security reviewer audits OWASP Top 10, scans for secrets, reviews auth/authz logic.
+description: "Use when Forge performs security review. Security reviewer audits OWASP Top 10, scans for secrets, reviews auth/authz logic."
 ---
 
 <Purpose>

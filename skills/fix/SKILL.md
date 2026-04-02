@@ -1,6 +1,6 @@
 ---
 name: fix
-description: Use when Forge enters the bug fix loop. Routes simple issues to developers, complex issues to troubleshooter for root cause analysis.
+description: "Use when Forge enters the bug fix loop. Routes simple issues to developers, complex issues to troubleshooter for root cause analysis."
 ---
 
 <Purpose>

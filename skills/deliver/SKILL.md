@@ -1,6 +1,6 @@
 ---
 name: deliver
-description: Use when Forge delivers the completed product. Tech writer generates docs, CEO compiles delivery report with spec coverage and known issues.
+description: "Use when Forge delivers the completed product. Tech writer generates docs, CEO compiles delivery report with spec coverage and known issues."
 ---
 
 <Purpose>

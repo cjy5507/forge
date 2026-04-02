@@ -1,6 +1,6 @@
 ---
 name: develop
-description: Use when Forge starts implementation after design approval, or when the user asks for parallel module development with worktrees, scoped tasks, PR review, and living-standard enforcement. Trigger on requests to split implementation, dispatch developers, or enforce consistent multi-agent coding.
+description: "Use when Forge starts implementation after design approval, or when the user asks for parallel module development with worktrees, scoped tasks, PR review, and living-standard enforcement. Trigger on requests to split implementation, dispatch developers, or enforce consistent multi-agent coding."
 ---
 
 <Purpose>

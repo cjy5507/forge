@@ -1,6 +1,6 @@
 ---
 name: discovery
-description: Use when Forge begins requirements gathering. PM interviews the client one question at a time until all ambiguity is eliminated and a complete spec is produced.
+description: "Use when Forge begins requirements gathering. PM interviews the client one question at a time until all ambiguity is eliminated and a complete spec is produced."
 ---
 
 <Purpose>
