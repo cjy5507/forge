@@ -70,7 +70,7 @@ the client with alternatives.
    - All blockers resolved (fixed or client-approved descope) → phase=6
    - Still has unresolved blockers → continue iteration
 
-7. Update state.json: phase=6, phase_name="delivery"
+7. Update state.json: phase=6, phase_id="delivery", phase_name="delivery"
 
 8. Transition to Phase 6 (forge:deliver)
 </Steps>

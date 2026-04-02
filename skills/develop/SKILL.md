@@ -1,6 +1,6 @@
 ---
 name: develop
-description: Use when Forge begins parallel development. Lead splits tasks, creates git worktrees, developers implement in isolation with PR-based review and code consistency enforcement.
+description: Use when Forge starts implementation after design approval, or when the user asks for parallel module development with worktrees, scoped tasks, PR review, and living-standard enforcement. Trigger on requests to split implementation, dispatch developers, or enforce consistent multi-agent coding.
 ---
 
 <Purpose>
@@ -25,10 +25,14 @@ the "living standard" that all subsequent PRs must match.
 6. Developers load ONLY: spec subset + relevant contracts + code-rules.md (minimal context)
 </Core_Rules>
 
+<Progressive_Disclosure>
+- Load `references/review-pipeline.md` when you need the full review tiers or worktree rules.
+</Progressive_Disclosure>
+
 <Steps>
 1. Lead Developer reads:
    - .forge/design/architecture.md
-   - .forge/contracts/*.md
+   - .forge/contracts/*.ts
    - .forge/code-rules.md
 
 2. Lead splits work into independent tasks (one per module/feature):
@@ -176,7 +180,7 @@ When inconsistency is found, Lead rejects with explicit correction:
 </State_Changes>
 
 <Tool_Usage>
-- Agent tool: dispatch forge:lead for task splitting and PR review
+- Agent tool: dispatch forge:lead-dev for task splitting and PR review
 - Agent tool: dispatch forge:developer (parallel, one per module)
 - Agent tool: dispatch forge:publisher (parallel, for UI modules)
 - Agent tool: dispatch forge:cto for Tier 3 reviews

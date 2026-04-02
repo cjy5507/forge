@@ -1,6 +1,6 @@
 ---
 name: status
-description: Use when checking Forge project progress. Shows current phase, completion percentage, active agents, known issues, and items needing client input.
+description: Use whenever the user asks for Forge progress, current phase, active agents, pending blockers, or "where are we now?" prompts such as "forge status", "진행 상황", "어디까지 됐어?", "what phase is this in?", or "show the harness state".
 ---
 
 <Purpose>

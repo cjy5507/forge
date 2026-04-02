@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-// Forge Hook: PostToolUse (Write|Edit) — reminds to verify code-rules.md compliance
+// Forge Hook: PostToolUse (Write|Edit) — injects code-rules context after code changes
 
 import { existsSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 
 async function main() {
-  await readStdin();
+  const input = await readStdin();
+  const cwd = input?.cwd || '.';
 
   try {
-    const rulesFile = '.forge/code-rules.md';
+    const rulesFile = `${cwd}/.forge/code-rules.md`;
     if (!existsSync(rulesFile)) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
@@ -17,7 +18,11 @@ async function main() {
 
     console.log(JSON.stringify({
       continue: true,
-      additionalContext: '[Forge Code Rules] Code written. Verify naming, structure, patterns match .forge/code-rules.md. Inconsistent code = PR rejected.'
+      suppressOutput: true,
+      hookSpecificOutput: {
+        hookEventName: 'PostToolUse',
+        additionalContext: '[Forge Code Rules] Re-check naming, imports, file structure, and patterns against .forge/code-rules.md before moving on.',
+      },
     }));
   } catch (error) {
     handleHookError(error, 'code-rules-guard');

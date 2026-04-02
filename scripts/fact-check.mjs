@@ -1,32 +1,77 @@
 #!/usr/bin/env node
-// Forge Hook: PreToolUse (Write|Edit) — reminds agents to verify before writing code
+// Forge Hook: PreToolUse (Write|Edit) — denies writes when the Forge harness is missing prerequisites
 
-import { readFileSync, existsSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
+import { readForgeState, resolvePhase } from './lib/forge-state.mjs';
 
 async function main() {
   const input = await readStdin();
+  const cwd = input?.cwd || '.';
+  const state = readForgeState(cwd);
 
-  const stateFile = '.forge/state.json';
-  if (!existsSync(stateFile)) {
+  if (!state) {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
 
   try {
-    const state = JSON.parse(readFileSync(stateFile, 'utf8'));
-    const phase = typeof state.phase === 'number' ? state.phase : 0;
+    const phase = resolvePhase(state);
 
-    // Only enforce during development phases (3+)
-    if (phase < 3) {
+    if (phase.index < resolvePhase({ phase_id: 'develop' }).index) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    const missing = [];
+    const rulesFile = `${cwd}/.forge/code-rules.md`;
+    const contractsDir = `${cwd}/.forge/contracts`;
+    const evidenceDir = `${cwd}/.forge/evidence`;
+    const contracts = existsSync(contractsDir)
+      ? readdirSync(contractsDir).filter(file => file.endsWith('.ts'))
+      : [];
+
+    if (!state.spec_approved) {
+      missing.push('approved spec');
+    }
+
+    if (!state.design_approved) {
+      missing.push('approved design');
+    }
+
+    if (!existsSync(rulesFile)) {
+      missing.push('.forge/code-rules.md');
+    }
+
+    if (contracts.length === 0) {
+      missing.push('contract files in .forge/contracts/');
+    }
+
+    if (!existsSync(evidenceDir)) {
+      missing.push('.forge/evidence/');
+    }
+
+    if (missing.length > 0) {
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: true,
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: `Forge guard blocked code writes during ${phase.id}. Missing prerequisites: ${missing.join(', ')}.`,
+        },
+      }));
       return;
     }
 
     console.log(JSON.stringify({
       continue: true,
-      additionalContext: '[Forge Fact Checker] Writing code — have you verified? (1) imports exist (2) APIs confirmed via context7 (3) types match contracts (4) code-rules.md followed. No Evidence = No Code.'
+      suppressOutput: true,
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        additionalContext: '[Forge Fact Checker] Harness prerequisites are present. Verify imports, APIs, and contracts before writing.',
+      },
     }));
   } catch (error) {
     handleHookError(error, 'fact-check');

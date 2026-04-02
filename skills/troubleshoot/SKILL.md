@@ -1,6 +1,6 @@
 ---
 name: troubleshoot
-description: Use when Forge encounters complex bugs requiring deep diagnosis. Troubleshooter performs evidence-based root cause analysis with competing hypotheses.
+description: Use when Forge needs deep bug diagnosis instead of a quick patch. Trigger on intermittent bugs, unclear root cause, multi-module breakage, repeated failed fixes, or requests like "분석해줘", "root cause", "why is this failing?", and "investigate this regression". This skill must be used before broad changes on complex failures.
 ---
 
 <Purpose>
@@ -17,6 +17,10 @@ No guessing — only evidence-backed conclusions.
 - Bug reproduces intermittently
 - Previous fix attempt failed (regression or incomplete fix)
 </Use_When>
+
+<Progressive_Disclosure>
+- Load `references/rca-checklist.md` for the compact RCA checklist and must-have outputs.
+</Progressive_Disclosure>
 
 <Steps>
 1. Dispatch troubleshooter agent with context:

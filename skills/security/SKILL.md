@@ -97,8 +97,8 @@ as blockers and route to the fix loop before delivery.
    - If clean → phase=6 (delivery)
 
 7. Update state.json:
-   - If issues: phase=5, phase_name="fix"
-   - If clean: phase=6, phase_name="delivery"
+   - If issues: phase=5, phase_id="fix", phase_name="fix"
+   - If clean: phase=6, phase_id="delivery", phase_name="delivery"
 
 8. Create git tag: forge/v1-security
 

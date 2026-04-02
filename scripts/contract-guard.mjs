@@ -1,21 +1,22 @@
 #!/usr/bin/env node
-// Forge Hook: PostToolUse (Write|Edit) — reminds to verify contract compliance after writing
+// Forge Hook: PostToolUse (Write|Edit) — injects contract verification context after code changes
 
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 
 async function main() {
   const input = await readStdin();
+  const cwd = input?.cwd || '.';
+  const contractsDir = `${cwd}/.forge/contracts`;
 
-  const contractsDir = '.forge/contracts';
   if (!existsSync(contractsDir)) {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
 
   try {
-    const contracts = readdirSync(contractsDir).filter(f => f.endsWith('.ts'));
+    const contracts = readdirSync(contractsDir).filter(file => file.endsWith('.ts'));
     if (contracts.length === 0) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
@@ -23,7 +24,11 @@ async function main() {
 
     console.log(JSON.stringify({
       continue: true,
-      additionalContext: `[Forge Contract Guard] Code written. Verify against contracts: ${contracts.join(', ')}. Any violation = PR rejected.`
+      suppressOutput: true,
+      hookSpecificOutput: {
+        hookEventName: 'PostToolUse',
+        additionalContext: `[Forge Contract Guard] Verify this edit against contracts: ${contracts.join(', ')}. Contract drift is a reject condition.`,
+      },
     }));
   } catch (error) {
     handleHookError(error, 'contract-guard');

@@ -87,7 +87,7 @@ to the client with full transparency.
    f. Ask: "배달 받으시겠습니까? / Do you accept the delivery?"
 
 4. Client accepts → finalize delivery:
-   a. Update state.json: phase="complete", status="delivered"
+   a. Update state.json: phase=7, phase_id="complete", phase_name="complete", status="delivered"
    b. Create git tag: forge/v1-delivery
    c. Create version tag: forge/v0.1.0
    d. Final dashboard showing complete project summary
@@ -104,7 +104,7 @@ to the client with full transparency.
 - Creates: .forge/delivery-report/component-docs.md (if applicable)
 - Creates: .forge/delivery-report/deploy-guide.md
 - Creates: README.md (project root)
-- Updates: .forge/state.json (phase="complete", status="delivered")
+- Updates: .forge/state.json (phase=7, phase_id="complete", phase_name="complete", status="delivered")
 - Creates: git tag forge/v1-delivery
 - Creates: git tag forge/v0.1.0
 </State_Changes>

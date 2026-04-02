@@ -34,7 +34,7 @@ information to begin the discovery process.
       .forge/knowledge/, .forge/delivery-report/
    b. Copy forge/templates/state.json → .forge/state.json
    c. Fill in project name, client name, created_at
-   d. Set phase=1, phase_name="discovery", status="active"
+   d. Set phase=1, phase_id="discovery", phase_name="discovery", status="active"
 
 5. Transition to Phase 1 (forge:discovery)
 </Steps>

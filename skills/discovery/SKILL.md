@@ -60,7 +60,7 @@ NEVER assume. ALWAYS ask.
    a. CEO reviews spec (dispatch forge:ceo agent)
    b. CEO confirms scope is feasible
    c. Present final spec to client for sign-off
-   d. Client approves → Update state.json: phase=2, spec_approved=true
+   d. Client approves → Update state.json: phase=2, phase_id="design", phase_name="design", spec_approved=true
 
 5. Save spec to .forge/spec.md
 

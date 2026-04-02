@@ -25,6 +25,6 @@ export async function readStdin() {
       if (resolved) return;
       resolved = true;
       resolve({});
-    }, 300);
+    }, 1500);
   });
 }

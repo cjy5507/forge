@@ -2,6 +2,8 @@
   "version": "0.1.0",
   "project": "",
   "phase": 0,
+  "phase_id": "intake",
+  "phase_index": 0,
   "phase_name": "intake",
   "status": "pending",
   "created_at": "",

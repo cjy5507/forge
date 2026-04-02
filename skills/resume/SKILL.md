@@ -1,6 +1,6 @@
 ---
 name: resume
-description: Use when returning to a Forge project after a session break. Auto-detects current phase and continues from where you left off.
+description: Use whenever the user wants to continue an existing Forge run after a pause, restart, compaction, or interruption. Triggers include "forge resume", "continue Forge", "이어서 해줘", "pick up where we left off", and any request to continue the active `.forge/` state.
 ---
 
 <Purpose>
@@ -33,9 +33,10 @@ Used when starting a new Claude Code session with an existing .forge/ project.
    - 2 → forge:design
    - 3 → forge:develop
    - 4 → forge:qa
-   - 5 → forge:security (or forge:fix if holes exist)
-   - 6 → forge:fix
-   - 7 → forge:deliver
+   - 4.5 / security → forge:security
+   - 5 / fix → forge:fix
+   - 6 / delivery → forge:deliver
+   - complete → forge:status
 6. Load relevant context files:
    - Phase 1+: .forge/spec.md
    - Phase 2+: .forge/code-rules.md, .forge/design/

@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "description": "Virtual Software Company — evidence-driven development framework with harness engineering",
   "author": {
-    "name": "Joe"
+    "name": "Forge Contributors",
+    "url": "https://github.com/cjy5507/forge"
   },
+  "homepage": "https://github.com/cjy5507/forge",
+  "repository": "https://github.com/cjy5507/forge",
   "license": "MIT",
   "keywords": [
     "forge",
@@ -15,5 +18,27 @@
     "multi-agent"
   ],
   "skills": "./skills/",
-  "mcpServers": "./.mcp.json"
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Forge",
+    "shortDescription": "Phase-gated software company harness for build and repair workflows",
+    "longDescription": "Forge turns Claude Code into an evidence-driven software company with phase gates, runtime guardrails, tracked subagents, and delivery workflows for both greenfield builds and repair loops.",
+    "developerName": "Forge Contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Write",
+      "Interactive",
+      "Automation"
+    ],
+    "websiteURL": "https://github.com/cjy5507/forge",
+    "privacyPolicyURL": "https://github.com/cjy5507/forge/blob/main/forge/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/cjy5507/forge/blob/main/forge/TERMS.md",
+    "defaultPrompt": [
+      "Build a forge harness for this project.",
+      "Use forge to diagnose and fix this repo.",
+      "Show forge status and next phase."
+    ],
+    "brandColor": "#1F6FEB"
+  }
 }

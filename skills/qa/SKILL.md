@@ -73,8 +73,8 @@ tracked in .forge/holes/ and classified by severity to determine the next phase.
    - If blockers = 0 → set next_phase=4.5 (security review)
 
 9. Update state.json:
-   - If blockers: phase=5, phase_name="fix"
-   - If clean: phase=4.5, phase_name="security"
+   - If blockers: phase=5, phase_id="fix", phase_name="fix"
+   - If clean: phase=4.5, phase_id="security", phase_name="security"
 
 10. Create git tag: forge/v1-qa
 

@@ -1,6 +1,6 @@
 ---
 name: rollback
-description: Use when the client wants to go back to a previous phase. Rolls back to a git tag checkpoint and resumes from that phase.
+description: Use when the user wants to undo Forge progress and return to an earlier checkpoint or phase. Triggers include "rollback", "되돌려줘", "아까가 더 나았어", "go back to design", and any request to restore a previous Forge tag safely.
 ---
 
 <Purpose>

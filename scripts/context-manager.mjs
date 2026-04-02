@@ -6,9 +6,10 @@ import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 
 async function main() {
-  await readStdin();
+  const input = await readStdin();
+  const cwd = input?.cwd || '.';
 
-  const stateFile = '.forge/state.json';
+  const stateFile = `${cwd}/.forge/state.json`;
   if (!existsSync(stateFile)) {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
@@ -18,7 +19,7 @@ async function main() {
     const state = JSON.parse(readFileSync(stateFile, 'utf8'));
 
     // Save checkpoint
-    const checkpointDir = '.forge/checkpoints';
+    const checkpointDir = `${cwd}/.forge/checkpoints`;
     if (!existsSync(checkpointDir)) {
       mkdirSync(checkpointDir, { recursive: true });
     }

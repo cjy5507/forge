@@ -1,6 +1,6 @@
 ---
 name: design
-description: Use when Forge begins technical and visual design. CTO and Designer work in parallel to create architecture, code rules, interface contracts, and UI specs.
+description: Use when Forge reaches the design phase or the user asks for technical architecture, UI spec, contracts, or code rules before implementation. Trigger on requests for architecture design, component specification, design tokens, interface contracts, or phased pre-build planning.
 ---
 
 <Purpose>
@@ -48,6 +48,10 @@ evidence-backed decisions.
    payment-form.tsx
    ```
 </Core_Rules>
+
+<Progressive_Disclosure>
+- Load `references/design-deliverables.md` for the complete deliverable and cross-review checklist.
+</Progressive_Disclosure>
 
 <Steps>
 1. Dispatch CTO agent and Designer agent in parallel
@@ -108,7 +112,7 @@ evidence-backed decisions.
    - Design tokens visual summary
    - Any trade-offs or limitations discovered
 
-8. Client approves → update state.json: phase=3, design_approved=true
+8. Client approves → update state.json: phase=3, phase_id="develop", phase_name="develop", design_approved=true
 
 9. Create git tag: forge/v1-design
 
