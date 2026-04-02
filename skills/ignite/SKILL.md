@@ -1,24 +1,27 @@
 ---
-name: forge
-description: Use when the user wants to build a complete product from an idea. Triggers on "forge", "만들어줘", "build me", "create an app". Entry point for the Virtual Software Company pipeline.
+name: ignite
+description: Use when the user wants to build a new product OR fix/analyze an existing project. Triggers on "forge", "만들어줘", "build me", "고쳐줘", "분석해줘", "fix this". Universal entry point for the Virtual Software Company.
 ---
 
 <Purpose>
-Forge is a Virtual Software Company that takes an idea and delivers a working product.
-This skill is the main entry point that orchestrates the entire pipeline:
-Intake → Discovery → Design → Development → QA → Security → Fix → Delivery
+Forge is a Virtual Software Company. Ignite is the universal entry point.
+Two modes:
+- BUILD mode: idea → spec → design → development → QA → delivery
+- REPAIR mode: existing project → diagnosis → fix → QA → delivery
+
+The CEO evaluates the request and routes to the right mode.
 </Purpose>
 
 <Use_When>
-- User invokes /forge or says "forge"
-- User describes a product idea: "~~ 만들어줘", "build me a ~~", "I want an app that ~~"
-- User wants end-to-end product development with team collaboration
+- User invokes /forge:ignite or says "forge"
+- BUILD: "~~ 만들어줘", "build me a ~~", "I want an app that ~~"
+- REPAIR: "이거 고쳐줘", "오류 분석해줘", "fix this bug", "왜 안 돼?"
+- User wants team-based development or debugging
 </Use_When>
 
 <Do_Not_Use_When>
-- User wants a quick code fix (use direct editing)
-- User wants to modify existing code (use standard workflow)
-- User is already in a Forge session (use phase-specific skills)
+- User is already in a Forge session (use phase-specific skills like forge:resume)
+- Trivial one-line change that doesn't need team process
 </Do_Not_Use_When>
 
 <Core_Principles>
@@ -39,10 +42,22 @@ Intake → Discovery → Design → Development → QA → Security → Fix → 
 <Steps>
 Phase 0 — INTAKE (CEO):
   1. Read the client's request
-  2. CEO agent evaluates: Can we build this? Is scope reasonable?
-  3. If unclear → ask the client
-  4. If GO → initialize .forge/ directory with state.json
-  5. Hand off to PM for Phase 1
+  2. CEO agent evaluates and ROUTES:
+
+     [BUILD mode] — new product request
+      "만들어줘", "build me", idea description
+      → Can we build this? Scope reasonable?
+      → GO: initialize .forge/, Phase 1 (Discovery)
+
+     [REPAIR mode] — existing project fix/analysis
+      "고쳐줘", "안 돼", "오류", "fix", "bug", "분석"
+      → Existing codebase detected?
+      → Dispatch Troubleshooter for diagnosis
+      → Diagnosis → Fix → QA → Deliver (skip Phase 1-3)
+
+  3. If unclear which mode → ask the client
+  4. BUILD: initialize .forge/ directory with state.json, hand off to PM
+  5. REPAIR: initialize .forge/ with mode="repair", hand off to Troubleshooter
 
 Phase 1 — DISCOVERY (PM):
   1. Invoke forge:discovery skill
@@ -115,7 +130,7 @@ After each Phase transition, show progress to client:
 
 Forge 진행 현황:
 ┌─────────────────────────────────┐
-│ Phase: N/6 (phase_name)        │
+│ Phase: N/7 (phase_name)        │
 │ ████████░░░░ XX%               │
 │                                │
 │ ✅ completed items              │

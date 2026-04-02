@@ -10,7 +10,7 @@ information to begin the discovery process.
 </Purpose>
 
 <Use_When>
-- Automatically invoked by forge:forge skill at Phase 0
+- Automatically invoked by forge:ignite skill at Phase 0
 - Client submits a new project request
 </Use_When>
 
