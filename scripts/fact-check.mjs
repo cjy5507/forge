@@ -19,7 +19,13 @@ async function main() {
     return;
   }
 
-  const input = await readStdin();
+  let input;
+  try {
+    input = await readStdin();
+  } catch {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
 
@@ -32,6 +38,7 @@ async function main() {
     const phase = resolvePhase(state);
     const tier = readActiveTier(cwd, state, input);
     const risk = detectWriteRisk(input);
+    const shouldSkipApprovalChecks = state.mode === 'repair' || state.mode === 'express';
 
     if (!tierAtLeast(tier, 'medium') || phase.index < resolvePhase({ phase_id: 'develop' }).index) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
@@ -51,11 +58,11 @@ async function main() {
       ? readdirSync(contractsDir).filter(file => file.endsWith('.ts'))
       : [];
 
-    if (!state.spec_approved) {
+    if (!shouldSkipApprovalChecks && !state.spec_approved) {
       missing.push('approved spec');
     }
 
-    if (!state.design_approved) {
+    if (!shouldSkipApprovalChecks && !state.design_approved) {
       missing.push('approved design');
     }
 
@@ -105,7 +112,7 @@ async function main() {
       },
     }));
   } catch (error) {
-    handleHookError(error, 'fact-check');
+    handleHookError(error, 'fact-check', cwd);
   }
 }
 

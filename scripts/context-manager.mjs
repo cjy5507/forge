@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Forge Hook: PreCompact — saves critical state checkpoint before context compaction
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
+import { readForgeState, compactForgeContext, readRuntimeState, writeJsonFile } from './lib/forge-state.mjs';
 
 async function main() {
   const envTier = process.env.FORGE_TIER;
@@ -12,17 +13,22 @@ async function main() {
     return;
   }
 
-  const input = await readStdin();
+  let input;
+  try {
+    input = await readStdin();
+  } catch {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
   const cwd = input?.cwd || '.';
 
-  const stateFile = `${cwd}/.forge/state.json`;
-  if (!existsSync(stateFile)) {
+  const state = readForgeState(cwd);
+  if (!state) {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
 
   try {
-    const state = JSON.parse(readFileSync(stateFile, 'utf8'));
 
     // Save checkpoint
     const checkpointDir = `${cwd}/.forge/checkpoints`;
@@ -43,7 +49,7 @@ async function main() {
     };
 
     const checkpointFile = `${checkpointDir}/checkpoint-${Date.now()}.json`;
-    writeFileSync(checkpointFile, JSON.stringify(checkpoint, null, 2));
+    writeJsonFile(checkpointFile, checkpoint);
 
     // Keep only last 10 checkpoints
     const files = readdirSync(checkpointDir)
@@ -55,12 +61,15 @@ async function main() {
       unlinkSync(`${checkpointDir}/${file}`);
     }
 
+    const runtime = readRuntimeState(cwd);
+    const context = compactForgeContext(state, runtime);
+
     console.log(JSON.stringify({
       continue: true,
-      additionalContext: `[Forge] Context checkpoint saved. Phase: ${state.phase}/7 (${state.phase_name}). Holes: ${checkpoint.holes_count}. Tasks: ${checkpoint.tasks_count}.`
+      additionalContext: `[Forge] Context checkpoint saved. ${context}`
     }));
   } catch (error) {
-    handleHookError(error, 'context-manager');
+    handleHookError(error, 'context-manager', cwd);
   }
 }
 

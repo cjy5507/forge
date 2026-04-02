@@ -41,7 +41,13 @@ async function main() {
     return;
   }
 
-  const input = await readStdin();
+  let input;
+  try {
+    input = await readStdin();
+  } catch {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
   const tier = readActiveTier(cwd, state, input);
@@ -50,10 +56,14 @@ async function main() {
     const commandText = String(input?.tool_input?.command || input?.error || '');
     const testLike = /(test|vitest|jest|playwright)/i.test(commandText);
     const guidance = classifyFailure(input);
+    const toolInput = input?.tool_input || {};
+    const truncatedInput = JSON.stringify(toolInput).length > 500
+      ? { _truncated: true, summary: JSON.stringify(toolInput).slice(0, 500) }
+      : toolInput;
     const entry = {
       at: new Date().toISOString(),
       tool_name: input?.tool_name || 'unknown',
-      tool_input: input?.tool_input || {},
+      tool_input: truncatedInput,
       error: input?.error || input?.tool_error || input?.stderr || 'unknown failure',
       guidance,
     };
@@ -83,7 +93,7 @@ async function main() {
       },
     }));
   } catch (error) {
-    handleHookError(error, 'tool-failure');
+    handleHookError(error, 'tool-failure', cwd);
   }
 }
 

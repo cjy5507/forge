@@ -12,7 +12,7 @@
 
 ## Validation
 
-- [x] `npm test -- forge/scripts/harness-hooks.test.mts`
+- [x] `npx --yes vitest run scripts/*.test.mts`
 - [x] Plugin manifests parse as JSON
 - [x] `hooks/hooks.json` parses as JSON
 - [x] Asset references in the Codex manifest exist

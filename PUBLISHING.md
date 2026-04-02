@@ -10,7 +10,7 @@ Use this checklist before submitting Forge to any public marketplace.
 - `hooks/hooks.json` points only to relative plugin files
 - `README.md` explains what Forge does and how to validate it
 - `PRIVACY.md` and `TERMS.md` exist for marketplace metadata
-- `npm test -- forge/scripts/harness-hooks.test.mts` passes
+- `npx --yes vitest run scripts/*.test.mts` passes
 
 ## Recommended
 

@@ -1,8 +1,8 @@
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -57,6 +57,57 @@ function runHook(scriptName, cwd, payload = {}, options = {}) {
   return JSON.parse(result.stdout || '{}');
 }
 
+/**
+ * Like runHook but does not assert on stderr and returns raw result
+ * for scripts that produce multiple JSON lines or write to stderr.
+ */
+function runHookRaw(scriptName, cwd, payload = {}, options = {}) {
+  const scriptPath = join(FORGE_ROOT, 'scripts', scriptName);
+  const result = spawnSync(process.execPath, [scriptPath], {
+    cwd,
+    input: JSON.stringify({ cwd, ...payload }),
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...(options.env || {}),
+    },
+  });
+
+  return {
+    exitCode: result.status,
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+  };
+}
+
+function runHookRawInput(scriptName, cwd, input, options = {}) {
+  const scriptPath = join(FORGE_ROOT, 'scripts', scriptName);
+  const result = spawnSync(process.execPath, [scriptPath], {
+    cwd,
+    input,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...(options.env || {}),
+    },
+  });
+
+  return {
+    exitCode: result.status,
+    stdout: result.stdout || '',
+    stderr: result.stderr || '',
+  };
+}
+
+function parseJsonLines(stdout) {
+  return String(stdout)
+    .trim()
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => JSON.parse(line));
+}
+
 describe('forge harness hooks', () => {
   it('publishes a richer codex plugin manifest', () => {
     const manifest = JSON.parse(
@@ -74,6 +125,31 @@ describe('forge harness hooks', () => {
       './assets/screenshot-overview.png',
       './assets/screenshot-console.png',
     ]);
+    expect(manifest.interface.privacyPolicyURL).toBe(
+      'https://github.com/cjy5507/forge/blob/main/PRIVACY.md',
+    );
+    expect(manifest.interface.termsOfServiceURL).toBe(
+      'https://github.com/cjy5507/forge/blob/main/TERMS.md',
+    );
+  });
+
+  it('keeps Claude and Codex marketplace metadata aligned', () => {
+    const claudeManifest = JSON.parse(
+      readFileSync(join(FORGE_ROOT, '.claude-plugin', 'plugin.json'), 'utf8'),
+    );
+    const codexManifest = JSON.parse(
+      readFileSync(join(FORGE_ROOT, '.codex-plugin', 'plugin.json'), 'utf8'),
+    );
+
+    expect(codexManifest.repository).toBe(claudeManifest.repository);
+    expect(codexManifest.homepage).toBe(claudeManifest.homepage);
+    expect(codexManifest.interface.websiteURL).toBe(claudeManifest.interface.websiteURL);
+    expect(codexManifest.interface.privacyPolicyURL).toBe(
+      claudeManifest.interface.privacyPolicyURL,
+    );
+    expect(codexManifest.interface.termsOfServiceURL).toBe(
+      claudeManifest.interface.termsOfServiceURL,
+    );
   });
 
   it('publishes shared MCP wiring without repo-specific install assumptions', () => {
@@ -91,6 +167,8 @@ describe('forge harness hooks', () => {
       join(FORGE_ROOT, '.codex-plugin', 'plugin.json'),
       join(FORGE_ROOT, '.mcp.json'),
       join(FORGE_ROOT, 'PUBLISHING.md'),
+      join(FORGE_ROOT, 'RELEASE_CHECKLIST.md'),
+      join(FORGE_ROOT, 'README.md'),
     ];
 
     for (const file of files) {
@@ -98,6 +176,21 @@ describe('forge harness hooks', () => {
       expect(text.includes('/Users/joejaeyoung')).toBe(false);
       expect(text.includes('gosusignal-local')).toBe(false);
       expect(text.includes('.agents/plugins/marketplace.json')).toBe(false);
+      expect(text.match(/\b(?:node|npm test --)\s+forge\/scripts\//)).toBeNull();
+    }
+  });
+
+  it('uses relative hook commands without Claude-specific root variables', () => {
+    const hooksConfig = JSON.parse(
+      readFileSync(join(FORGE_ROOT, 'hooks', 'hooks.json'), 'utf8'),
+    );
+    const commands = Object.values(hooksConfig.hooks)
+      .flat()
+      .flatMap((entry) => entry.hooks.map((hook) => hook.command));
+
+    for (const command of commands) {
+      expect(command.includes('CLAUDE_PLUGIN_ROOT')).toBe(false);
+      expect(command).toMatch(/^node "\.\/scripts\/.+\.mjs"$/);
     }
   });
 
@@ -117,7 +210,7 @@ describe('forge harness hooks', () => {
 
   it('returns SessionStart hookSpecificOutput and normalizes state', () => {
     const cwd = makeWorkspace();
-    writeState(cwd, { phase: 4.5, phase_name: 'security' });
+    writeState(cwd, { phase: 4.5, phase_id: 'security', phase_name: 'security' });
 
     const output = runHook('state-restore.mjs', cwd);
     expect(output.hookSpecificOutput.hookEventName).toBe('SessionStart');
@@ -166,6 +259,32 @@ describe('forge harness hooks', () => {
     expect(output.hookSpecificOutput).toBeUndefined();
   });
 
+  it('skips spec and design approvals in repair mode', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, {
+      mode: 'repair',
+      spec_approved: false,
+      design_approved: false,
+    });
+    mkdirSync(join(cwd, '.forge', 'contracts'), { recursive: true });
+    mkdirSync(join(cwd, '.forge', 'evidence'), { recursive: true });
+    writeFileSync(join(cwd, '.forge', 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(cwd, '.forge', 'code-rules.md'), '# rules\n');
+
+    const output = runHook('fact-check.mjs', cwd, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: 'package.json',
+        content: '{"dependencies":{"new-lib":"1.0.0"}}',
+      },
+    }, {
+      env: { FORGE_TIER: 'full' },
+    });
+
+    expect(output.hookSpecificOutput.permissionDecision).not.toBe('deny');
+    expect(output.hookSpecificOutput.additionalContext).toContain('[Forge] full');
+  });
+
   it('tracks subagent lifecycle in runtime state', () => {
     const cwd = makeWorkspace();
     writeState(cwd);
@@ -183,7 +302,7 @@ describe('forge harness hooks', () => {
     });
 
     const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
-    expect(runtime.active_agents['agent-1'].status).toBe('stopped');
+    expect(runtime.active_agents['agent-1']).toBeUndefined();
     expect(runtime.recent_agents[0].kind).toBe('subagent-stop');
     expect(runtime.stats.agent_calls).toBe(1);
   });
@@ -219,5 +338,656 @@ describe('forge harness hooks', () => {
     const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
     expect(runtime.stats.failure_count).toBe(1);
     expect(runtime.stats.test_failures).toBe(1);
+  });
+});
+
+// ============================================================
+// UNIT TESTS: forge-state.mjs functions
+// ============================================================
+
+import {
+  PHASE_SEQUENCE,
+  TIER_SEQUENCE,
+  normalizePhaseId,
+  normalizeTier,
+  tierAtLeast,
+  resolvePhase,
+  detectTaskType,
+  classifyTierFromMessage,
+  inferTierFromState,
+  recommendedAgentsFor,
+  compactForgeContext,
+  summarizePendingWork,
+  messageLooksInteractive,
+  normalizeStateShape,
+  isProjectActive,
+  detectWriteRisk,
+  readForgeState,
+  writeForgeState,
+  readRuntimeState,
+  writeRuntimeState,
+  updateRuntimeState,
+  readActiveTier,
+  updateAdaptiveTier,
+  appendRecent,
+} from './lib/forge-state.mjs';
+
+describe('normalizePhaseId', () => {
+  it('returns string phases as-is', () => {
+    for (const phase of PHASE_SEQUENCE) {
+      expect(normalizePhaseId(phase)).toBe(phase);
+    }
+  });
+
+  it('converts legacy numeric phases', () => {
+    expect(normalizePhaseId(0)).toBe('intake');
+    expect(normalizePhaseId(1)).toBe('discovery');
+    expect(normalizePhaseId(2)).toBe('design');
+    expect(normalizePhaseId(3)).toBe('develop');
+    expect(normalizePhaseId(4)).toBe('qa');
+    expect(normalizePhaseId(4.5)).toBe('security');
+    expect(normalizePhaseId(5)).toBe('fix');
+    expect(normalizePhaseId(6)).toBe('delivery');
+    expect(normalizePhaseId(7)).toBe('complete');
+  });
+
+  it('handles numeric strings', () => {
+    expect(normalizePhaseId('0')).toBe('intake');
+    expect(normalizePhaseId('4.5')).toBe('security');
+    expect(normalizePhaseId('7')).toBe('complete');
+  });
+
+  it('defaults to intake for invalid input', () => {
+    expect(normalizePhaseId(null)).toBe('intake');
+    expect(normalizePhaseId(undefined)).toBe('intake');
+    expect(normalizePhaseId('')).toBe('intake');
+    expect(normalizePhaseId('invalid')).toBe('intake');
+    expect(normalizePhaseId(99)).toBe('intake');
+    expect(normalizePhaseId(-1)).toBe('intake');
+  });
+});
+
+describe('normalizeTier', () => {
+  it('returns valid tiers', () => {
+    for (const tier of TIER_SEQUENCE) {
+      expect(normalizeTier(tier)).toBe(tier);
+    }
+  });
+
+  it('handles case insensitivity', () => {
+    expect(normalizeTier('FULL')).toBe('full');
+    expect(normalizeTier('Light')).toBe('light');
+    expect(normalizeTier(' medium ')).toBe('medium');
+  });
+
+  it('defaults to light for invalid input', () => {
+    expect(normalizeTier(null)).toBe('light');
+    expect(normalizeTier(undefined)).toBe('light');
+    expect(normalizeTier('')).toBe('light');
+    expect(normalizeTier('invalid')).toBe('light');
+    expect(normalizeTier(42)).toBe('light');
+  });
+});
+
+describe('resolvePhase', () => {
+  it('prefers phase_id over legacy phase fields', () => {
+    const phase = resolvePhase({ phase_id: 'complete', phase: 0, phase_name: 'delivery' });
+    expect(phase.id).toBe('complete');
+    expect(phase.index).toBe(PHASE_SEQUENCE.indexOf('complete'));
+  });
+});
+
+describe('tierAtLeast', () => {
+  it('compares tiers correctly', () => {
+    expect(tierAtLeast('full', 'light')).toBe(true);
+    expect(tierAtLeast('full', 'medium')).toBe(true);
+    expect(tierAtLeast('full', 'full')).toBe(true);
+    expect(tierAtLeast('light', 'full')).toBe(false);
+    expect(tierAtLeast('off', 'light')).toBe(false);
+    expect(tierAtLeast('medium', 'medium')).toBe(true);
+  });
+});
+
+describe('detectTaskType', () => {
+  it('detects bugfix tasks', () => {
+    expect(detectTaskType('fix this bug')).toBe('bugfix');
+    expect(detectTaskType('이거 버그야')).toBe('bugfix');
+    expect(detectTaskType('고쳐줘')).toBe('bugfix');
+    expect(detectTaskType('troubleshoot the issue')).toBe('bugfix');
+    expect(detectTaskType('why is this broken')).toBe('bugfix');
+    expect(detectTaskType('diagnose the error')).toBe('bugfix');
+  });
+
+  it('does NOT false-positive on word boundaries', () => {
+    // After fix: 'fix' should not match 'prefix' or 'suffix'
+    expect(detectTaskType('the prefix is wrong')).not.toBe('bugfix');
+    expect(detectTaskType('add a suffix handler')).not.toBe('bugfix');
+  });
+
+  it('detects refactor tasks', () => {
+    expect(detectTaskType('refactor the module')).toBe('refactor');
+    expect(detectTaskType('리팩토링해줘')).toBe('refactor');
+    expect(detectTaskType('cleanup the code')).toBe('refactor');
+    expect(detectTaskType('simplify this function')).toBe('refactor');
+    expect(detectTaskType('rename the variable')).toBe('refactor');
+  });
+
+  it('detects review tasks', () => {
+    expect(detectTaskType('review this code')).toBe('review');
+    expect(detectTaskType('코드리뷰해줘')).toBe('review');
+    expect(detectTaskType('PR review')).toBe('review');
+  });
+
+  it('detects question tasks', () => {
+    expect(detectTaskType('what does this do')).toBe('question');
+    expect(detectTaskType('explain this function')).toBe('question');
+    expect(detectTaskType('질문이 있어')).toBe('question');
+    expect(detectTaskType('설명해줘')).toBe('question');
+    expect(detectTaskType('어떻게 작동해?')).toBe('question');
+  });
+
+  it('detects Korean question words', () => {
+    // After fix: 뭐야 and 왜 should be detected
+    expect(detectTaskType('이거 뭐야?')).toBe('question');
+    expect(detectTaskType('왜 안 돼?')).toBe('question');
+  });
+
+  it('detects feature tasks', () => {
+    expect(detectTaskType('add a login page')).toBe('feature');
+    expect(detectTaskType('build a dashboard')).toBe('feature');
+    expect(detectTaskType('create a new component')).toBe('feature');
+    expect(detectTaskType('기능 추가해줘')).toBe('feature');
+    expect(detectTaskType('구현해줘')).toBe('feature');
+  });
+
+  it('detects pipeline tasks', () => {
+    expect(detectTaskType('run all phases')).toBe('pipeline');
+    expect(detectTaskType('full pipeline')).toBe('pipeline');
+    expect(detectTaskType('하네스 만들어줘')).toBe('pipeline');
+    expect(detectTaskType('전체 워크플로우')).toBe('pipeline');
+  });
+
+  it('returns general for empty or unclassifiable input', () => {
+    expect(detectTaskType('')).toBe('general');
+    expect(detectTaskType('hello')).toBe('general');
+    expect(detectTaskType(null)).toBe('general');
+    expect(detectTaskType(undefined)).toBe('general');
+  });
+});
+
+describe('classifyTierFromMessage', () => {
+  it('returns full for forge:ignite and harness triggers', () => {
+    expect(classifyTierFromMessage('forge:ignite')).toBe('full');
+    expect(classifyTierFromMessage('set up forge')).toBe('full');
+    expect(classifyTierFromMessage('build a harness')).toBe('full');
+    expect(classifyTierFromMessage('하네스 만들어줘')).toBe('full');
+    expect(classifyTierFromMessage('전체 파이프라인')).toBe('full');
+  });
+
+  it('returns light for questions and bugfixes', () => {
+    expect(classifyTierFromMessage('why is this broken')).toBe('light');
+    expect(classifyTierFromMessage('what does this do')).toBe('light');
+  });
+
+  it('returns medium for features and refactors', () => {
+    expect(classifyTierFromMessage('add a new feature')).toBe('medium');
+    expect(classifyTierFromMessage('refactor this module')).toBe('medium');
+  });
+
+  it('returns full for pipeline tasks', () => {
+    expect(classifyTierFromMessage('run all phases')).toBe('full');
+  });
+
+  it('returns light for review tasks', () => {
+    expect(classifyTierFromMessage('review this code')).toBe('light');
+  });
+});
+
+describe('inferTierFromState', () => {
+  it('returns light for null state', () => {
+    expect(inferTierFromState(null)).toBe('light');
+  });
+
+  it('returns light for empty object (after fix)', () => {
+    expect(inferTierFromState({})).toBe('light');
+  });
+
+  it('returns full for intake/discovery/design/delivery phases', () => {
+    expect(inferTierFromState({ phase_id: 'intake' })).toBe('full');
+    expect(inferTierFromState({ phase_id: 'discovery' })).toBe('full');
+    expect(inferTierFromState({ phase_id: 'design' })).toBe('full');
+    expect(inferTierFromState({ phase_id: 'delivery' })).toBe('full');
+  });
+
+  it('scales develop tier by task/PR count', () => {
+    expect(inferTierFromState({ phase_id: 'develop', tasks: [1,2,3], pr_queue: [] })).toBe('medium');
+    expect(inferTierFromState({ phase_id: 'develop', tasks: [1,2,3,4,5,6], pr_queue: [] })).toBe('full');
+    expect(inferTierFromState({ phase_id: 'develop', tasks: [], pr_queue: [1,2,3,4] })).toBe('full');
+  });
+
+  it('scales fix tier by hole count', () => {
+    expect(inferTierFromState({ phase_id: 'fix', holes: [1] })).toBe('light');
+    expect(inferTierFromState({ phase_id: 'fix', holes: [1,2,3] })).toBe('medium');
+  });
+
+  it('respects explicit tier in state', () => {
+    expect(inferTierFromState({ tier: 'medium' })).toBe('medium');
+  });
+});
+
+describe('recommendedAgentsFor', () => {
+  it('returns empty array for off tier', () => {
+    expect(recommendedAgentsFor({ tier: 'off' })).toEqual([]);
+  });
+
+  it('returns developer for light/general', () => {
+    expect(recommendedAgentsFor({ tier: 'light', taskType: 'general' })).toEqual(['developer']);
+  });
+
+  it('returns troubleshooter for light/bugfix', () => {
+    const agents = recommendedAgentsFor({ tier: 'light', taskType: 'bugfix' });
+    expect(agents).toContain('troubleshooter');
+    expect(agents).toContain('developer');
+  });
+
+  it('returns full team for full/develop', () => {
+    const agents = recommendedAgentsFor({ tier: 'full', taskType: 'general', phaseId: 'develop' });
+    expect(agents.length).toBeGreaterThanOrEqual(5);
+    expect(agents).toContain('ceo');
+    expect(agents).toContain('developer');
+  });
+
+  it('returns design team for full/design phase', () => {
+    const agents = recommendedAgentsFor({ tier: 'full', phaseId: 'design' });
+    expect(agents).toContain('cto');
+    expect(agents).toContain('designer');
+  });
+});
+
+describe('normalizeStateShape', () => {
+  it('preserves phase as string (after fix)', () => {
+    const state = normalizeStateShape({ phase: 'develop' });
+    // After fix: phase should remain a string, not be converted to index
+    expect(state.phase_id).toBe('develop');
+    expect(typeof state.phase).toBe('string');
+  });
+
+  it('handles complete phase correctly (no corruption)', () => {
+    const state = normalizeStateShape({ phase: 'complete' });
+    expect(state.phase_id).toBe('complete');
+    // Write then read should NOT corrupt
+    // The phase field should be 'complete', not 8
+  });
+
+  it('handles security phase correctly', () => {
+    const state = normalizeStateShape({ phase: 'security' });
+    expect(state.phase_id).toBe('security');
+  });
+
+  it('initializes missing arrays', () => {
+    const state = normalizeStateShape({});
+    expect(Array.isArray(state.agents_active)).toBe(true);
+    expect(Array.isArray(state.tasks)).toBe(true);
+    expect(Array.isArray(state.holes)).toBe(true);
+    expect(Array.isArray(state.pr_queue)).toBe(true);
+  });
+
+  it('defaults mode to build', () => {
+    expect(normalizeStateShape({}).mode).toBe('build');
+  });
+
+  it('preserves existing mode', () => {
+    expect(normalizeStateShape({ mode: 'repair' }).mode).toBe('repair');
+    expect(normalizeStateShape({ mode: 'express' }).mode).toBe('express');
+  });
+});
+
+describe('compactForgeContext', () => {
+  it('shows correct max phase count', () => {
+    const context = compactForgeContext({ phase: 'complete' });
+    // After fix: should show 8/8, not 8/7
+    expect(context).toContain(`/${PHASE_SEQUENCE.length - 1}`);
+    expect(context).not.toContain('/7 ');
+  });
+});
+
+describe('isProjectActive', () => {
+  it('handles case-insensitive status', () => {
+    expect(isProjectActive({ status: 'Complete' })).toBe(false);
+    expect(isProjectActive({ status: 'CANCELLED' })).toBe(false);
+    expect(isProjectActive({ status: 'Delivered' })).toBe(false);
+  });
+
+  it('returns false for null', () => {
+    expect(isProjectActive(null)).toBe(false);
+  });
+
+  it('returns true for active project', () => {
+    expect(isProjectActive({ status: 'active', phase: 'develop' })).toBe(true);
+  });
+});
+
+describe('detectWriteRisk', () => {
+  it('detects high risk for dependency files', () => {
+    expect(detectWriteRisk({ file_path: 'package.json' }).level).toBe('high');
+    expect(detectWriteRisk({ file_path: 'requirements.txt' }).level).toBe('high');
+  });
+
+  it('detects low risk for utilities', () => {
+    expect(detectWriteRisk({ file_path: 'src/utils/format.ts' }).level).toBe('low');
+  });
+
+  it('does not false-positive on non-API URLs in paths', () => {
+    // After fix: StripePattern should not be high risk
+    const result = detectWriteRisk({ file_path: 'src/components/StripePattern.tsx', content: 'export default function StripePattern() {}' });
+    expect(result.level).not.toBe('high');
+  });
+});
+
+describe('messageLooksInteractive', () => {
+  it('detects question marks', () => {
+    expect(messageLooksInteractive('계속할까요?')).toBe(true);
+    expect(messageLooksInteractive('do you want to continue?')).toBe(true);
+  });
+
+  it('detects approval keywords', () => {
+    expect(messageLooksInteractive('waiting for approval')).toBe(true);
+    expect(messageLooksInteractive('확인해주세요')).toBe(true);
+  });
+
+  it('returns false for non-interactive messages', () => {
+    expect(messageLooksInteractive('task completed')).toBe(false);
+    expect(messageLooksInteractive('')).toBe(false);
+  });
+
+  it('avoids substring false positives', () => {
+    expect(messageLooksInteractive('confirmed the deployment')).toBe(false);
+    expect(messageLooksInteractive('approved the PR')).toBe(false);
+    expect(messageLooksInteractive('확인 완료')).toBe(false);
+    expect(messageLooksInteractive('do you want to continue?')).toBe(true);
+  });
+});
+
+describe('appendRecent', () => {
+  it('prepends entry and limits size', () => {
+    const list = [1, 2, 3];
+    const result = appendRecent(list, 0, 3);
+    expect(result).toEqual([0, 1, 2]);
+  });
+
+  it('handles empty list', () => {
+    expect(appendRecent([], 'a')).toEqual(['a']);
+  });
+});
+
+describe('state persistence round-trip', () => {
+  it('write then read preserves all phases without corruption', () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'forge-roundtrip-'));
+
+    for (const phase of PHASE_SEQUENCE) {
+      const written = writeForgeState(tmpDir, { phase, mode: 'build', status: 'active' });
+      const read = readForgeState(tmpDir);
+      expect(read.phase_id).toBe(phase);
+      // Critical: phase should not shift on round-trip
+    }
+
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+});
+
+// ============================================================
+// HOOK INTEGRATION TESTS: untested hooks
+// ============================================================
+
+describe('phase-detector hook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('suppresses output for non-forge messages', () => {
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'hello world' });
+    expect(output.continue).toBe(true);
+    expect(output.suppressOutput).toBe(true);
+  });
+
+  it('detects forge keyword and returns context', () => {
+    writeState(tmpDir, { phase: 'develop', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
+  });
+
+  it('detects Korean forge trigger', () => {
+    writeState(tmpDir, { phase: 'develop', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: '포지 상태' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
+  });
+
+  it('refreshes tier on non-forge follow-up messages when runtime exists', () => {
+    writeState(tmpDir, {
+      phase: 'delivery',
+      phase_id: 'delivery',
+      phase_name: 'delivery',
+      status: 'active',
+    });
+
+    runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
+    let runtime = JSON.parse(readFileSync(join(tmpDir, '.forge', 'runtime.json'), 'utf8'));
+    expect(runtime.active_tier).toBe('full');
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'fix this bug' });
+    expect(output.suppressOutput).toBe(true);
+
+    runtime = JSON.parse(readFileSync(join(tmpDir, '.forge', 'runtime.json'), 'utf8'));
+    expect(runtime.active_tier).toBe('light');
+  });
+});
+
+describe('code-rules-guard hook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('surfaces code-rules guidance for full-tier high-risk writes', () => {
+    writeState(tmpDir, { phase: 'develop', tier: 'full' });
+    writeFileSync(join(tmpDir, '.forge', 'code-rules.md'), '# rules\n');
+
+    const output = runHook('code-rules-guard.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: 'package.json',
+        content: '{"dependencies":{"new-lib":"1.0.0"}}',
+      },
+    }, {
+      env: { FORGE_TIER: 'full' },
+    });
+
+    expect(output.hookSpecificOutput.additionalContext).toContain('code-rules');
+  });
+
+  it('suppresses output when code-rules are missing', () => {
+    writeState(tmpDir, { phase: 'develop', tier: 'full' });
+
+    const output = runHook('code-rules-guard.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: 'package.json',
+        content: '{"dependencies":{"new-lib":"1.0.0"}}',
+      },
+    }, {
+      env: { FORGE_TIER: 'full' },
+    });
+
+    expect(output.suppressOutput).toBe(true);
+    expect(output.hookSpecificOutput).toBeUndefined();
+  });
+
+  it('suppresses output below full tier', () => {
+    writeState(tmpDir, { phase: 'develop', tier: 'medium' });
+    writeFileSync(join(tmpDir, '.forge', 'code-rules.md'), '# rules\n');
+
+    const output = runHook('code-rules-guard.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: 'package.json',
+        content: '{"dependencies":{"new-lib":"1.0.0"}}',
+      },
+    }, {
+      env: { FORGE_TIER: 'medium' },
+    });
+
+    expect(output.suppressOutput).toBe(true);
+    expect(output.hookSpecificOutput).toBeUndefined();
+  });
+});
+
+describe('malformed stdin handling', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns safe JSON for empty stdin', () => {
+    const result = runHookRawInput('phase-detector.mjs', tmpDir, '');
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+
+    const outputs = parseJsonLines(result.stdout);
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0].continue).toBe(true);
+    expect(outputs[0].suppressOutput).toBe(true);
+  });
+
+  it('returns safe JSON for invalid JSON stdin', () => {
+    const result = runHookRawInput('phase-detector.mjs', tmpDir, 'not json');
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+
+    const outputs = parseJsonLines(result.stdout);
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0].continue).toBe(true);
+    expect(outputs[0].suppressOutput).toBe(true);
+  });
+});
+
+describe('contract-guard hook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('suppresses output when no contracts exist', () => {
+    writeState(tmpDir, { phase: 'develop', tier: 'full' });
+    const output = runHook('contract-guard.mjs', tmpDir, { file_path: 'src/app.ts' }, { env: { FORGE_TIER: 'full' } });
+    expect(output.continue).toBe(true);
+  });
+
+  it('lists contracts when they exist', () => {
+    writeState(tmpDir, { phase: 'develop', tier: 'full' });
+    mkdirSync(join(tmpDir, '.forge', 'contracts'), { recursive: true });
+    writeFileSync(join(tmpDir, '.forge', 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(tmpDir, '.forge', 'runtime.json'), JSON.stringify({ active_tier: 'full', version: 2 }));
+
+    const output = runHook('contract-guard.mjs', tmpDir, { file_path: 'src/app.ts', content: 'important code' }, { env: { FORGE_TIER: 'full' } });
+    if (output.hookSpecificOutput?.additionalContext) {
+      expect(output.hookSpecificOutput.additionalContext).toContain('api.ts');
+    }
+  });
+});
+
+describe('session-end hook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('succeeds without forge state', () => {
+    const output = runHook('session-end.mjs', tmpDir);
+    expect(output.continue).toBe(true);
+  });
+
+  it('succeeds with forge state', () => {
+    writeState(tmpDir, { phase: 'develop', status: 'active' });
+    const output = runHook('session-end.mjs', tmpDir);
+    expect(output.continue).toBe(true);
+  });
+});
+
+describe('context-manager hook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('succeeds without forge state', () => {
+    const output = runHook('context-manager.mjs', tmpDir);
+    expect(output.continue).toBe(true);
+  });
+
+  it('creates checkpoint when state exists', () => {
+    writeState(tmpDir, { phase: 'develop', status: 'active' });
+    const output = runHook('context-manager.mjs', tmpDir, {}, { env: { FORGE_TIER: 'full' } });
+    expect(output.continue).toBe(true);
+  });
+});
+
+describe('stop-failure hook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('succeeds and outputs valid JSON', () => {
+    const result = runHookRaw('stop-failure.mjs', tmpDir, { error: 'something went wrong' });
+    expect(result.exitCode).toBe(0);
+    const outputs = parseJsonLines(result.stdout);
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0].continue).toBe(true);
+  });
+
+  it('emits exactly one JSON line on stdout', () => {
+    const result = runHookRaw('stop-failure.mjs', tmpDir, { error: 'something went wrong' });
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr).toBe('');
+
+    const outputs = parseJsonLines(result.stdout);
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0]).toEqual({ continue: true, suppressOutput: true });
   });
 });

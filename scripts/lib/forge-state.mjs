@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
 
 export const PHASE_SEQUENCE = [
   'intake',
@@ -72,13 +72,16 @@ function readJsonFile(path, fallback = null) {
 
   try {
     return JSON.parse(readFileSync(path, 'utf8'));
-  } catch {
+  } catch (err) {
+    process.stderr.write(`[Forge] warning: failed to parse ${path}: ${err.message}\n`);
     return fallback;
   }
 }
 
-function writeJsonFile(path, value) {
-  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+export function writeJsonFile(path, value) {
+  const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`);
+  renameSync(tmp, path);
 }
 
 export function getStatePath(cwd = '.') {
@@ -125,9 +128,10 @@ export function normalizePhaseId(value) {
 
 export function resolvePhase(state = {}) {
   const phaseSource =
-    typeof state.phase === 'number' || typeof state.phase === 'string'
+    state.phase_id ??
+    (typeof state.phase === 'number' || typeof state.phase === 'string'
       ? state.phase
-      : state.phase_id ?? state.phase_name;
+      : state.phase_name);
   const phaseId = normalizePhaseId(phaseSource);
   const phaseIndex = PHASE_SEQUENCE.indexOf(phaseId);
 
@@ -139,10 +143,13 @@ export function resolvePhase(state = {}) {
 }
 
 function mergeStats(stats = {}) {
-  return {
-    ...DEFAULT_STATS,
-    ...(stats || {}),
-  };
+  const merged = { ...DEFAULT_STATS, ...(stats || {}) };
+  for (const key of Object.keys(DEFAULT_STATS)) {
+    if (typeof DEFAULT_STATS[key] === 'number' && typeof merged[key] !== 'number') {
+      merged[key] = Number(merged[key]) || 0;
+    }
+  }
+  return merged;
 }
 
 export function detectTaskType(message = '') {
@@ -152,28 +159,28 @@ export function detectTaskType(message = '') {
     return 'general';
   }
 
-  if (/(bug|fix|regression|오류|버그|고쳐|diagnos|troubleshoot|rca|why)/.test(text)) {
+  if (/(\bbug\b|\bfix\b|\bregression\b|오류|버그|고쳐|\bdiagnos\w*\b|\btroubleshoot\b|\brca\b|\bwhy\b)/.test(text)) {
     return 'bugfix';
   }
 
-  if (/(refactor|cleanup|정리|리팩토링|simplify|rename)/.test(text)) {
+  if (/(\brefactor\b|\bcleanup\b|정리|리팩토링|\bsimplify\b|\brename\b)/.test(text)) {
     return 'refactor';
   }
 
-  if (/(review|리뷰|코드리뷰|pr review|code review)/.test(text)) {
+  if (/(\breview\b|리뷰|코드리뷰|\bpr review\b|\bcode review\b)/.test(text)) {
     return 'review';
   }
 
-  if (/(question|explain|what|어떻게|설명|질문)/.test(text)) {
+  if (/(\bquestion\b|\bexplain\b|\bwhat\b|어떻게|설명|질문|뭐야|왜)/.test(text)) {
     return 'question';
   }
 
-  if (/(feature|implement|add|build|create|page|screen|기능|추가|구현|만들)/.test(text)) {
-    return 'feature';
+  if (/(\bfull\b|\ball phases\b|\bpipeline\b|\bentire\b|\bwhole system\b|\bcompany\b|\bworkflow\b|하네스|전체|워크플로우|\bphase\b|팀)/.test(text)) {
+    return 'pipeline';
   }
 
-  if (/(full|all phases|pipeline|entire|whole system|company|workflow|하네스|phase|팀)/.test(text)) {
-    return 'pipeline';
+  if (/(\bfeature\b|\bimplement\b|\badd\b|\bbuild\b|\bcreate\b|\bpage\b|\bscreen\b|기능|추가|구현|만들)/.test(text)) {
+    return 'feature';
   }
 
   return 'general';
@@ -187,8 +194,17 @@ export function classifyTierFromMessage(message = '', state = null) {
     return 'full';
   }
 
+  if (taskType === 'pipeline') {
+    return 'full';
+  }
+
   if (taskType === 'question' || taskType === 'bugfix') {
     return 'light';
+  }
+
+  if (taskType === 'review') {
+    const phaseTier = inferTierFromState(state);
+    return phaseTier === 'full' ? 'medium' : 'light';
   }
 
   if (taskType === 'feature' || taskType === 'refactor') {
@@ -199,7 +215,7 @@ export function classifyTierFromMessage(message = '', state = null) {
 }
 
 export function inferTierFromState(state = null) {
-  if (!state) {
+  if (!state || Object.keys(state).length === 0) {
     return 'light';
   }
 
@@ -233,6 +249,10 @@ export function inferTierFromState(state = null) {
 
 export function recommendedAgentsFor({ tier = 'light', taskType = 'general', phaseId = 'develop' } = {}) {
   const normalizedTier = normalizeTier(tier);
+
+  if (normalizedTier === 'off') {
+    return [];
+  }
 
   if (normalizedTier === 'light') {
     if (taskType === 'bugfix') {
@@ -276,7 +296,7 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   const tier = normalizeTier(runtime?.active_tier || state.tier || inferTierFromState(state));
   const agentCount = Array.isArray(runtime?.recommended_agents) ? runtime.recommended_agents.length : 0;
 
-  return `[Forge] ${tier} ${phase.id} ${phase.index}/7 ${spec} ${design}${agentCount ? ` ${agentCount}a` : ''}`;
+  return `[Forge] ${tier} ${phase.id} ${phase.index}/${PHASE_SEQUENCE.length - 1} ${spec} ${design}${agentCount ? ` ${agentCount}a` : ''}`;
 }
 
 export function summarizePendingWork(state) {
@@ -316,23 +336,23 @@ export function summarizePendingWork(state) {
 
 export function messageLooksInteractive(message = '') {
   const text = String(message).toLowerCase();
+  const patterns = [
+    /\bconfirm\b(?!ed|ing)/,
+    /\bapproval\b/,
+    /\bapprove\b(?!d)/,
+    /\bchoose\b/,
+    /\bwhich option\b/,
+    /\bwaiting for\b/,
+    /\bneed your input\b/,
+    /\bdo you want\b/,
+    /계속할까요/,
+    /확인(?!.*완료)/,
+    /선택/,
+    /어느/,
+    /입력이 필요/,
+  ];
 
-  return [
-    '?',
-    'confirm',
-    'approval',
-    'approve',
-    'choose',
-    'which option',
-    'waiting for',
-    'need your input',
-    'do you want',
-    '계속할까요',
-    '확인',
-    '선택',
-    '어느',
-    '입력이 필요',
-  ].some(pattern => text.includes(pattern));
+  return patterns.some(re => re.test(text));
 }
 
 export function normalizeStateShape(state = {}) {
@@ -342,7 +362,7 @@ export function normalizeStateShape(state = {}) {
 
   return {
     ...state,
-    phase: phase.id === 'security' ? 4.5 : phase.index,
+    phase: phase.id,
     phase_id: phase.id,
     phase_index: phase.index,
     phase_name: phase.label,
@@ -369,6 +389,7 @@ export function readForgeState(cwd = '.') {
 export function writeForgeState(cwd = '.', state) {
   ensureForgeDir(cwd);
   const normalized = normalizeStateShape(state);
+  normalized.updated_at = new Date().toISOString();
   writeJsonFile(getStatePath(cwd), normalized);
   return normalized;
 }
@@ -428,7 +449,8 @@ export function isProjectActive(state) {
     return false;
   }
 
-  if (['complete', 'delivered', 'cancelled', 'canceled'].includes(state.status)) {
+  const status = String(state.status || '').toLowerCase();
+  if (['complete', 'delivered', 'cancelled', 'canceled'].includes(status)) {
     return false;
   }
 
@@ -507,7 +529,7 @@ export function detectWriteRisk(input = {}) {
     return { level: 'high', reason: 'dependency surface changed' };
   }
 
-  if (/(fetch\(|axios|graphql|supabase|stripe|vercel|openai|anthropic|http:\/\/|https:\/\/|process\.env|authorization|bearer )/.test(combined)) {
+  if (/(\bfetch\s*\(|\baxios\b|\bgraphql\b|\bsupabase\b|\bstripe\b(?!pattern|element|style)|\bvercel\b|\bopenai\b|\banthropic\b|\bprocess\.env\b|\bauthorization\b|\bbearer\s)/.test(combined)) {
     return { level: 'high', reason: 'external api or secret-sensitive code' };
   }
 

@@ -32,8 +32,8 @@
       "Automation"
     ],
     "websiteURL": "https://github.com/cjy5507/forge",
-    "privacyPolicyURL": "https://github.com/cjy5507/forge/blob/main/forge/PRIVACY.md",
-    "termsOfServiceURL": "https://github.com/cjy5507/forge/blob/main/forge/TERMS.md",
+    "privacyPolicyURL": "https://github.com/cjy5507/forge/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/cjy5507/forge/blob/main/TERMS.md",
     "defaultPrompt": [
       "Build a forge harness for this project.",
       "Use forge to diagnose and fix this repo.",

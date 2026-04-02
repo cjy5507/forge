@@ -2,6 +2,61 @@
 
 Forge is a harness-engineering plugin that turns an agent into a phase-gated virtual software company.
 
+## Quick Start
+
+Choose one install shape:
+
+### Global install
+
+Use one shared Forge install on your machine, then point Claude Code or your Codex host at the
+generated plugin root.
+
+One-line bootstrap:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope global --force
+```
+
+```bash
+git clone https://github.com/cjy5507/forge.git "$HOME/.forge/src/forge"
+node "$HOME/.forge/src/forge/scripts/setup-plugin.mjs" --scope global --force
+```
+
+This prepares the plugin at `~/.forge/plugins/forge`.
+
+### Project-local install
+
+Install Forge only for the current repository.
+
+One-line bootstrap:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope project --project-root "$PWD" --force
+```
+
+```bash
+git clone https://github.com/cjy5507/forge.git .forge/vendor/forge
+node .forge/vendor/forge/scripts/setup-plugin.mjs --scope project --project-root "$PWD" --force
+```
+
+This prepares the plugin at `./.forge/plugins/forge`.
+
+### Copy mode instead of symlink mode
+
+The setup script uses symlinks by default so updating the cloned Forge repo updates the installed
+plugin too. If your environment requires a standalone copy, add `--mode copy`.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope global --mode copy --force
+```
+
+```bash
+node "$HOME/.forge/src/forge/scripts/setup-plugin.mjs" --scope global --mode copy --force
+```
+
+The bootstrap installer clones Forge into a reusable checkout first, then runs
+`scripts/setup-plugin.mjs` for the selected scope.
+
 ## What Forge does
 
 - Routes work through build or repair mode
@@ -22,18 +77,41 @@ Forge is a harness-engineering plugin that turns an agent into a phase-gated vir
 - `agents/`: specialist role prompts
 - `templates/`: project outputs and evaluation templates
 
-## Codex installation
-
-Install Forge as a normal Codex plugin by placing the `forge/` directory in your plugin location
-or by publishing it through your own marketplace. Forge should not assume any repo-specific
-installation path.
-
 ## Installation
+
+Forge is distributed as a single plugin package.
+
+The plugin root is this repository root, not `.claude-plugin/` or `.codex-plugin/` by themselves.
+Your plugin host should be pointed at the folder that contains:
+
+- `.claude-plugin/plugin.json`
+- `.codex-plugin/plugin.json`
+- `hooks/`
+- `scripts/`
+- `skills/`
+
+### Get the plugin files
+
+Clone the repository:
+
+```bash
+git clone https://github.com/cjy5507/forge.git
+cd forge
+```
+
+Or download the repository as a ZIP from GitHub and extract it.
+
+After that, use the extracted `forge/` folder as the plugin root in your client.
+
+To create a reusable install target automatically, run `scripts/setup-plugin.mjs` with either
+`--scope global` or `--scope project`.
 
 ### Claude Code
 
-If you publish Forge through a Claude Code marketplace, users can install it with the normal
-Claude marketplace flow.
+Forge supports two installation paths in Claude Code.
+
+If Forge is published through a Claude Code marketplace, install it with the normal marketplace
+flow.
 
 Typical flow:
 
@@ -42,17 +120,26 @@ Typical flow:
 /plugin install forge@<marketplace-name>
 ```
 
-If you distribute Forge directly, users can also place the plugin folder where Claude Code
-expects plugins and install/import it through the client UI or plugin workflow.
+If you distribute Forge directly from GitHub, import or install the repository root folder
+that contains `.claude-plugin/plugin.json`.
+
+Do not point Claude Code at `.claude-plugin/` alone. The hooks, skills, agents, templates,
+and assets live alongside it in the plugin root.
 
 ### Codex
 
 Forge ships with a `.codex-plugin/plugin.json` manifest.
 
-Install it through the Codex host's plugin/import flow by pointing the host at the `forge/`
-plugin directory or at a published marketplace entry that resolves to that directory.
+Install it through your Codex host's plugin or import flow by pointing the host at the same
+repository root folder that contains `.codex-plugin/plugin.json`.
 
-Because Codex hosts may vary, Forge intentionally does not assume a fixed global path or
+Do not point Codex at `.codex-plugin/` alone. The manifest expects the rest of the plugin
+files to be available through relative paths from the plugin root.
+
+If you publish Forge through a marketplace, the marketplace entry should package the repository
+root as one plugin so those relative paths stay intact.
+
+Because plugin hosts vary, Forge intentionally does not assume a fixed global install path or
 repo-local marketplace file.
 
 ### Local validation after install
@@ -84,13 +171,13 @@ Forge ships with Context7 configured in `.mcp.json`.
 Run the Forge hook smoke tests:
 
 ```bash
-npm test -- forge/scripts/harness-hooks.test.mts
+npx --yes vitest run scripts/*.test.mts
 ```
 
 Render marketplace screenshots:
 
 ```bash
-node forge/scripts/render-marketplace-assets.mjs
+node scripts/render-marketplace-assets.mjs
 ```
 
 ## Marketplace docs

@@ -28,6 +28,12 @@ Used when starting a new Claude Code session with an existing .forge/ project.
     스펙 승인: {{yes/no}} | 설계 승인: {{yes/no}}
     미해결 이슈: {{holes_count}}건"
 5. Map phase number to skill:
+   If mode === 'express', use express phase mapping:
+   - plan → forge:discovery (compressed with design)
+   - build → forge:develop (with inline QA)
+   - ship → forge:deliver (compressed with fix)
+
+   Otherwise, use standard phase mapping:
    - 0 → forge:intake
    - 1 → forge:discovery
    - 2 → forge:design

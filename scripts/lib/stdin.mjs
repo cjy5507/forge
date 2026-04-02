@@ -9,10 +9,14 @@ export async function readStdin() {
       if (resolved) return;
       resolved = true;
       clearTimeout(timer);
+      if (!data.trim()) {
+        reject(new Error('Forge hook received empty stdin'));
+        return;
+      }
       try {
-        resolve(data ? JSON.parse(data) : {});
-      } catch {
-        resolve({});
+        resolve(JSON.parse(data));
+      } catch (error) {
+        reject(error);
       }
     });
     process.stdin.on('error', err => {
@@ -24,7 +28,7 @@ export async function readStdin() {
     const timer = setTimeout(() => {
       if (resolved) return;
       resolved = true;
-      resolve({});
+      reject(new Error('Forge hook stdin timeout'));
     }, 1500);
   });
 }

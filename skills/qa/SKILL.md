@@ -58,14 +58,17 @@ tracked in .forge/holes/ and classified by severity to determine the next phase.
    e. Authentication edge cases: expired token, missing auth
 
 7. Issue Classification:
-   For each discovered issue, create a file in .forge/holes/:
-   - .forge/holes/{issue-id}.md with:
+   For each discovered issue, dispatch the bug-tracker agent to create a hole file
+   using the standard format `HOLE-{NNN}-{slug}.md`:
+   - Provide the bug-tracker with:
      - Severity: blocker | major | minor | cosmetic
      - Category: functional | visual | contract | regression | edge-case
      - Steps to reproduce
      - Expected behavior (from spec/design)
      - Actual behavior
      - Affected spec section
+   - The bug-tracker agent writes .forge/holes/HOLE-{NNN}-{slug}.md with the next
+     available sequence number and a kebab-case slug derived from the issue summary
 
 8. Gate Decision:
    - Count blockers and majors
@@ -82,7 +85,7 @@ tracked in .forge/holes/ and classified by severity to determine the next phase.
 </Steps>
 
 <State_Changes>
-- Creates: .forge/holes/{issue-id}.md (one per discovered issue)
+- Creates: .forge/holes/HOLE-{NNN}-{slug}.md (one per discovered issue, via bug-tracker agent)
 - Updates: .forge/state.json (phase=5 or phase=4.5)
 - Creates: git tag forge/v1-qa
 </State_Changes>

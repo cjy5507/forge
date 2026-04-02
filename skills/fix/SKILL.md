@@ -21,8 +21,18 @@ the client with alternatives.
    b. Sort by severity: blocker → major → minor → cosmetic
    c. Focus ONLY on blockers (minor/cosmetic are deferred to known-issues)
 
-2. Triage each blocker:
-   a. Simple issue (clear cause, isolated to one module):
+2. Triage each blocker using the Fix Triage Rubric:
+
+   Fix Triage Rubric — score each criterion (0 or 1):
+   - [ ] Error message points to a specific file and line (+1) or unclear (+0)
+   - [ ] Issue is isolated to one module/component (+1) or spans multiple (+0)
+   - [ ] Similar issue has been fixed before in this project (+1) or novel (+0)
+   - [ ] Reproduction steps are clear (+1) or intermittent/unclear (+0)
+
+   Score 3-4: SIMPLE → fact-check → dev fix → QA re-verify
+   Score 0-2: COMPLEX → troubleshooter RCA → dev fix → QA re-verify
+
+   a. Simple issue (triage score 3-4):
       - Fact-checker verifies the root cause is correct
       - Dispatch developer agent to fix in worktree:
         git worktree add .forge/worktrees/fix-{issue-id} -b forge/fix-{issue-id}
@@ -30,7 +40,7 @@ the client with alternatives.
       - PR review (Tier 1 automated + Tier 2 Lead review)
       - Merge and cleanup worktree
 
-   b. Complex issue (unclear cause, spans multiple modules, or reproduces intermittently):
+   b. Complex issue (triage score 0-2: unclear cause, spans multiple modules, or reproduces intermittently):
       - Invoke forge:troubleshoot skill for root cause analysis
       - Troubleshooter produces RCA report in .forge/evidence/rca-{issue-id}.md
       - Dispatch developer agent with RCA report to implement minimal fix

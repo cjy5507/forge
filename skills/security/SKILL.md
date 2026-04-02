@@ -83,14 +83,17 @@ as blockers and route to the fix loop before delivery.
       - Is token validation happening on every request?
 
 5. Issue Classification:
-   For each discovered vulnerability, create a file in .forge/holes/:
-   - .forge/holes/sec-{issue-id}.md with:
+   For each discovered vulnerability, dispatch the bug-tracker agent to create a hole
+   file using the standard format `HOLE-{NNN}-{slug}.md`:
+   - Provide the bug-tracker with:
      - Severity: blocker (all security issues are blockers)
      - Category: owasp-{number} | secrets | auth | authz
      - Vulnerability description
      - Attack scenario
      - Recommended fix
      - Affected files
+   - The bug-tracker agent writes .forge/holes/HOLE-{NNN}-{slug}.md with the next
+     available sequence number and a kebab-case slug derived from the vulnerability summary
 
 6. Gate Decision:
    - If any security issues found → phase=5 (fix loop)
@@ -106,7 +109,7 @@ as blockers and route to the fix loop before delivery.
 </Steps>
 
 <State_Changes>
-- Creates: .forge/holes/sec-{issue-id}.md (one per vulnerability)
+- Creates: .forge/holes/HOLE-{NNN}-{slug}.md (one per vulnerability, via bug-tracker agent)
 - Updates: .forge/state.json (phase=5 or phase=6)
 - Creates: git tag forge/v1-security
 </State_Changes>

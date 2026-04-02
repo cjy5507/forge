@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/state-restore.mjs",
+            "command": "node \"./scripts/state-restore.mjs\"",
             "timeout": 5
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/phase-detector.mjs",
+            "command": "node \"./scripts/phase-detector.mjs\"",
             "timeout": 3
           }
         ]
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/fact-check.mjs",
+            "command": "node \"./scripts/fact-check.mjs\"",
             "timeout": 5
           }
         ]
@@ -43,12 +43,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/contract-guard.mjs",
+            "command": "node \"./scripts/contract-guard.mjs\"",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/code-rules-guard.mjs",
+            "command": "node \"./scripts/code-rules-guard.mjs\"",
             "timeout": 3
           }
         ]
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/tool-failure.mjs",
+            "command": "node \"./scripts/tool-failure.mjs\"",
             "timeout": 5
           }
         ]
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/subagent-start.mjs",
+            "command": "node \"./scripts/subagent-start.mjs\"",
             "timeout": 3
           }
         ]
@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/subagent-stop.mjs",
+            "command": "node \"./scripts/subagent-stop.mjs\"",
             "timeout": 3
           }
         ]
@@ -96,7 +96,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/context-manager.mjs",
+            "command": "node \"./scripts/context-manager.mjs\"",
             "timeout": 5
           }
         ]
@@ -108,7 +108,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/stop-guard.mjs",
+            "command": "node \"./scripts/stop-guard.mjs\"",
             "timeout": 3
           }
         ]
@@ -120,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/stop-failure.mjs",
+            "command": "node \"./scripts/stop-failure.mjs\"",
             "timeout": 3
           }
         ]
@@ -132,7 +132,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/session-end.mjs",
+            "command": "node \"./scripts/session-end.mjs\"",
             "timeout": 3
           }
         ]

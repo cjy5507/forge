@@ -13,7 +13,13 @@ import {
 } from './lib/forge-state.mjs';
 
 async function main() {
-  const input = await readStdin();
+  let input;
+  try {
+    input = await readStdin();
+  } catch {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
   const cwd = input?.cwd || '.';
 
   try {
@@ -24,6 +30,7 @@ async function main() {
     updateRuntimeState(cwd, current => ({
       ...current,
       active_tier: tier,
+      active_agents: {},
       recent_agents: appendRecent(current.recent_agents, {
         kind: 'session-end',
         phase: state ? resolvePhase(state).id : 'none',
@@ -32,6 +39,9 @@ async function main() {
       stats: {
         ...current.stats,
         last_finished_at: endedAt,
+        session_duration_ms: current.stats.started_at
+          ? Date.now() - new Date(current.stats.started_at).getTime()
+          : 0,
       },
       last_event: {
         name: 'SessionEnd',
@@ -42,7 +52,7 @@ async function main() {
 
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
   } catch (error) {
-    handleHookError(error, 'session-end');
+    handleHookError(error, 'session-end', cwd);
   }
 }
 

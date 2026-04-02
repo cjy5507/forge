@@ -12,7 +12,13 @@ import {
 } from './lib/forge-state.mjs';
 
 async function main() {
-  const input = await readStdin();
+  let input;
+  try {
+    input = await readStdin();
+  } catch {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
 
@@ -44,7 +50,7 @@ async function main() {
       },
     }));
   } catch (error) {
-    handleHookError(error, 'state-restore');
+    handleHookError(error, 'state-restore', cwd);
   }
 }
 

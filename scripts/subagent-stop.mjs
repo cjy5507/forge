@@ -12,7 +12,13 @@ async function main() {
     return;
   }
 
-  const input = await readStdin();
+  let input;
+  try {
+    input = await readStdin();
+  } catch {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
   const tier = readActiveTier(cwd, state, input);
@@ -28,15 +34,7 @@ async function main() {
 
     updateRuntimeState(cwd, current => {
       const nextAgents = { ...current.active_agents };
-      nextAgents[agentId] = {
-        ...(nextAgents[agentId] || {}),
-        id: agentId,
-        type: input?.agent_type || nextAgents[agentId]?.type || 'unknown',
-        status: 'stopped',
-        stopped_at: stoppedAt,
-        agent_transcript_path: input?.agent_transcript_path || '',
-        last_message: String(input?.last_assistant_message || '').slice(0, 500),
-      };
+      delete nextAgents[agentId];
 
       return {
         ...current,
@@ -56,7 +54,7 @@ async function main() {
 
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
   } catch (error) {
-    handleHookError(error, 'subagent-stop');
+    handleHookError(error, 'subagent-stop', cwd);
   }
 }
 

@@ -2,11 +2,17 @@
 // Forge Hook: StopFailure — logs turn-ending API failures for later recovery
 
 import { readStdin } from './lib/stdin.mjs';
-import { handleHookError } from './lib/error-handler.mjs';
+import { handleHookError, logHookError } from './lib/error-handler.mjs';
 import { appendRecent, updateRuntimeState } from './lib/forge-state.mjs';
 
 async function main() {
-  const input = await readStdin();
+  let input;
+  try {
+    input = await readStdin();
+  } catch {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
   const cwd = input?.cwd || '.';
 
   try {
@@ -27,9 +33,15 @@ async function main() {
       },
     }));
 
+    logHookError(
+      new Error(`StopFailure: ${entry.error}`),
+      'stop-failure',
+      cwd,
+    );
+
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
   } catch (error) {
-    handleHookError(error, 'stop-failure');
+    handleHookError(error, 'stop-failure', cwd);
   }
 }
 
