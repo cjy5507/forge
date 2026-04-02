@@ -1,6 +1,6 @@
 ---
-name: resume
-description: "Use whenever the user wants to continue an existing Forge run after a pause, restart, compaction, or interruption. Triggers include \"forge resume\", \"continue Forge\", \"이어서 해줘\", \"pick up where we left off\", and any request to continue the active `.forge/` state."
+name: continue
+description: "Use whenever the user wants to continue an existing Forge run after a pause, restart, compaction, or interruption. Triggers include \"forge continue\", \"이어서 해줘\", \"pick up where we left off\", and any request to continue the active `.forge/` state."
 ---
 
 <Purpose>
@@ -9,7 +9,7 @@ Used when starting a new Claude Code session with an existing .forge/ project.
 </Purpose>
 
 <Use_When>
-- User returns after session break: "이어서 해줘", "continue", "forge resume"
+- User returns after session break: "이어서 해줘", "forge continue"
 - SessionStart detects existing .forge/state.json
 - User wants to pick up where they left off
 </Use_When>

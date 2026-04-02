@@ -28,7 +28,7 @@ This is the primary escape hatch from the rigid phase-gate sequence.
 </Steps>
 
 <Constraints>
-- Cannot skip backward (use forge:resume for rollback)
+- Cannot skip backward (use forge:continue for rollback)
 - Cannot skip from intake directly to delivery
 - Skipped phases still need minimal artifacts — generate stubs if user doesn't provide
 - Log the skip in .forge/state.json history

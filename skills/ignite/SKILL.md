@@ -20,7 +20,7 @@ The CEO evaluates the request and routes to the right mode.
 </Use_When>
 
 <Do_Not_Use_When>
-- User is already in a Forge session (use phase-specific skills like forge:resume)
+- User is already in a Forge session (use phase-specific skills like forge:continue)
 - Trivial one-line change that doesn't need team process
 </Do_Not_Use_When>
 

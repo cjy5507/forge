@@ -44,7 +44,7 @@ The client can say "아까 디자인이 더 나았어요" and Forge rolls back t
    d. Clean up worktrees from later phases
    e. Show: "Phase {{N}} ({{phase_name}})으로 롤백 완료. 이 시점부터 다시 진행합니다."
 
-5. Invoke forge:resume to continue from the rolled-back phase
+5. Invoke forge:continue to continue from the rolled-back phase
 </Steps>
 
 <Safety>
@@ -57,5 +57,5 @@ The client can say "아까 디자인이 더 나았어요" and Forge rolls back t
 <Tool_Usage>
 - Bash: git tag -l, git tag (backup), git checkout {tag} -- .
 - Write: update .forge/state.json
-- Skill: forge:resume after rollback
+- Skill: forge:continue after rollback
 </Tool_Usage>
