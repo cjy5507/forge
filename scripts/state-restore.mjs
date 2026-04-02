@@ -3,6 +3,7 @@
 
 import { readFileSync, existsSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
+import { handleHookError } from './lib/error-handler.mjs';
 
 async function main() {
   await readStdin();
@@ -15,13 +16,13 @@ async function main() {
 
   try {
     const state = JSON.parse(readFileSync(stateFile, 'utf8'));
-    const phase = state.phase ?? 0;
-    const phaseName = state.phase_name ?? 'intake';
+    const phase = typeof state.phase === 'number' ? state.phase : 0;
+    const phaseName = typeof state.phase_name === 'string' ? state.phase_name : 'intake';
     const holes = state.holes?.length ?? 0;
 
     const context = [
       `[Forge] Active project: ${state.project || 'unnamed'}`,
-      `Phase: ${phase}/6 (${phaseName})`,
+      `Phase: ${phase}/7 (${phaseName})`,
       `Spec approved: ${state.spec_approved ? 'Yes' : 'No'}`,
       `Design approved: ${state.design_approved ? 'Yes' : 'No'}`,
       holes > 0 ? `Known holes: ${holes}` : '',
@@ -31,8 +32,8 @@ async function main() {
       continue: true,
       additionalContext: context
     }));
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+  } catch (error) {
+    handleHookError(error, 'state-restore');
   }
 }
 

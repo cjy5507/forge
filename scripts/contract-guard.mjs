@@ -3,6 +3,7 @@
 
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
+import { handleHookError } from './lib/error-handler.mjs';
 
 async function main() {
   const input = await readStdin();
@@ -24,8 +25,8 @@ async function main() {
       continue: true,
       additionalContext: `[Forge Contract Guard] Code written. Verify against contracts: ${contracts.join(', ')}. Any violation = PR rejected.`
     }));
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+  } catch (error) {
+    handleHookError(error, 'contract-guard');
   }
 }
 

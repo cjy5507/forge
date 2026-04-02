@@ -3,20 +3,25 @@
 
 import { existsSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
+import { handleHookError } from './lib/error-handler.mjs';
 
 async function main() {
   await readStdin();
 
-  const rulesFile = '.forge/code-rules.md';
-  if (!existsSync(rulesFile)) {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
+  try {
+    const rulesFile = '.forge/code-rules.md';
+    if (!existsSync(rulesFile)) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
 
-  console.log(JSON.stringify({
-    continue: true,
-    additionalContext: '[Forge Code Rules] Code written. Verify naming, structure, patterns match .forge/code-rules.md. Inconsistent code = PR rejected.'
-  }));
+    console.log(JSON.stringify({
+      continue: true,
+      additionalContext: '[Forge Code Rules] Code written. Verify naming, structure, patterns match .forge/code-rules.md. Inconsistent code = PR rejected.'
+    }));
+  } catch (error) {
+    handleHookError(error, 'code-rules-guard');
+  }
 }
 
 main();

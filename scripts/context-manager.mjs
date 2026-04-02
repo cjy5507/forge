@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Forge Hook: PreCompact — saves critical state checkpoint before context compaction
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
+import { handleHookError } from './lib/error-handler.mjs';
 
 async function main() {
   await readStdin();
@@ -38,7 +39,6 @@ async function main() {
     writeFileSync(checkpointFile, JSON.stringify(checkpoint, null, 2));
 
     // Keep only last 10 checkpoints
-    const { readdirSync, unlinkSync } = await import('fs');
     const files = readdirSync(checkpointDir)
       .filter(f => f.startsWith('checkpoint-'))
       .sort()
@@ -50,10 +50,10 @@ async function main() {
 
     console.log(JSON.stringify({
       continue: true,
-      additionalContext: `[Forge] Context checkpoint saved. Phase: ${state.phase}/6 (${state.phase_name}). Holes: ${checkpoint.holes_count}. Tasks: ${checkpoint.tasks_count}.`
+      additionalContext: `[Forge] Context checkpoint saved. Phase: ${state.phase}/7 (${state.phase_name}). Holes: ${checkpoint.holes_count}. Tasks: ${checkpoint.tasks_count}.`
     }));
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+  } catch (error) {
+    handleHookError(error, 'context-manager');
   }
 }
 
