@@ -1,0 +1,19 @@
+{
+  "name": "forge",
+  "version": "0.1.0",
+  "description": "Virtual Software Company — evidence-driven development framework with harness engineering",
+  "author": {
+    "name": "Joe"
+  },
+  "license": "MIT",
+  "keywords": [
+    "forge",
+    "virtual-company",
+    "evidence-driven",
+    "harness-engineering",
+    "orchestration",
+    "multi-agent"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}
