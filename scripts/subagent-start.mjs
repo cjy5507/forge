@@ -7,6 +7,7 @@ import {
   appendRecent,
   readActiveTier,
   readForgeState,
+  readRuntimeState,
   recommendedAgentsFor,
   resolvePhase,
   tierAtLeast,
@@ -33,7 +34,9 @@ async function main() {
 
     const startedAt = new Date().toISOString();
     const phaseId = state ? resolvePhase(state).id : 'develop';
-    const recommended = recommendedAgentsFor({ tier, taskType: 'feature', phaseId });
+    const runtime = readRuntimeState(cwd);
+    const taskType = runtime.last_task_type || 'feature';
+    const recommended = recommendedAgentsFor({ tier, taskType, phaseId });
 
     updateRuntimeState(cwd, current => ({
       ...current,

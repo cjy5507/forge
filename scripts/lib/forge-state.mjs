@@ -160,7 +160,11 @@ export function detectTaskType(message = '') {
     return 'refactor';
   }
 
-  if (/(question|explain|what|why|어떻게|설명|질문|review)/.test(text)) {
+  if (/(review|리뷰|코드리뷰|pr review|code review)/.test(text)) {
+    return 'review';
+  }
+
+  if (/(question|explain|what|어떻게|설명|질문)/.test(text)) {
     return 'question';
   }
 
