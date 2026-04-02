@@ -1,0 +1,104 @@
+---
+name: troubleshoot
+description: Use when Forge encounters complex bugs requiring deep diagnosis. Troubleshooter performs evidence-based root cause analysis with competing hypotheses.
+---
+
+<Purpose>
+Standalone diagnostic skill invoked by the fix skill (Phase 5) when an issue is
+too complex for a simple fix. The Troubleshooter agent performs evidence-based
+root cause analysis using a structured protocol: reproduce, hypothesize, gather
+evidence, verify, identify root cause, propose minimal fix, and assess impact.
+No guessing — only evidence-backed conclusions.
+</Purpose>
+
+<Use_When>
+- Invoked by forge:fix skill when an issue is classified as complex
+- Bug spans multiple modules or has unclear cause
+- Bug reproduces intermittently
+- Previous fix attempt failed (regression or incomplete fix)
+</Use_When>
+
+<Steps>
+1. Dispatch troubleshooter agent with context:
+   - .forge/holes/{issue-id}.md (issue details)
+   - .forge/design/architecture.md (system overview)
+   - .forge/contracts/*.ts (interface boundaries)
+   - Previous attempt history (if any)
+
+2. REPRODUCE — Confirm the bug exists:
+   a. Follow the reproduction steps from the issue report
+   b. If steps are incomplete, determine minimal reproduction path
+   c. Document exact reproduction: inputs, state, sequence, output
+   d. If cannot reproduce → document conditions tried, flag as intermittent
+
+3. HYPOTHESIZE — Generate competing hypotheses:
+   a. Formulate at least 2 competing hypotheses for root cause
+   b. For each hypothesis:
+      - Describe the proposed cause
+      - Predict what evidence would confirm it
+      - Predict what evidence would refute it
+   c. Rank hypotheses by likelihood based on available evidence
+
+4. EVIDENCE — Gather evidence for each hypothesis:
+   a. Trace the execution path through affected code
+   b. Check interface contract boundaries (is data crossing correctly?)
+   c. Check state transitions (is state mutating unexpectedly?)
+   d. Check timing/ordering (race conditions, async issues?)
+   e. Check error handling paths (are errors swallowed silently?)
+   f. Record evidence for and against each hypothesis
+
+5. VERIFY — Test the leading hypothesis:
+   a. Design a test that isolates the suspected root cause
+   b. Run the test to confirm or refute
+   c. If refuted → move to next hypothesis, repeat from step 4
+   d. If confirmed → proceed to root cause documentation
+
+6. ROOT CAUSE — Document the confirmed root cause:
+   a. What: the specific code/logic/state that causes the bug
+   b. Why: why this code exists and why it's wrong
+   c. Where: exact file(s) and line(s) affected
+   d. When: under what conditions the bug manifests
+   e. Impact: what other parts of the system are affected
+
+7. MINIMAL FIX — Propose the smallest correct fix:
+   a. Define the minimal code change that addresses root cause
+   b. Explain why this fix is correct (not just suppressing symptoms)
+   c. Identify what should NOT be changed (scope boundaries)
+   d. Specify tests that must pass after the fix
+
+8. IMPACT ANALYSIS — Assess ripple effects:
+   a. Which modules does the fix touch?
+   b. Which interface contracts are affected?
+   c. Which existing tests need updating?
+   d. What new tests are needed?
+   e. Risk assessment: low/medium/high for regression potential
+
+9. Write RCA report to .forge/evidence/rca-{issue-id}.md:
+   - Summary (one paragraph)
+   - Reproduction steps (confirmed)
+   - Hypotheses considered (with evidence for/against each)
+   - Confirmed root cause
+   - Proposed fix (with code diff if applicable)
+   - Impact analysis
+   - Recommended review level (Lead only vs Lead + CTO)
+
+10. Return control to forge:fix skill with RCA report
+</Steps>
+
+<State_Changes>
+- Creates: .forge/evidence/rca-{issue-id}.md (root cause analysis report)
+- Updates: .forge/holes/{issue-id}.md (adds diagnosis details)
+</State_Changes>
+
+<Failure_Modes_To_Avoid>
+- Jumping to a fix without confirming the root cause
+- Generating only one hypothesis (confirmation bias)
+- Treating correlation as causation without verification test
+- Proposing a large refactor when a minimal fix suffices
+- Not documenting rejected hypotheses (they inform future debugging)
+- Fixing symptoms instead of root cause
+- Not assessing impact on other modules before proposing fix
+- Skipping reproduction step and working from assumptions
+- Not specifying which tests must pass after the fix
+- Producing an RCA report without actionable fix recommendation
+</Failure_Modes_To_Avoid>

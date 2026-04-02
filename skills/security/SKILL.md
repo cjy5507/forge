@@ -1,0 +1,123 @@
+---
+name: security
+description: Use when Forge performs security review. Security reviewer audits OWASP Top 10, scans for secrets, reviews auth/authz logic.
+---
+
+<Purpose>
+Phase 4.5 of the Forge pipeline. The Security Reviewer conducts a comprehensive
+security audit covering OWASP Top 10 vulnerabilities, secret/credential scanning,
+and authentication/authorization logic review. Security issues are always classified
+as blockers and route to the fix loop before delivery.
+</Purpose>
+
+<Use_When>
+- Automatically invoked after Phase 4 (QA) completes with no blockers
+- state.json phase=4.5
+</Use_When>
+
+<Steps>
+1. Dispatch security-reviewer agent with context:
+   - .forge/spec.md (auth/authz requirements)
+   - .forge/design/architecture.md (attack surface overview)
+   - .forge/contracts/*.ts (API boundary definitions)
+   - Full source code access for scanning
+
+2. OWASP Top 10 Audit:
+   a. A01 — Broken Access Control:
+      - Verify all endpoints enforce authorization
+      - Check for IDOR (Insecure Direct Object References)
+      - Verify CORS configuration is restrictive
+      - Check for path traversal vulnerabilities
+   b. A02 — Cryptographic Failures:
+      - Verify sensitive data is encrypted at rest and in transit
+      - Check for hardcoded secrets or weak encryption
+      - Verify password hashing uses bcrypt/argon2 (not MD5/SHA1)
+   c. A03 — Injection:
+      - Check for SQL injection in raw queries
+      - Check for XSS in user-rendered content
+      - Check for command injection in shell calls
+      - Verify input sanitization on all user inputs
+   d. A04 — Insecure Design:
+      - Review rate limiting on auth endpoints
+      - Check for missing CSRF protection
+      - Verify secure defaults in configuration
+   e. A05 — Security Misconfiguration:
+      - Check for debug mode in production config
+      - Verify security headers (CSP, HSTS, X-Frame-Options)
+      - Check for default credentials or open admin panels
+   f. A06 — Vulnerable Components:
+      - Scan dependencies for known CVEs
+      - Check for outdated packages with security patches
+   g. A07 — Authentication Failures:
+      - Review session management
+      - Check token expiration and refresh logic
+      - Verify password policies if applicable
+   h. A08 — Data Integrity Failures:
+      - Check for unsigned/unverified data in critical flows
+      - Review CI/CD pipeline for integrity
+   i. A09 — Logging Failures:
+      - Verify security events are logged
+      - Check that sensitive data is NOT logged (passwords, tokens)
+   j. A10 — SSRF:
+      - Check for unvalidated URL inputs used in server requests
+      - Verify allowlists for external API calls
+
+3. Secrets Scan:
+   a. Scan entire codebase for:
+      - API keys, tokens, passwords in source files
+      - .env files committed to git
+      - Private keys or certificates in repo
+      - Hardcoded connection strings
+   b. Verify .gitignore covers: .env*, *.pem, *.key, credentials.*
+
+4. Auth/Authz Logic Review:
+   a. Trace every authenticated endpoint:
+      - Is the auth check present?
+      - Is it the correct auth check (not just "is logged in" but "is authorized")?
+      - Can the check be bypassed?
+   b. Review role-based access control (if applicable):
+      - Are roles enforced server-side?
+      - Can role escalation occur?
+   c. Review token handling:
+      - Are tokens stored securely (httpOnly cookies, not localStorage)?
+      - Is token validation happening on every request?
+
+5. Issue Classification:
+   For each discovered vulnerability, create a file in .forge/holes/:
+   - .forge/holes/sec-{issue-id}.md with:
+     - Severity: blocker (all security issues are blockers)
+     - Category: owasp-{number} | secrets | auth | authz
+     - Vulnerability description
+     - Attack scenario
+     - Recommended fix
+     - Affected files
+
+6. Gate Decision:
+   - If any security issues found → phase=5 (fix loop)
+   - If clean → phase=6 (delivery)
+
+7. Update state.json:
+   - If issues: phase=5, phase_name="fix"
+   - If clean: phase=6, phase_name="delivery"
+
+8. Create git tag: forge/v1-security
+
+9. Transition to next phase (forge:fix or forge:deliver)
+</Steps>
+
+<State_Changes>
+- Creates: .forge/holes/sec-{issue-id}.md (one per vulnerability)
+- Updates: .forge/state.json (phase=5 or phase=6)
+- Creates: git tag forge/v1-security
+</State_Changes>
+
+<Failure_Modes_To_Avoid>
+- Performing only a surface-level scan without tracing auth logic
+- Missing hardcoded secrets because they look like config constants
+- Not treating all security issues as blockers
+- Skipping OWASP categories because the app "seems simple"
+- Approving code that stores tokens in localStorage
+- Not scanning dependencies for known CVEs
+- Logging sensitive data (passwords, tokens) in audit trail
+- Moving to delivery with unresolved security issues
+</Failure_Modes_To_Avoid>
