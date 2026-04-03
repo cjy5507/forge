@@ -1,6 +1,6 @@
 ---
 name: continue
-description: "Resume an existing Forge project after a pause, restart, or interruption. Triggers: \"forge continue\", \"이어서 해줘\", \"pick up where we left off\"."
+description: "Continue an existing Forge project after a pause, restart, or interruption. Triggers: \"forge continue\", \"이어서 해줘\", \"pick up where we left off\"."
 ---
 
 <Purpose>

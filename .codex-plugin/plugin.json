@@ -11,19 +11,19 @@
   "license": "MIT",
   "keywords": [
     "forge",
-    "virtual-company",
-    "evidence-driven",
-    "harness-engineering",
-    "orchestration",
-    "multi-agent"
+    "workflow",
+    "continuity",
+    "build",
+    "repair",
+    "phase-gated"
   ],
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Forge",
-    "shortDescription": "Structured agent team for build and repair",
-    "longDescription": "Helps Codex run a virtual software company with phase gates, tracked subagents, runtime guardrails, and session recovery for build and repair work.",
+    "shortDescription": "Continuable build and repair harness for coding agents",
+    "longDescription": "Gives long-running coding work persistent project structure — phase gates, ownership tracking, and continuable state across sessions.",
     "developerName": "Forge Contributors",
     "category": "Productivity",
     "capabilities": [
@@ -36,7 +36,7 @@
     "termsOfServiceURL": "https://github.com/cjy5507/forge/blob/main/TERMS.md",
     "defaultPrompt": [
       "Start a Forge harness for this project.",
-      "Show Forge status and resume the current run.",
+      "Show Forge status and continue the current run.",
       "Use Forge to diagnose and fix this repo."
     ],
     "brandColor": "#1F6FEB",

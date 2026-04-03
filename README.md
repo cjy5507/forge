@@ -1,223 +1,202 @@
 # Forge
 
-**Forge gives coding agents structure, ownership, and continuable state.**
+**A structured build-and-repair harness for long-running coding work.**
 
-Most agent tools optimize for speed — more agents, more parallel calls, faster output.
-Forge optimizes for *not losing your place*. It tracks which phase you're in, who owns what,
-and what was decided — so long-running work survives interruptions, session breaks, and context resets.
+Forge gives coding agents phase discipline, ownership, and continuable state —
+so work that spans sessions, days, or interruptions doesn't fall apart.
 
-### When Forge fits
+## The problem
 
-- Work that spans multiple sessions or days
-- Tasks that need to pause and resume without re-explaining context
-- Projects where you need an audit trail of decisions and phases
-- Parallel work where ownership and merge order matter
-- Build or repair flows that benefit from structured gates (spec → design → dev → QA → ship)
+Coding agents are fast but forgetful. On long-running tasks they lose track of
+what was decided, who owns what, and where things broke. When a session ends,
+context disappears. When it resumes, you re-explain everything.
 
-### When you don't need Forge
+Forge fixes this by writing project state to files — not chat history — and
+structuring work into phases with explicit gates, so every session picks up
+exactly where the last one stopped.
 
-- One-shot tasks that finish in a single prompt
-- Quick fixes where overhead isn't worth it
-- Exploration or research without a delivery target
+## Who this is for
 
-## Quick Start
+- Multi-session projects where context loss is the bottleneck
+- Teams that need an audit trail of specs, designs, and decisions
+- Build or repair work that benefits from phase gates instead of open-ended prompting
+- Parallel development where lane ownership and merge order matter
 
-Choose one install shape:
+## Core UX
 
-### Global install
+### `forge status` — see where you are
 
-Use one shared Forge install on your machine, then point Claude Code or your Codex host at the
-generated plugin root.
+Shows current phase, what's blocking, and what to do next. One glance, not a wall of fields.
 
-One-line bootstrap:
+```
+Forge: my-saas-app (build)
+Phase 3/7 — develop
+████████████░░░░ 55%
+
+Active: auth-api, payment-ui. Blocked: db-schema (waiting on contract review)
+
+Lanes: 2/5 done, 1 blocked
+Issues: 1 blocker, 0 major, 2 minor
+Tag: forge/v1-design
+```
+
+### `forge continue` — pick up where you left off
+
+Reads `.forge/state.json`, loads only the context the current phase needs,
+and hands off to the right skill. No re-prompting.
+
+```
+Forge: my-saas-app
+Phase 3/7 — develop
+3 lanes active, 1 blocked (auth waiting on DB schema)
+
+Next: Continue auth-api lane after resolving DB contract
+```
+
+If there's a blocker that needs your input, it surfaces that first.
+If not, it routes to the most actionable lane or phase.
+
+### `forge` — start a new project or fix an existing one
+
+Forge detects whether you're building something new or fixing something broken,
+and routes accordingly.
+
+## Build and repair workflows
+
+Forge runs two structured pipelines. Each phase has a defined input, output, and
+gate — work doesn't advance until prerequisites are met.
+
+### Build mode — new projects
+
+```
+intake → discovery → design → develop → QA → security → fix → delivery
+```
+
+| Phase     | What happens                                    | Output                    |
+|-----------|-------------------------------------------------|---------------------------|
+| Intake    | Evaluate scope, route to build mode              | `.forge/state.json`       |
+| Discovery | Gather requirements, eliminate ambiguity          | `.forge/spec.md`          |
+| Design    | Architecture, contracts, code rules, UI spec     | `.forge/design/`, `contracts/`, `code-rules.md` |
+| Develop   | Split into lanes, parallel work in git worktrees | Merged code, `runtime.json` |
+| QA        | Functional, regression, edge-case testing        | `.forge/holes/`           |
+| Security  | OWASP Top 10, secrets scan, auth review          | `.forge/holes/`           |
+| Fix       | Resolve blockers (max 3 attempts per issue)      | Fixes merged              |
+| Delivery  | Docs, delivery report, client review             | `.forge/delivery-report/` |
+
+### Repair mode — existing codebases
+
+```
+intake → diagnose → fix → QA → delivery
+```
+
+Skips discovery and design. Reads existing code to generate minimal baseline
+artifacts (spec, code rules, contract stubs), then goes straight to diagnosis.
+
+### State lives in files, not chat
+
+Every decision, spec, contract, and issue is written to `.forge/`. When a session
+ends and a new one starts, `forge continue` reads these files and picks up.
+Nothing depends on chat history surviving.
+
+See [docs/phases.md](./docs/phases.md) for detailed phase gates and ownership.
+See [docs/artifacts.md](./docs/artifacts.md) for the full `.forge/` directory reference.
+
+## Quick start
 
 ```bash
+# Install globally
 curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope global --force
+
+# Or install for current project only
+curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope project --project-root "$PWD" --force
 ```
+
+Then try:
+
+```
+forge                  # start a new project or fix an existing one
+forge status           # see current phase, blockers, next steps
+forge continue         # pick up where you left off
+```
+
+## Installation details
+
+<details>
+<summary>Global install (manual)</summary>
 
 ```bash
 git clone https://github.com/cjy5507/forge.git "$HOME/.forge/src/forge"
 node "$HOME/.forge/src/forge/scripts/setup-plugin.mjs" --scope global --force
 ```
 
-This prepares the plugin at `~/.forge/plugins/forge`.
+Prepares the plugin at `~/.forge/plugins/forge`.
+</details>
 
-### Project-local install
-
-Install Forge only for the current repository.
-
-One-line bootstrap:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope project --project-root "$PWD" --force
-```
+<details>
+<summary>Project-local install (manual)</summary>
 
 ```bash
 git clone https://github.com/cjy5507/forge.git .forge/vendor/forge
 node .forge/vendor/forge/scripts/setup-plugin.mjs --scope project --project-root "$PWD" --force
 ```
 
-This prepares the plugin at `./.forge/plugins/forge`.
+Prepares the plugin at `./.forge/plugins/forge`.
+</details>
 
-### Copy mode instead of symlink mode
+<details>
+<summary>Copy mode (no symlinks)</summary>
 
-The setup script uses symlinks by default so updating the cloned Forge repo updates the installed
-plugin too. If your environment requires a standalone copy, add `--mode copy`.
+Add `--mode copy` to any install command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope global --mode copy --force
 ```
+</details>
 
-```bash
-node "$HOME/.forge/src/forge/scripts/setup-plugin.mjs" --scope global --mode copy --force
-```
-
-The bootstrap installer clones Forge into a reusable checkout first, then runs
-`scripts/setup-plugin.mjs` for the selected scope.
-
-## What Forge does
-
-Forge manages a `.forge/` directory that persists your project's state across sessions:
-
-- **Phase gates** — work flows through intake → discovery → design → develop → QA → delivery, each with explicit entry/exit criteria
-- **Continuable state** — `forge continue` picks up where you left off, loading only the context the current phase needs
-- **Ownership tracking** — each task lane has an assigned role, worktree, and handoff notes so nothing is orphaned
-- **Build and repair modes** — new projects get the full pipeline; existing codebases skip to diagnosis → fix → QA → ship
-- **Artifact trail** — specs, contracts, code rules, and decisions are written to files, not lost in chat history
-- **Adaptive tiers** — light for simple work, medium for standard, full for high-stakes projects
-
-## Plugin layout
-
-- `.claude-plugin/plugin.json`: Claude-facing manifest
-- `.codex-plugin/plugin.json`: Codex-facing manifest
-- `.mcp.json`: shared MCP connections, including Context7
-- `assets/`: marketplace icon, logo, and screenshots
-- `hooks/hooks.json`: lifecycle guardrails
-- `skills/`: phase and control skills
-- `agents/`: specialist role prompts
-- `templates/`: project outputs and evaluation templates
-
-## Installation
-
-Forge is distributed as a single plugin package.
-
-The plugin root is this repository root, not `.claude-plugin/` or `.codex-plugin/` by themselves.
-Your plugin host should be pointed at the folder that contains:
-
-- `.claude-plugin/plugin.json`
-- `.codex-plugin/plugin.json`
-- `hooks/`
-- `scripts/`
-- `skills/`
-
-### Get the plugin files
-
-Clone the repository:
-
-```bash
-git clone https://github.com/cjy5507/forge.git
-cd forge
-```
-
-Or download the repository as a ZIP from GitHub and extract it.
-
-After that, use the extracted `forge/` folder as the plugin root in your client.
-
-To create a reusable install target automatically, run `scripts/setup-plugin.mjs` with either
-`--scope global` or `--scope project`.
-
-### Claude Code
-
-Forge now ships both a Claude plugin manifest and a Claude marketplace manifest.
-
-Marketplace install from GitHub:
+<details>
+<summary>Claude Code marketplace</summary>
 
 ```text
 /plugin marketplace add cjy5507/forge
 /plugin install forge@forge
 ```
 
-If your git client prefers HTTPS:
+Or with HTTPS:
 
 ```text
 /plugin marketplace add https://github.com/cjy5507/forge.git
 /plugin install forge@forge
 ```
 
-You can also install Forge directly from the repository root folder that contains
-`.claude-plugin/plugin.json`.
+Point Claude Code at the repository root (the folder containing `.claude-plugin/plugin.json`,
+`skills/`, `scripts/`, and `hooks/`), not at `.claude-plugin/` alone.
+</details>
 
-Do not point Claude Code at `.claude-plugin/` alone. The plugin root is the repository folder
-that also contains `skills/`, `scripts/`, `.mcp.json`, and the rest of the shipped assets.
-
-### Codex
-
-If you are setting up Codex itself on a new machine, install the CLI first, similar to the
-`oh-my-codex` setup flow:
+<details>
+<summary>Codex</summary>
 
 ```bash
 npm install -g @openai/codex
 ```
 
-Forge ships with a `.codex-plugin/plugin.json` manifest for Codex hosts that support plugin or
-import flows. Point the host at the repository root folder that contains `.codex-plugin/plugin.json`.
-
-Recommended Forge roots for Codex:
-
-```text
-~/.forge/plugins/forge
-./.forge/plugins/forge
-```
-
-Do not point Codex at `.codex-plugin/` alone. The manifest expects the rest of the plugin files
-to be available through relative paths from the plugin root.
-
-Because Codex hosts vary, Forge intentionally does not assume one marketplace command until the
-exact host flow is confirmed.
-
-### Local validation after install
-
-Try prompts such as:
-
-- `Start a Forge harness for this project.`
-- `Show Forge status and resume the current run.`
-- `Use Forge to diagnose and fix this repo.`
-- `forge status`
-- `forge resume`
-
-## MCP note
-
-Forge ships with Context7 configured in `.mcp.json`.
-
-- Default URL: `https://mcp.context7.com/mcp`
-- If your client requires auth, add `CONTEXT7_API_KEY` or switch to the OAuth endpoint supported by your MCP client.
-
-## Suggested prompts
-
-- `Start a Forge harness for this project.`
-- `Show Forge status and resume the current run.`
-- `Use Forge to diagnose and fix this repo.`
-- `forge status`
-- `forge stats`
-- `forge resume`
-- `Run a Forge A/B evaluation for this task`
+Point the host at the repository root containing `.codex-plugin/plugin.json`.
+Recommended roots: `~/.forge/plugins/forge` or `./.forge/plugins/forge`.
+</details>
 
 ## Validation
-
-Run the Forge hook smoke tests:
 
 ```bash
 npx --yes vitest run scripts/*.test.mts
 ```
 
-Render marketplace screenshots:
+## MCP
 
-```bash
-node scripts/render-marketplace-assets.mjs
-```
+Forge ships with Context7 configured in `.mcp.json`. No API key required — it works out of the box.
 
-## Marketplace docs
+## Links
 
+- [Phase structure](./docs/phases.md)
+- [Artifact reference](./docs/artifacts.md)
 - [Marketplace copy](./MARKETPLACE.md)
-- [Release notes draft](./RELEASE_NOTES.md)
+- [Release notes](./RELEASE_NOTES.md)
 - [Publishing checklist](./PUBLISHING.md)

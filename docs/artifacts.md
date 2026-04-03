@@ -32,7 +32,7 @@ the single source of truth for project progress, decisions, and work tracking.
 ├── worktrees/              # Git worktree directories (Phase 3, transient)
 │   └── {lane-name}/        # Isolated working copy per lane
 │
-├── checkpoints/            # Context snapshots for resume
+├── checkpoints/            # Context snapshots for session continuity
 │   └── {phase}-{timestamp}.md
 │
 ├── delivery-report/        # Final delivery (Phase 6)

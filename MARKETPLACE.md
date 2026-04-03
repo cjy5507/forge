@@ -10,7 +10,7 @@ Structure, ownership, and continuable state for coding agents.
 
 ## Short description
 
-Forge gives long-running agent work a persistent project structure that survives session breaks, tracks decisions, and resumes without re-explaining context.
+Forge gives long-running agent work a persistent project structure that survives session breaks, tracks decisions, and continues without re-explaining context.
 
 ## Long description
 
@@ -27,7 +27,7 @@ Parallel work is tracked in lanes with assigned ownership, isolated worktrees, a
 ## Suggested starter prompts
 
 - forge — start a new project or fix an existing one
-- forge continue — resume where you left off
+- forge continue — pick up where you left off
 - forge status — see current phase, blockers, and next steps
 
 ## Categories
