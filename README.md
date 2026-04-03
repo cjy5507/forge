@@ -67,7 +67,7 @@ The bootstrap installer clones Forge into a reusable checkout first, then runs
 - Keeps multi-agent runs consistent
 - Keeps code-writing gated on required design prerequisites
 - Adapts across light, medium, and full intervention tiers
-- Uses role prompts for CEO, PM, CTO, QA, Security, and Troubleshooter workflows
+- Uses role prompts for CEO, PM, Researcher, CTO, QA, Security, and Troubleshooter workflows
 - Enforces evidence, security, and recovery gates before phase advance
 
 ## Plugin layout
