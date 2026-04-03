@@ -40,10 +40,11 @@ Issues: 1 blocker, 0 major, 2 minor
 Tag: forge/v1-design
 ```
 
-### `forge continue` — pick up where you left off
+### `forge continue` — restore saved state and keep going
 
-Reads `.forge/state.json`, loads only the context the current phase needs,
-and hands off to the right skill. No re-prompting.
+Restores saved workflow state from `.forge/` — phase, lane ownership, blockers,
+handoff notes — and routes to the most actionable point. No re-prompting,
+no re-explaining what you were doing.
 
 ```
 Forge: my-saas-app
@@ -53,8 +54,11 @@ Phase 3/7 — develop
 Next: Continue auth-api lane after resolving DB contract
 ```
 
-If there's a blocker that needs your input, it surfaces that first.
-If not, it routes to the most actionable lane or phase.
+It picks the right entry point automatically:
+- **Blocker that needs your input?** Surfaces that first.
+- **Internal blocker?** Routes to the owning team.
+- **Active lane with handoff notes?** Loads that lane's worktree and task context.
+- **None of the above?** Falls back to the current phase skill.
 
 ### `forge` — start a new project or fix an existing one
 
@@ -86,11 +90,20 @@ intake → discovery → design → develop → QA → security → fix → deli
 ### Repair mode — existing codebases
 
 ```
-intake → diagnose → fix → QA → delivery
+intake → reproduce → isolate → fix → regress → verify → delivery
 ```
 
-Skips discovery and design. Reads existing code to generate minimal baseline
-artifacts (spec, code rules, contract stubs), then goes straight to diagnosis.
+| Phase     | What happens                                          | Output                    |
+|-----------|-------------------------------------------------------|---------------------------|
+| Intake    | Read existing code, generate baseline artifacts       | `spec.md`, `code-rules.md`, `contracts/` |
+| Reproduce | Confirm the bug exists and capture reproduction steps | `.forge/evidence/`        |
+| Isolate   | Root cause analysis — narrow to the responsible module | `.forge/evidence/rca-*.md` |
+| Fix       | Implement targeted fix in isolated worktree            | Fix branch                |
+| Regress   | Verify fix doesn't break adjacent functionality        | `.forge/holes/`           |
+| Verify    | Full QA pass on the fix                                | `.forge/holes/`           |
+| Delivery  | Update docs, delivery report                           | `.forge/delivery-report/` |
+
+Repair is not "just fix it." It's reproduce → isolate root cause → fix → prove no regressions → verify.
 
 ### State lives in files, not chat
 
@@ -104,20 +117,19 @@ See [docs/artifacts.md](./docs/artifacts.md) for the full `.forge/` directory re
 ## Quick start
 
 ```bash
-# Install globally
 curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope global --force
-
-# Or install for current project only
-curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope project --project-root "$PWD" --force
 ```
 
-Then try:
+Then:
 
 ```
 forge                  # start a new project or fix an existing one
 forge status           # see current phase, blockers, next steps
-forge continue         # pick up where you left off
+forge continue         # restore state and pick up where you left off
 ```
+
+This installs Forge globally at `~/.forge/plugins/forge`.
+For project-local or other install options, see [Installation details](#installation-details) below.
 
 ## Installation details
 

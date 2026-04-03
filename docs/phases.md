@@ -43,14 +43,28 @@ These enable rollback: "go back to design" → restore `forge/v1-design` → res
 For existing codebases that need diagnosis and fixing. Skips discovery and design.
 
 ```
-Phase 0  INTAKE        CEO evaluates, generates minimal baseline artifacts from existing code
-Phase 3* DIAGNOSE      Troubleshooter performs root cause analysis
-Phase 5  FIX           Developer implements fix based on RCA
-Phase 4  QA            Verify fix, check for regressions
-Phase 6  DELIVERY      Docs update, delivery report
+Phase 0    INTAKE       CEO evaluates, generates baseline artifacts from existing code
+Phase R1   REPRODUCE    Confirm the bug, capture reproduction steps and evidence
+Phase R2   ISOLATE      Troubleshooter performs root cause analysis, narrows to module
+Phase R3   FIX          Developer implements targeted fix in isolated worktree
+Phase R4   REGRESS      Verify fix doesn't break adjacent functionality
+Phase R5   VERIFY       Full QA pass on the fix
+Phase 6    DELIVERY     Docs update, delivery report
 ```
 
-*Phase 3 in repair mode is diagnosis, not development.
+### Repair is not "just fix it"
+
+The repair pipeline enforces a discipline that prevents blind patches:
+
+| Phase     | Gate                                                    | Output                    |
+|-----------|---------------------------------------------------------|---------------------------|
+| Intake    | Existing codebase readable, baseline artifacts created  | `spec.md`, `code-rules.md`, `contracts/` |
+| Reproduce | Bug confirmed with steps, not just described            | `.forge/evidence/`        |
+| Isolate   | Root cause identified, not just symptoms                | `.forge/evidence/rca-*.md` |
+| Fix       | Fix scoped to root cause, not shotgun patch             | Fix branch in worktree    |
+| Regress   | Adjacent features still work                            | `.forge/holes/`           |
+| Verify    | Full QA confirmation                                    | `.forge/holes/`           |
+| Delivery  | Docs updated, report compiled                           | `.forge/delivery-report/` |
 
 ### Repair intake generates
 
@@ -58,7 +72,7 @@ Phase 6  DELIVERY      Docs update, delivery report
 - `code-rules.md` — extracted from existing conventions
 - Contract stubs in `.forge/contracts/` — from existing interfaces/types
 
-These are lighter than build-mode artifacts but give the fix loop enough structure to work consistently.
+These are lighter than build-mode artifacts but give the repair loop enough structure to work consistently.
 
 ---
 
