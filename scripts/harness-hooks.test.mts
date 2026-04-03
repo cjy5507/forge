@@ -220,6 +220,27 @@ describe('forge harness hooks', () => {
     expect(normalized.phase_index).toBe(5);
   });
 
+  it('includes company-mode gate and blocker hints on SessionStart when runtime has them', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, { phase: 'delivery', phase_id: 'delivery', phase_name: 'delivery' });
+    writeRuntimeState(cwd, {
+      company_mode: 'autonomous_company',
+      active_gate: 'qa',
+      delivery_readiness: 'blocked',
+      customer_blockers: [{ summary: 'Confirm pricing policy' }],
+      internal_blockers: [{ summary: 'Regression remains' }, { summary: 'Visual mismatch' }],
+    });
+
+    const output = runHook('state-restore.mjs', cwd);
+    expect(output.hookSpecificOutput.additionalContext).toContain('auto');
+    expect(output.hookSpecificOutput.additionalContext).toContain('gate:customer_review');
+    expect(output.hookSpecificOutput.additionalContext).toContain('c1');
+    expect(output.hookSpecificOutput.additionalContext).toContain('i2');
+
+    const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
+    expect(runtime.last_compact_context).toContain('gate:customer_review');
+  });
+
   it('denies high-risk writes when harness prerequisites are missing in full tier', () => {
     const cwd = makeWorkspace();
     writeState(cwd, { spec_approved: false, design_approved: false });
@@ -336,6 +357,122 @@ describe('forge harness hooks', () => {
     const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
     expect(runtime.stats.failure_count).toBe(1);
     expect(runtime.stats.test_failures).toBe(1);
+  });
+
+  it('keeps company gate, staffing, and session ownership coherent across a synthetic delivery flow', () => {
+    const cwd = makeWorkspace();
+
+    writeState(cwd, {
+      phase: 'discovery',
+      phase_id: 'discovery',
+      phase_name: 'discovery',
+      spec_approved: false,
+      design_approved: false,
+      status: 'active',
+    });
+
+    runHook('state-restore.mjs', cwd);
+    let runtime = readRuntimeState(cwd);
+    expect(runtime.active_gate).toBe('spec_readiness');
+    expect(runtime.next_session_owner).toBe('pm');
+
+    writeState(cwd, {
+      phase: 'design',
+      phase_id: 'design',
+      phase_name: 'design',
+      spec_approved: true,
+      design_approved: false,
+      status: 'active',
+    });
+
+    let output = runHook('phase-detector.mjs', cwd, { message: 'forge status' });
+    runtime = readRuntimeState(cwd);
+    expect(runtime.active_gate).toBe('design_readiness');
+    expect(runtime.next_session_owner).toBe('cto');
+    expect(output.hookSpecificOutput.additionalContext).toContain('gate:design_readiness');
+
+    writeState(cwd, {
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      spec_approved: true,
+      design_approved: true,
+      status: 'active',
+    });
+
+    output = runHook('phase-detector.mjs', cwd, { message: 'forge status' });
+    runtime = readRuntimeState(cwd);
+    expect(runtime.active_gate).toBe('implementation_readiness');
+    expect(runtime.next_session_owner).toBe('lead-dev');
+    expect(output.hookSpecificOutput.additionalContext).toContain('gate:implementation_readiness');
+
+    writeState(cwd, {
+      phase: 'qa',
+      phase_id: 'qa',
+      phase_name: 'qa',
+      spec_approved: true,
+      design_approved: true,
+      status: 'active',
+    });
+
+    output = runHook('phase-detector.mjs', cwd, { message: 'forge status' });
+    runtime = readRuntimeState(cwd);
+    expect(runtime.active_gate).toBe('qa');
+    expect(runtime.next_session_owner).toBe('qa');
+    expect(runtime.current_session_goal).toContain('QA blockers');
+    expect(output.hookSpecificOutput.additionalContext).toContain('gate:qa');
+
+    writeState(cwd, {
+      phase: 'security',
+      phase_id: 'security',
+      phase_name: 'security',
+      spec_approved: true,
+      design_approved: true,
+      status: 'active',
+    });
+
+    output = runHook('phase-detector.mjs', cwd, { message: 'forge status' });
+    runtime = readRuntimeState(cwd);
+    expect(runtime.active_gate).toBe('security');
+    expect(runtime.next_session_owner).toBe('security-reviewer');
+    expect(runtime.current_session_goal).toContain('security blockers');
+    expect(output.hookSpecificOutput.additionalContext).toContain('gate:security');
+
+    writeState(cwd, {
+      phase: 'fix',
+      phase_id: 'fix',
+      phase_name: 'fix',
+      spec_approved: true,
+      design_approved: true,
+      status: 'active',
+    });
+
+    output = runHook('phase-detector.mjs', cwd, { message: 'forge status' });
+    runtime = readRuntimeState(cwd);
+    expect(runtime.active_gate).toBe('implementation_readiness');
+    expect(runtime.next_session_owner).toBe('lead-dev');
+    expect(output.hookSpecificOutput.additionalContext).toContain('gate:implementation_readiness');
+
+    writeState(cwd, {
+      phase: 'delivery',
+      phase_id: 'delivery',
+      phase_name: 'delivery',
+      spec_approved: true,
+      design_approved: true,
+      status: 'active',
+    });
+    writeRuntimeState(cwd, {
+      company_mode: 'autonomous_company',
+      customer_blockers: [{ summary: 'Approve final pricing copy' }],
+      internal_blockers: [],
+    });
+
+    output = runHook('state-restore.mjs', cwd);
+    runtime = readRuntimeState(cwd);
+    expect(runtime.active_gate).toBe('customer_review');
+    expect(runtime.next_session_owner).toBe('pm');
+    expect(output.hookSpecificOutput.additionalContext).toContain('gate:customer_review');
+    expect(output.hookSpecificOutput.additionalContext).toContain('c1');
   });
 });
 
@@ -609,6 +746,67 @@ describe('recommendedAgentsFor', () => {
     const agents = recommendedAgentsFor({ tier: 'full', phaseId: 'discovery' });
     expect(agents).toEqual(['ceo', 'pm', 'researcher']);
   });
+
+  it('prefers customer-facing staffing when customer blockers exist in autonomous company mode', () => {
+    const agents = recommendedAgentsFor({
+      tier: 'full',
+      phaseId: 'develop',
+      runtime: {
+        company_mode: 'autonomous_company',
+        customer_blockers: [{ summary: 'Clarify pricing policy' }],
+      },
+    });
+
+    expect(agents[0]).toBe('ceo');
+    expect(agents).toContain('pm');
+  });
+
+  it('prefers gate owners for internal design and security staffing', () => {
+    const designAgents = recommendedAgentsFor({
+      tier: 'full',
+      phaseId: 'design',
+      runtime: {
+        company_mode: 'autonomous_company',
+        active_gate: 'design_readiness',
+      },
+    });
+    expect(designAgents.slice(0, 2)).toEqual(['cto', 'designer']);
+
+    const securityAgents = recommendedAgentsFor({
+      tier: 'full',
+      phaseId: 'delivery',
+      runtime: {
+        company_mode: 'autonomous_company',
+        active_gate: 'security',
+      },
+    });
+    expect(securityAgents[0]).toBe('security-reviewer');
+    expect(securityAgents).toContain('developer');
+  });
+
+  it('prefers PM and Lead when session ownership is explicit', () => {
+    const pmAgents = recommendedAgentsFor({
+      tier: 'full',
+      phaseId: 'discovery',
+      runtime: {
+        company_mode: 'autonomous_company',
+        current_session_goal: 'Clarify V1 scope before internal design',
+        next_session_owner: 'pm',
+      },
+    });
+    expect(pmAgents[0]).toBe('pm');
+
+    const leadAgents = recommendedAgentsFor({
+      tier: 'full',
+      phaseId: 'develop',
+      runtime: {
+        company_mode: 'autonomous_company',
+        current_session_goal: 'Split implementation into reviewable lanes',
+        next_session_owner: 'lead-dev',
+      },
+    });
+    expect(leadAgents[0]).toBe('lead-dev');
+  });
 });
 
 describe('normalizeStateShape', () => {
@@ -672,6 +870,55 @@ describe('compactForgeContext', () => {
     expect(context).toContain('2l');
     expect(context).toContain('1b');
     expect(context).toContain('↺api');
+  });
+
+  it('includes autonomous company gate and blocker summaries when present', () => {
+    const context = compactForgeContext(
+      { phase: 'delivery', spec_approved: true, design_approved: true },
+      {
+        active_tier: 'full',
+        company_mode: 'autonomous_company',
+        active_gate: 'delivery_readiness',
+        delivery_readiness: 'blocked',
+        customer_blockers: [{ summary: 'Choose billing policy' }],
+        internal_blockers: [{ summary: 'QA blocker' }, { summary: 'Security blocker' }],
+      },
+    );
+
+    expect(context).toContain('auto');
+    expect(context).toContain('gate:delivery_readiness');
+    expect(context).toContain('c1');
+    expect(context).toContain('i2');
+  });
+
+  it('includes session goal and next owner summaries when present', () => {
+    const context = compactForgeContext(
+      { phase: 'develop', spec_approved: true, design_approved: true },
+      {
+        active_tier: 'full',
+        company_mode: 'autonomous_company',
+        current_session_goal: 'Close auth review and prep merge',
+        next_session_owner: 'lead-dev',
+      },
+    );
+
+    expect(context).toContain('goal');
+    expect(context).toContain('next:lead-dev');
+  });
+
+  it('derives session goal and next owner from gate/blockers when missing', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, { phase: 'design', phase_id: 'design', phase_name: 'design' });
+    writeRuntimeState(cwd, {
+      company_mode: 'autonomous_company',
+      active_gate: 'design_readiness',
+      customer_blockers: [],
+      internal_blockers: [{ summary: 'Architecture tradeoff unresolved' }],
+    });
+
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.current_session_goal).toContain('design');
+    expect(runtime.next_session_owner).toBe('cto');
   });
 });
 
@@ -842,6 +1089,80 @@ describe('phase-detector hook', () => {
 
     runtime = JSON.parse(readFileSync(join(tmpDir, '.forge', 'runtime.json'), 'utf8'));
     expect(runtime.active_tier).toBe('light');
+  });
+
+  it('includes company-mode gate and blocker hints for forge requests', () => {
+    writeState(tmpDir, { phase: 'delivery', phase_id: 'delivery', phase_name: 'delivery', status: 'active' });
+    writeRuntimeState(tmpDir, {
+      company_mode: 'autonomous_company',
+      active_gate: 'delivery_readiness',
+      delivery_readiness: 'blocked',
+      customer_blockers: [{ summary: 'Confirm launch copy' }],
+      internal_blockers: [{ summary: 'Security blocker remains' }],
+    });
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('auto');
+    expect(output.hookSpecificOutput.additionalContext).toContain('gate:customer_review');
+    expect(output.hookSpecificOutput.additionalContext).toContain('c1');
+    expect(output.hookSpecificOutput.additionalContext).toContain('i1');
+
+    const runtime = JSON.parse(readFileSync(join(tmpDir, '.forge', 'runtime.json'), 'utf8'));
+    expect(runtime.last_compact_context).toContain('gate:customer_review');
+  });
+
+  it('routes forge requests toward continue when customer blockers are present', () => {
+    writeState(tmpDir, { phase: 'discovery', phase_id: 'discovery', phase_name: 'discovery', status: 'active' });
+    writeRuntimeState(tmpDir, {
+      company_mode: 'autonomous_company',
+      active_gate: 'customer_review',
+      active_gate_owner: 'pm',
+      customer_blockers: [{ summary: 'Clarify must-have billing behavior' }],
+      internal_blockers: [],
+    });
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('next:pm');
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:continue');
+  });
+
+  it('keeps forge requests on the active internal phase when customer blockers exist but ownership is internal', () => {
+    writeState(tmpDir, { phase: 'fix', phase_id: 'fix', phase_name: 'fix', status: 'active' });
+    writeRuntimeState(tmpDir, {
+      company_mode: 'autonomous_company',
+      active_gate: 'implementation_readiness',
+      active_gate_owner: 'lead-dev',
+      customer_blockers: [{ summary: 'Need pricing signoff' }],
+      internal_blockers: [],
+    });
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('next:lead-dev');
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:fix');
+  });
+
+  it('surfaces gate-aware staffing in forge request context', () => {
+    writeState(tmpDir, { phase: 'delivery', phase_id: 'delivery', phase_name: 'delivery', status: 'active' });
+    writeRuntimeState(tmpDir, {
+      company_mode: 'autonomous_company',
+      active_gate: 'security',
+      internal_blockers: [{ summary: 'Auth issue remains' }],
+    });
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('[ceo, tech-writer, qa]');
+  });
+
+  it('derives PM ownership for customer blockers even without explicit session brief', () => {
+    writeState(tmpDir, { phase: 'discovery', phase_id: 'discovery', phase_name: 'discovery', status: 'active' });
+    writeRuntimeState(tmpDir, {
+      company_mode: 'autonomous_company',
+      customer_blockers: [{ summary: 'Clarify paid plan requirements' }],
+      internal_blockers: [],
+    });
+
+    const runtime = readRuntimeState(tmpDir);
+    expect(runtime.next_session_owner).toBe('pm');
   });
 });
 

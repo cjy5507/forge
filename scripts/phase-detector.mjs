@@ -9,7 +9,9 @@ import {
   compactForgeContext,
   getRuntimePath,
   readForgeState,
+  readRuntimeState,
   resolvePhase,
+  updateRuntimeState,
   updateAdaptiveTier,
 } from './lib/forge-state.mjs';
 
@@ -52,8 +54,24 @@ async function main() {
     try {
       const adaptive = updateAdaptiveTier(cwd, { state, message });
       const phase = resolvePhase(state);
-      const currentSkill = phase.id === 'complete' ? 'status' : phase.id;
-      context = `${compactForgeContext(state, adaptive.runtime)} → forge:${currentSkill} [${adaptive.recommendedAgents.join(', ')}]`;
+      const runtime = readRuntimeState(cwd);
+      let currentSkill = phase.id === 'complete' ? 'status' : phase.id;
+      const nextOwner = typeof runtime.next_session_owner === 'string' ? runtime.next_session_owner.trim() : '';
+
+      if ((runtime.customer_blockers?.length || 0) > 0 && nextOwner === 'pm') {
+        currentSkill = 'continue';
+      } else if (typeof runtime.active_gate === 'string' && runtime.active_gate.trim()) {
+        if (runtime.active_gate === 'delivery_readiness' || runtime.active_gate === 'customer_review') {
+          currentSkill = 'status';
+        }
+      }
+
+      const compactOnly = compactForgeContext(state, adaptive.runtime);
+      context = `${compactOnly} → forge:${currentSkill} [${adaptive.recommendedAgents.join(', ')}]`;
+      updateRuntimeState(cwd, current => ({
+        ...current,
+        last_compact_context: compactOnly,
+      }));
     } catch (error) {
       handleHookError(error, 'phase-detector', cwd);
       return;

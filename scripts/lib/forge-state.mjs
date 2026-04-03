@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
+import { dirname, join, resolve, sep } from 'path';
 
 export const PHASE_SEQUENCE = [
   'intake',
@@ -13,6 +14,8 @@ export const PHASE_SEQUENCE = [
 ];
 
 export const TIER_SEQUENCE = ['off', 'light', 'medium', 'full'];
+export const LANE_REVIEW_SEQUENCE = ['none', 'pending', 'changes_requested', 'approved'];
+export const LANE_MERGE_SEQUENCE = ['none', 'queued', 'rebasing', 'ready', 'merged'];
 
 const LEGACY_PHASE_MAP = new Map([
   [0, 'intake'],
@@ -44,6 +47,24 @@ const DEFAULT_RUNTIME = {
   active_tier: 'light',
   last_task_type: 'general',
   task_graph_version: 1,
+  company_mode: 'guided',
+  company_gate_mode: 'auto',
+  company_phase_anchor: '',
+  active_gate: '',
+  active_gate_owner: '',
+  delivery_readiness: 'unknown',
+  customer_blockers: [],
+  internal_blockers: [],
+  current_session_goal: '',
+  session_exit_criteria: [],
+  next_session_goal: '',
+  next_session_owner: '',
+  session_handoff_summary: '',
+  session_brief_mode: 'auto',
+  session_phase_anchor: '',
+  session_gate_anchor: '',
+  session_customer_blocker_count: 0,
+  session_internal_blocker_count: 0,
   recommended_agents: [],
   lanes: {},
   active_worktrees: {},
@@ -62,11 +83,28 @@ const DEFAULT_RUNTIME = {
 };
 
 function ensureForgeDir(cwd = '.') {
-  const forgeDir = `${cwd}/.forge`;
+  const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
   if (!existsSync(forgeDir)) {
     mkdirSync(forgeDir, { recursive: true });
   }
   return forgeDir;
+}
+
+export function resolveForgeBaseDir(cwd = '.') {
+  const start = resolve(cwd);
+  let current = start;
+
+  while (true) {
+    if (existsSync(join(current, '.forge'))) {
+      return current;
+    }
+
+    const parent = dirname(current);
+    if (parent === current) {
+      return start;
+    }
+    current = parent;
+  }
 }
 
 function readJsonFile(path, fallback = null) {
@@ -89,11 +127,11 @@ export function writeJsonFile(path, value) {
 }
 
 export function getStatePath(cwd = '.') {
-  return `${cwd}/.forge/state.json`;
+  return join(resolveForgeBaseDir(cwd), '.forge', 'state.json');
 }
 
 export function getRuntimePath(cwd = '.') {
-  return `${cwd}/.forge/runtime.json`;
+  return join(resolveForgeBaseDir(cwd), '.forge', 'runtime.json');
 }
 
 export function normalizeTier(value) {
@@ -156,6 +194,318 @@ function mergeStats(stats = {}) {
   return merged;
 }
 
+function normalizeCompanyMode(value) {
+  if (typeof value !== 'string') {
+    return 'guided';
+  }
+
+  const lowered = value.trim().toLowerCase();
+  return lowered === 'autonomous_company' ? lowered : 'guided';
+}
+
+function normalizeDeliveryReadiness(value) {
+  if (typeof value !== 'string') {
+    return 'unknown';
+  }
+
+  const lowered = value.trim().toLowerCase();
+  return ['unknown', 'blocked', 'in_progress', 'ready_for_review', 'delivered'].includes(lowered)
+    ? lowered
+    : 'unknown';
+}
+
+function normalizeBlockers(blockers = []) {
+  if (!Array.isArray(blockers)) {
+    return [];
+  }
+
+  return blockers
+    .map((blocker) => {
+      if (typeof blocker === 'string') {
+        return {
+          summary: blocker,
+          owner: '',
+          severity: 'blocker',
+        };
+      }
+
+      if (!blocker || typeof blocker !== 'object') {
+        return null;
+      }
+
+      return {
+        ...blocker,
+        summary: typeof blocker.summary === 'string' ? blocker.summary : '',
+        owner: typeof blocker.owner === 'string' ? blocker.owner : '',
+        severity: typeof blocker.severity === 'string' ? blocker.severity : 'blocker',
+      };
+    })
+    .filter(Boolean)
+    .filter(blocker => blocker.summary);
+}
+
+function normalizeStringList(values = []) {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+
+  return values
+    .map(value => String(value || '').trim())
+    .filter(Boolean);
+}
+
+export function resolveRuntimeLaneContext(runtime = DEFAULT_RUNTIME, rootCwd = '.', hookCwd = '.', fallbackLaneId = '') {
+  const lanes = runtime?.lanes && typeof runtime.lanes === 'object' ? runtime.lanes : {};
+
+  if (fallbackLaneId && lanes[fallbackLaneId]) {
+    return {
+      laneId: fallbackLaneId,
+      lane: lanes[fallbackLaneId],
+    };
+  }
+
+  const currentPath = resolve(hookCwd || rootCwd);
+
+  for (const [laneId, lane] of Object.entries(lanes)) {
+    const worktreePath = typeof lane?.worktree_path === 'string' ? lane.worktree_path.trim() : '';
+    if (!worktreePath) {
+      continue;
+    }
+
+    const lanePath = resolve(rootCwd, worktreePath);
+    if (currentPath === lanePath || currentPath.startsWith(`${lanePath}${sep}`)) {
+      return { laneId, lane };
+    }
+  }
+
+  return { laneId: '', lane: null };
+}
+
+function deriveSessionOwner({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
+  const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
+  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const phaseId = state ? resolvePhase(state).id : '';
+
+  if (customerBlockers.length > 0 && !['develop', 'qa', 'security', 'fix'].includes(phaseId)) return 'pm';
+  if (activeGate === 'design_readiness') return 'cto';
+  if (activeGate === 'implementation_readiness') return 'lead-dev';
+  if (activeGate === 'qa') return 'qa';
+  if (activeGate === 'security') return 'security-reviewer';
+  if (activeGate === 'delivery_readiness' || activeGate === 'customer_review') return 'ceo';
+  if (phaseId === 'discovery') return 'pm';
+  if (phaseId === 'design') return 'cto';
+  if (phaseId === 'develop' || phaseId === 'fix') return 'lead-dev';
+  if (phaseId === 'qa') return 'qa';
+  if (phaseId === 'security') return 'security-reviewer';
+  if (phaseId === 'delivery') return 'ceo';
+  return '';
+}
+
+function deriveCompanyGateFields({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
+  const observedPhase = state ? resolvePhase(state).id : '';
+  const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
+  const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
+  const manualGate = runtime?.company_gate_mode === 'manual';
+  const phaseAnchor = typeof runtime?.company_phase_anchor === 'string' ? runtime.company_phase_anchor : '';
+
+  if (manualGate && !observedPhase) {
+    return {
+      company_gate_mode: 'manual',
+      company_phase_anchor: phaseAnchor,
+      active_gate: typeof runtime?.active_gate === 'string' ? runtime.active_gate : '',
+      active_gate_owner: typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner : '',
+      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+    };
+  }
+
+  if (manualGate && phaseAnchor === observedPhase) {
+    return {
+      company_gate_mode: 'manual',
+      company_phase_anchor: observedPhase,
+      active_gate: typeof runtime?.active_gate === 'string' ? runtime.active_gate : '',
+      active_gate_owner: typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner : '',
+      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+    };
+  }
+
+  if (observedPhase === 'discovery') {
+    return {
+      company_gate_mode: 'auto',
+      company_phase_anchor: observedPhase,
+      active_gate: 'spec_readiness',
+      active_gate_owner: 'pm',
+      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+    };
+  }
+
+  if (observedPhase === 'design') {
+    return {
+      company_gate_mode: 'auto',
+      company_phase_anchor: observedPhase,
+      active_gate: 'design_readiness',
+      active_gate_owner: 'cto',
+      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+    };
+  }
+
+  if (observedPhase === 'develop' || observedPhase === 'fix') {
+    return {
+      company_gate_mode: 'auto',
+      company_phase_anchor: observedPhase,
+      active_gate: 'implementation_readiness',
+      active_gate_owner: 'lead-dev',
+      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+    };
+  }
+
+  if (observedPhase === 'qa') {
+    return {
+      company_gate_mode: 'auto',
+      company_phase_anchor: observedPhase,
+      active_gate: 'qa',
+      active_gate_owner: 'qa',
+      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+    };
+  }
+
+  if (observedPhase === 'security') {
+    return {
+      company_gate_mode: 'auto',
+      company_phase_anchor: observedPhase,
+      active_gate: 'security',
+      active_gate_owner: 'security-reviewer',
+      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+    };
+  }
+
+  if (observedPhase === 'delivery') {
+    const readiness = customerBlockers.length > 0
+      ? 'in_progress'
+      : internalBlockers.length > 0
+        ? 'blocked'
+        : runtime?.delivery_readiness === 'delivered'
+          ? 'delivered'
+          : 'ready_for_review';
+
+    return {
+      company_gate_mode: 'auto',
+      company_phase_anchor: observedPhase,
+      active_gate: customerBlockers.length > 0 ? 'customer_review' : 'delivery_readiness',
+      active_gate_owner: 'ceo',
+      delivery_readiness: readiness,
+    };
+  }
+
+  if (observedPhase === 'complete') {
+    return {
+      company_gate_mode: 'auto',
+      company_phase_anchor: observedPhase,
+      active_gate: 'customer_review',
+      active_gate_owner: 'ceo',
+      delivery_readiness: 'delivered',
+    };
+  }
+
+  return {
+    company_gate_mode: manualGate ? 'manual' : 'auto',
+    company_phase_anchor: observedPhase,
+    active_gate: typeof runtime?.active_gate === 'string' ? runtime.active_gate : '',
+    active_gate_owner: typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner : '',
+    delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+  };
+}
+
+function deriveSessionGoal({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
+  const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
+  const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
+  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const readiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
+  const phaseId = state ? resolvePhase(state).id : '';
+
+  if (customerBlockers.length > 0 && !['develop', 'qa', 'security', 'fix'].includes(phaseId)) {
+    return `Resolve customer blocker: ${customerBlockers[0].summary}`;
+  }
+  if (activeGate === 'design_readiness') return 'Close design readiness gate';
+  if (activeGate === 'implementation_readiness') return 'Prepare reviewable implementation lanes';
+  if (activeGate === 'qa') return 'Clear QA blockers and re-verify';
+  if (activeGate === 'security') return 'Clear security blockers and re-check delivery readiness';
+  if (activeGate === 'delivery_readiness') {
+    return readiness === 'blocked' ? 'Make delivery ready for customer review' : 'Prepare delivery review package';
+  }
+  if (activeGate === 'customer_review') return 'Present delivery for customer review';
+  if (internalBlockers.length > 0) return `Clear internal blocker: ${internalBlockers[0].summary}`;
+  if (phaseId === 'discovery') return 'Clarify V1 scope and prepare spec handoff';
+  if (phaseId === 'design') return 'Close architecture and design decisions for implementation';
+  if (phaseId === 'develop') return 'Advance the next implementation lane';
+  if (phaseId === 'fix') return 'Resolve blockers and re-run verification';
+  if (phaseId === 'delivery') return 'Prepare final delivery review';
+  return '';
+}
+
+function deriveSessionExitCriteria({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
+  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const phaseId = state ? resolvePhase(state).id : '';
+
+  if (activeGate === 'design_readiness') return ['architecture approved internally', 'design specs complete', 'technical claims verified'];
+  if (activeGate === 'implementation_readiness') return ['lanes defined', 'owners assigned', 'session implementation brief written'];
+  if (activeGate === 'qa') return ['QA blockers cleared', 'verification rerun complete'];
+  if (activeGate === 'security') return ['security blockers cleared', 'delivery gate re-evaluated'];
+  if (activeGate === 'delivery_readiness') return ['blocker count is zero', 'delivery report ready'];
+  if (phaseId === 'discovery') return ['critical customer questions resolved', 'spec ready for internal review'];
+  if (phaseId === 'develop') return ['current reviewable slice completed', 'next session handoff recorded'];
+  return [];
+}
+
+function deriveSessionFields({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
+  const observedPhase = state ? resolvePhase(state).id : '';
+  const observedGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const observedCustomerBlockers = normalizeBlockers(runtime?.customer_blockers).length;
+  const observedInternalBlockers = normalizeBlockers(runtime?.internal_blockers).length;
+  const briefMode = runtime?.session_brief_mode === 'manual' ? 'manual' : 'auto';
+  const phaseAnchor = typeof runtime?.session_phase_anchor === 'string' ? runtime.session_phase_anchor : '';
+  const gateAnchor = typeof runtime?.session_gate_anchor === 'string' ? runtime.session_gate_anchor : '';
+  const customerAnchor = Number(runtime?.session_customer_blocker_count || 0);
+  const internalAnchor = Number(runtime?.session_internal_blocker_count || 0);
+  const anchorsMatch =
+    briefMode === 'manual' &&
+    phaseAnchor === observedPhase &&
+    gateAnchor === observedGate &&
+    customerAnchor === observedCustomerBlockers &&
+    internalAnchor === observedInternalBlockers;
+
+  if (anchorsMatch) {
+    return {
+      current_session_goal: runtime?.current_session_goal || '',
+      session_exit_criteria: normalizeStringList(runtime?.session_exit_criteria),
+      next_session_goal: runtime?.next_session_goal || '',
+      next_session_owner: runtime?.next_session_owner || '',
+      session_handoff_summary: runtime?.session_handoff_summary || '',
+      session_brief_mode: 'manual',
+      session_phase_anchor: observedPhase,
+      session_gate_anchor: observedGate,
+      session_customer_blocker_count: observedCustomerBlockers,
+      session_internal_blocker_count: observedInternalBlockers,
+    };
+  }
+
+  const nextOwner = deriveSessionOwner({ state, runtime });
+  const goal = deriveSessionGoal({ state, runtime });
+  const exitCriteria = deriveSessionExitCriteria({ state, runtime });
+
+  return {
+    current_session_goal: goal,
+    session_exit_criteria: exitCriteria,
+    next_session_goal: goal,
+    next_session_owner: nextOwner,
+    session_handoff_summary: goal && nextOwner ? `${goal} -> ${nextOwner}` : '',
+    session_brief_mode: 'auto',
+    session_phase_anchor: observedPhase,
+    session_gate_anchor: observedGate,
+    session_customer_blocker_count: observedCustomerBlockers,
+    session_internal_blocker_count: observedInternalBlockers,
+  };
+}
+
 export const LANE_STATUS_SEQUENCE = ['pending', 'ready', 'in_progress', 'blocked', 'in_review', 'merged', 'done'];
 
 export function normalizeLaneStatus(value) {
@@ -167,22 +517,70 @@ export function normalizeLaneStatus(value) {
   return LANE_STATUS_SEQUENCE.includes(lowered) ? lowered : 'pending';
 }
 
+export function normalizeLaneReviewState(value) {
+  if (typeof value !== 'string') {
+    return 'none';
+  }
+
+  const lowered = value.trim().toLowerCase();
+  if (lowered === 'changes-requested') {
+    return 'changes_requested';
+  }
+
+  return LANE_REVIEW_SEQUENCE.includes(lowered) ? lowered : 'none';
+}
+
+export function normalizeLaneMergeState(value) {
+  if (typeof value !== 'string') {
+    return 'none';
+  }
+
+  const lowered = value.trim().toLowerCase();
+  if (lowered === 'rebase') {
+    return 'rebasing';
+  }
+
+  return LANE_MERGE_SEQUENCE.includes(lowered) ? lowered : 'none';
+}
+
+function normalizeHandoffNotes(entries) {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+
+  return entries
+    .filter(entry => entry && typeof entry === 'object')
+    .map(entry => ({
+      ...entry,
+      at: typeof entry.at === 'string' ? entry.at : '',
+      kind: typeof entry.kind === 'string' ? entry.kind : 'handoff',
+      note: typeof entry.note === 'string' ? entry.note : '',
+    }));
+}
+
 export function normalizeLane(lane = {}, fallbackId = '') {
-  const id = String(lane.id || fallbackId || '').trim();
+  const source = lane && typeof lane === 'object' ? lane : {};
+  const id = String(source.id || fallbackId || '').trim();
   return {
+    ...source,
     id,
-    title: String(lane.title || id || 'unnamed lane'),
-    owner_role: typeof lane.owner_role === 'string' ? lane.owner_role : 'developer',
-    owner_agent_id: typeof lane.owner_agent_id === 'string' ? lane.owner_agent_id : '',
-    worktree_path: typeof lane.worktree_path === 'string' ? lane.worktree_path : '',
-    dependencies: Array.isArray(lane.dependencies) ? lane.dependencies.map(String) : [],
-    status: normalizeLaneStatus(lane.status),
-    session_handoff_notes: typeof lane.session_handoff_notes === 'string' ? lane.session_handoff_notes : '',
-    review_state: typeof lane.review_state === 'string' ? lane.review_state : 'none',
-    scope: Array.isArray(lane.scope) ? lane.scope.map(String) : [],
-    acceptance_criteria: Array.isArray(lane.acceptance_criteria) ? lane.acceptance_criteria.map(String) : [],
-    last_event_at: typeof lane.last_event_at === 'string' ? lane.last_event_at : '',
-    blocked_reason: typeof lane.blocked_reason === 'string' ? lane.blocked_reason : '',
+    title: String(source.title || id || 'unnamed lane'),
+    owner_role: typeof source.owner_role === 'string' ? source.owner_role : 'developer',
+    owner_agent_id: typeof source.owner_agent_id === 'string' ? source.owner_agent_id : '',
+    owner_agent_type: typeof source.owner_agent_type === 'string' ? source.owner_agent_type : '',
+    worktree_path: typeof source.worktree_path === 'string' ? source.worktree_path : '',
+    dependencies: Array.isArray(source.dependencies) ? source.dependencies.map(String) : [],
+    status: normalizeLaneStatus(source.status),
+    session_handoff_notes: typeof source.session_handoff_notes === 'string' ? source.session_handoff_notes : '',
+    review_state: normalizeLaneReviewState(source.review_state),
+    merge_state: normalizeLaneMergeState(source.merge_state),
+    scope: Array.isArray(source.scope) ? source.scope.map(String) : [],
+    acceptance_criteria: Array.isArray(source.acceptance_criteria) ? source.acceptance_criteria.map(String) : [],
+    last_event_at: typeof source.last_event_at === 'string' ? source.last_event_at : '',
+    blocked_reason: typeof source.blocked_reason === 'string' ? source.blocked_reason : '',
+    reviewer: typeof source.reviewer === 'string' ? source.reviewer : '',
+    task_file: typeof source.task_file === 'string' ? source.task_file : '',
+    handoff_notes: normalizeHandoffNotes(source.handoff_notes),
   };
 }
 
@@ -221,11 +619,22 @@ export function selectResumeLane(runtime = DEFAULT_RUNTIME) {
   if (typeof runtime?.resume_lane === 'string' && runtime.resume_lane && lanes.some(lane => lane.id === runtime.resume_lane)) {
     return runtime.resume_lane;
   }
-  const priority = ['in_progress', 'ready', 'in_review', 'blocked', 'pending', 'merged', 'done'];
-  for (const status of priority) {
-    const match = lanes.find(lane => lane.status === status);
-    if (match) {
-      return match.id;
+  const priorityChecks = [
+    lane => lane.merge_state === 'rebasing',
+    lane => lane.review_state === 'changes_requested',
+    lane => lane.status === 'in_progress',
+    lane => lane.status === 'ready',
+    lane => lane.status === 'in_review',
+    lane => lane.status === 'blocked',
+    lane => lane.status === 'pending',
+    lane => lane.status === 'merged',
+    lane => lane.status === 'done',
+  ];
+
+  for (const matches of priorityChecks) {
+    const lane = lanes.find(matches);
+    if (lane) {
+      return lane.id;
     }
   }
   return '';
@@ -236,7 +645,15 @@ export function summarizeLaneBriefs(runtime = DEFAULT_RUNTIME, limit = 3) {
   return lanes
     .filter(lane => lane.status !== 'done')
     .slice(0, limit)
-    .map(lane => `${lane.id}:${lane.status}`);
+    .map((lane) => {
+      if (lane.merge_state === 'rebasing') {
+        return `${lane.id}:rebase`;
+      }
+      if (lane.review_state === 'changes_requested') {
+        return `${lane.id}:changes`;
+      }
+      return `${lane.id}:${lane.status}`;
+    });
 }
 
 export function detectTaskType(message = '') {
@@ -334,7 +751,62 @@ export function inferTierFromState(state = null) {
   return 'light';
 }
 
-export function recommendedAgentsFor({ tier = 'light', taskType = 'general', phaseId = 'develop' } = {}) {
+function uniqueAgents(agents = []) {
+  return [...new Set(agents.filter(Boolean))];
+}
+
+function recommendedAgentsForCompanyRuntime(runtime = {}, fallback = []) {
+  const companyMode = normalizeCompanyMode(runtime?.company_mode);
+  if (companyMode !== 'autonomous_company') {
+    return fallback;
+  }
+
+  const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
+  const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
+  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const activeGateOwner = typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner.trim() : '';
+  const readiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
+  const nextSessionOwner = typeof runtime?.next_session_owner === 'string' ? runtime.next_session_owner.trim() : '';
+
+  if (nextSessionOwner) {
+    return uniqueAgents([nextSessionOwner, activeGateOwner, ...fallback]);
+  }
+
+  if (customerBlockers.length > 0) {
+    return uniqueAgents(['ceo', 'pm', activeGateOwner, ...fallback]);
+  }
+
+  if (activeGate === 'design_readiness') {
+    return uniqueAgents(['cto', 'designer', 'researcher', activeGateOwner, ...fallback]);
+  }
+
+  if (activeGate === 'implementation_readiness') {
+    return uniqueAgents(['lead-dev', 'developer', 'qa', activeGateOwner, ...fallback]);
+  }
+
+  if (activeGate === 'qa') {
+    return uniqueAgents(['qa', 'developer', 'lead-dev', activeGateOwner, ...fallback]);
+  }
+
+  if (activeGate === 'security') {
+    return uniqueAgents(['security-reviewer', 'developer', 'lead-dev', activeGateOwner, ...fallback]);
+  }
+
+  if (activeGate === 'delivery_readiness') {
+    if (readiness === 'blocked' || internalBlockers.length > 0) {
+      return uniqueAgents(['qa', 'security-reviewer', 'ceo', activeGateOwner, ...fallback]);
+    }
+    return uniqueAgents(['ceo', 'tech-writer', 'qa', activeGateOwner, ...fallback]);
+  }
+
+  if (activeGate === 'customer_review') {
+    return uniqueAgents(['ceo', 'tech-writer', activeGateOwner, ...fallback]);
+  }
+
+  return activeGateOwner ? uniqueAgents([activeGateOwner, ...fallback]) : fallback;
+}
+
+export function recommendedAgentsFor({ tier = 'light', taskType = 'general', phaseId = 'develop', runtime = null } = {}) {
   const normalizedTier = normalizeTier(tier);
 
   if (normalizedTier === 'off') {
@@ -348,32 +820,32 @@ export function recommendedAgentsFor({ tier = 'light', taskType = 'general', pha
     if (taskType === 'refactor') {
       return ['developer', 'lead-dev'];
     }
-    return ['developer'];
+    return recommendedAgentsForCompanyRuntime(runtime, ['developer']);
   }
 
   if (normalizedTier === 'medium') {
     if (taskType === 'feature') {
-      return ['cto', 'developer', 'qa'];
+      return recommendedAgentsForCompanyRuntime(runtime, ['cto', 'developer', 'qa']);
     }
     if (taskType === 'refactor') {
-      return ['developer', 'lead-dev', 'qa'];
+      return recommendedAgentsForCompanyRuntime(runtime, ['developer', 'lead-dev', 'qa']);
     }
-    return ['developer', 'qa'];
+    return recommendedAgentsForCompanyRuntime(runtime, ['developer', 'qa']);
   }
 
   if (phaseId === 'discovery') {
-    return ['ceo', 'pm', 'researcher'];
+    return recommendedAgentsForCompanyRuntime(runtime, ['ceo', 'pm', 'researcher']);
   }
 
   if (phaseId === 'design') {
-    return ['ceo', 'cto', 'designer', 'researcher'];
+    return recommendedAgentsForCompanyRuntime(runtime, ['ceo', 'cto', 'designer', 'researcher']);
   }
 
   if (phaseId === 'delivery') {
-    return ['ceo', 'tech-writer', 'qa'];
+    return recommendedAgentsForCompanyRuntime(runtime, ['ceo', 'tech-writer', 'qa']);
   }
 
-  return ['ceo', 'pm', 'cto', 'lead-dev', 'developer', 'qa', 'security-reviewer', 'tech-writer'];
+  return recommendedAgentsForCompanyRuntime(runtime, ['ceo', 'pm', 'cto', 'lead-dev', 'developer', 'qa', 'security-reviewer', 'tech-writer']);
 }
 
 export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
@@ -385,12 +857,40 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   const spec = state.spec_approved ? '✓spec' : '×spec';
   const design = state.design_approved ? '✓design' : '×design';
   const tier = normalizeTier(runtime?.active_tier || state.tier || inferTierFromState(state));
+  const companyMode = normalizeCompanyMode(runtime?.company_mode);
+  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const deliveryReadiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
+  const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
+  const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
+  const currentSessionGoal = typeof runtime?.current_session_goal === 'string' ? runtime.current_session_goal.trim() : '';
+  const nextSessionOwner = typeof runtime?.next_session_owner === 'string' ? runtime.next_session_owner.trim() : '';
   const agentCount = Array.isArray(runtime?.recommended_agents) ? runtime.recommended_agents.length : 0;
   const laneCounts = summarizeLaneCounts(runtime);
   const resumeLane = selectResumeLane(runtime);
-  const laneSuffix = laneCounts.total ? ` ${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${resumeLane ? ` ↺${resumeLane}` : ''}` : '';
+  const resumeLaneRecord = resumeLane ? normalizeLane(runtime?.lanes?.[resumeLane], resumeLane) : null;
+  let focusHint = '';
+  if (resumeLaneRecord?.merge_state === 'rebasing') {
+    focusHint = ' rebase';
+  } else if (resumeLaneRecord?.review_state === 'changes_requested') {
+    focusHint = ' review!';
+  } else if (resumeLaneRecord?.status === 'in_review') {
+    focusHint = ' review';
+  }
+  const companySuffix = [
+    companyMode === 'autonomous_company' ? 'auto' : '',
+    activeGate ? `gate:${activeGate}` : '',
+    customerBlockers.length ? `c${customerBlockers.length}` : '',
+    internalBlockers.length ? `i${internalBlockers.length}` : '',
+    currentSessionGoal ? 'goal' : '',
+    nextSessionOwner ? `next:${nextSessionOwner}` : '',
+    deliveryReadiness === 'ready_for_review' ? 'deliver!' : '',
+    deliveryReadiness === 'blocked' ? 'hold' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const laneSuffix = laneCounts.total ? ` ${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${resumeLane ? ` ↺${resumeLane}${focusHint}` : ''}` : '';
 
-  return `[Forge] ${tier} ${phase.id} ${phase.index}/${PHASE_SEQUENCE.length - 1} ${spec} ${design}${agentCount ? ` ${agentCount}a` : ''}${laneSuffix}`;
+  return `[Forge] ${tier} ${phase.id} ${phase.index}/${PHASE_SEQUENCE.length - 1} ${spec} ${design}${companySuffix ? ` ${companySuffix}` : ''}${agentCount ? ` ${agentCount}a` : ''}${laneSuffix}`;
 }
 
 export function summarizePendingWork(state, runtime = null) {
@@ -495,47 +995,268 @@ export function writeForgeState(cwd = '.', state) {
   const normalized = normalizeStateShape(state);
   normalized.updated_at = new Date().toISOString();
   writeJsonFile(getStatePath(cwd), normalized);
+  const existingRuntime = readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME);
+  writeRuntimeState(cwd, existingRuntime);
   return normalized;
 }
 
 export function readRuntimeState(cwd = '.') {
-  const runtime = readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME);
-  return {
+  return normalizeRuntimeState(
+    readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME),
+    { state: readForgeState(cwd) },
+  );
+}
+
+function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null } = {}) {
+  const normalized = {
     ...DEFAULT_RUNTIME,
-    ...runtime,
+    ...(runtime || {}),
     active_tier: normalizeTier(runtime?.active_tier || 'light'),
+    company_mode: normalizeCompanyMode(runtime?.company_mode),
+    company_gate_mode: runtime?.company_gate_mode === 'manual' ? 'manual' : 'auto',
+    company_phase_anchor: typeof runtime?.company_phase_anchor === 'string' ? runtime.company_phase_anchor : '',
+    active_gate: typeof runtime?.active_gate === 'string' ? runtime.active_gate : '',
+    active_gate_owner: typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner : '',
+    delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
+    customer_blockers: normalizeBlockers(runtime?.customer_blockers),
+    internal_blockers: normalizeBlockers(runtime?.internal_blockers),
+    current_session_goal: typeof runtime?.current_session_goal === 'string' ? runtime.current_session_goal : '',
+    session_exit_criteria: normalizeStringList(runtime?.session_exit_criteria),
+    next_session_goal: typeof runtime?.next_session_goal === 'string' ? runtime.next_session_goal : '',
+    next_session_owner: typeof runtime?.next_session_owner === 'string' ? runtime.next_session_owner : '',
+    session_handoff_summary: typeof runtime?.session_handoff_summary === 'string' ? runtime.session_handoff_summary : '',
+    session_brief_mode: runtime?.session_brief_mode === 'manual' ? 'manual' : 'auto',
+    session_phase_anchor: typeof runtime?.session_phase_anchor === 'string' ? runtime.session_phase_anchor : '',
+    session_gate_anchor: typeof runtime?.session_gate_anchor === 'string' ? runtime.session_gate_anchor : '',
+    session_customer_blocker_count: Number(runtime?.session_customer_blocker_count || 0),
+    session_internal_blocker_count: Number(runtime?.session_internal_blocker_count || 0),
     recommended_agents: Array.isArray(runtime?.recommended_agents) ? runtime.recommended_agents : [],
-    active_agents: runtime?.active_agents || {},
+    active_agents: runtime?.active_agents && typeof runtime.active_agents === 'object' ? runtime.active_agents : {},
     recent_agents: Array.isArray(runtime?.recent_agents) ? runtime.recent_agents : [],
     recent_failures: Array.isArray(runtime?.recent_failures) ? runtime.recent_failures : [],
+    lanes: normalizeRuntimeLanes(runtime?.lanes || {}),
     stop_guard: {
       ...DEFAULT_RUNTIME.stop_guard,
       ...(runtime?.stop_guard || {}),
     },
     stats: mergeStats(runtime?.stats),
   };
+
+  Object.assign(normalized, deriveCompanyGateFields({ state, runtime: normalized }));
+  Object.assign(normalized, deriveSessionFields({ state, runtime: normalized }));
+
+  normalized.active_worktrees = syncActiveWorktreesFromLanes(normalized);
+  normalized.resume_lane = selectResumeLane({
+    ...normalized,
+    active_worktrees: normalized.active_worktrees,
+  });
+  return normalized;
 }
 
 export function writeRuntimeState(cwd = '.', runtime) {
   ensureForgeDir(cwd);
   const next = {
-    ...DEFAULT_RUNTIME,
-    ...runtime,
-    active_tier: normalizeTier(runtime?.active_tier || 'light'),
-    recommended_agents: Array.isArray(runtime?.recommended_agents) ? runtime.recommended_agents : [],
-    active_agents: runtime?.active_agents || {},
-    recent_agents: Array.isArray(runtime?.recent_agents) ? runtime.recent_agents : [],
-    recent_failures: Array.isArray(runtime?.recent_failures) ? runtime.recent_failures : [],
-    stop_guard: {
-      ...DEFAULT_RUNTIME.stop_guard,
-      ...(runtime?.stop_guard || {}),
-    },
-    stats: mergeStats(runtime?.stats),
+    ...normalizeRuntimeState(runtime, { state: readForgeState(cwd) }),
     updated_at: new Date().toISOString(),
   };
 
   writeJsonFile(getRuntimePath(cwd), next);
   return next;
+}
+
+function mutateLane(runtime = DEFAULT_RUNTIME, laneId, updater) {
+  const normalizedRuntime = normalizeRuntimeState(runtime);
+  const lane = normalizeLane(normalizedRuntime.lanes[laneId], laneId);
+  const nextLane = normalizeLane(updater(lane), laneId);
+
+  return normalizeRuntimeState({
+    ...normalizedRuntime,
+    lanes: {
+      ...normalizedRuntime.lanes,
+      [laneId]: nextLane,
+    },
+  });
+}
+
+function appendLaneNote(lane, kind, note, at) {
+  if (!note) {
+    return normalizeHandoffNotes(lane.handoff_notes);
+  }
+
+  return [
+    ...normalizeHandoffNotes(lane.handoff_notes),
+    {
+      at,
+      kind,
+      note,
+    },
+  ];
+}
+
+export function syncActiveWorktreesFromLanes(runtime = DEFAULT_RUNTIME) {
+  const lanes = normalizeRuntimeLanes(runtime?.lanes || runtime);
+  return Object.fromEntries(
+    Object.values(lanes)
+      .filter(lane => lane.worktree_path)
+      .map(lane => [lane.id, lane.worktree_path]),
+  );
+}
+
+export function initLaneRecord(runtime = DEFAULT_RUNTIME, {
+  laneId,
+  title = '',
+  worktreePath = '',
+  taskFile = '',
+  reviewer = '',
+  dependencies = [],
+} = {}) {
+  const now = new Date().toISOString();
+  return mutateLane(runtime, laneId, lane => ({
+    ...lane,
+    id: laneId,
+    title: title || lane.title || laneId,
+    worktree_path: worktreePath || lane.worktree_path,
+    task_file: taskFile || lane.task_file,
+    reviewer: reviewer || lane.reviewer,
+    dependencies: dependencies.length ? dependencies.map(String) : lane.dependencies,
+    status: lane.status === 'pending' && lane.title === 'unnamed lane' ? 'pending' : lane.status,
+    last_event_at: now,
+  }));
+}
+
+export function setLaneOwner(runtime = DEFAULT_RUNTIME, {
+  laneId,
+  ownerRole = 'developer',
+  ownerAgentId = '',
+  ownerAgentType = '',
+} = {}) {
+  const now = new Date().toISOString();
+  return mutateLane(runtime, laneId, lane => ({
+    ...lane,
+    owner_role: ownerRole || lane.owner_role,
+    owner_agent_id: ownerAgentId || lane.owner_agent_id,
+    owner_agent_type: ownerAgentType || lane.owner_agent_type,
+    last_event_at: now,
+  }));
+}
+
+export function recordLaneHandoff(runtime = DEFAULT_RUNTIME, {
+  laneId,
+  note,
+  kind = 'handoff',
+} = {}) {
+  const now = new Date().toISOString();
+  return mutateLane(runtime, laneId, lane => ({
+    ...lane,
+    session_handoff_notes: note || lane.session_handoff_notes,
+    handoff_notes: appendLaneNote(lane, kind, note, now),
+    last_event_at: now,
+  }));
+}
+
+export function setLaneStatus(runtime = DEFAULT_RUNTIME, {
+  laneId,
+  status,
+  note = '',
+} = {}) {
+  const now = new Date().toISOString();
+  const nextStatus = normalizeLaneStatus(status);
+  return mutateLane(runtime, laneId, lane => ({
+    ...lane,
+    status: nextStatus,
+    blocked_reason: nextStatus === 'blocked' ? (note || lane.blocked_reason) : '',
+    session_handoff_notes: note || lane.session_handoff_notes,
+    handoff_notes: appendLaneNote(lane, 'status', note, now),
+    review_state: nextStatus === 'in_review' && lane.review_state === 'none' ? 'pending' : lane.review_state,
+    merge_state: nextStatus === 'merged' ? 'merged' : lane.merge_state,
+    last_event_at: now,
+  }));
+}
+
+export function markLaneReviewState(runtime = DEFAULT_RUNTIME, {
+  laneId,
+  reviewState,
+  note = '',
+} = {}) {
+  const now = new Date().toISOString();
+  const nextReviewState = normalizeLaneReviewState(reviewState);
+  return mutateLane(runtime, laneId, lane => ({
+    ...lane,
+    review_state: nextReviewState,
+    status: nextReviewState === 'none' ? lane.status : 'in_review',
+    session_handoff_notes: note || lane.session_handoff_notes,
+    handoff_notes: appendLaneNote(lane, 'review', note, now),
+    last_event_at: now,
+  }));
+}
+
+export function markLaneMergeState(runtime = DEFAULT_RUNTIME, {
+  laneId,
+  mergeState,
+  note = '',
+} = {}) {
+  const now = new Date().toISOString();
+  const nextMergeState = normalizeLaneMergeState(mergeState);
+  return mutateLane(runtime, laneId, lane => ({
+    ...lane,
+    merge_state: nextMergeState,
+    status: nextMergeState === 'merged' ? 'merged' : lane.status,
+    session_handoff_notes: note || lane.session_handoff_notes,
+    handoff_notes: appendLaneNote(lane, 'merge', note, now),
+    last_event_at: now,
+  }));
+}
+
+export function setSessionBrief(runtime = DEFAULT_RUNTIME, {
+  currentSessionGoal = '',
+  sessionExitCriteria = [],
+  nextSessionGoal = '',
+  nextSessionOwner = '',
+  sessionHandoffSummary = '',
+} = {}) {
+  return normalizeRuntimeState({
+    ...runtime,
+    current_session_goal: currentSessionGoal || runtime?.current_session_goal || '',
+    session_exit_criteria: sessionExitCriteria.length ? sessionExitCriteria : runtime?.session_exit_criteria || [],
+    next_session_goal: nextSessionGoal || runtime?.next_session_goal || '',
+    next_session_owner: nextSessionOwner || runtime?.next_session_owner || '',
+    session_handoff_summary: sessionHandoffSummary || runtime?.session_handoff_summary || '',
+    session_brief_mode: 'manual',
+  });
+}
+
+export function writeSessionHandoff(runtime = DEFAULT_RUNTIME, {
+  summary,
+  nextSessionGoal = '',
+  nextSessionOwner = '',
+} = {}) {
+  return normalizeRuntimeState({
+    ...runtime,
+    session_handoff_summary: summary || runtime?.session_handoff_summary || '',
+    next_session_goal: nextSessionGoal || runtime?.next_session_goal || '',
+    next_session_owner: nextSessionOwner || runtime?.next_session_owner || '',
+    session_brief_mode: 'manual',
+  });
+}
+
+export function setCompanyGate(runtime = DEFAULT_RUNTIME, {
+  activeGate = '',
+  activeGateOwner = '',
+  deliveryReadiness = '',
+  customerBlockers = null,
+  internalBlockers = null,
+  phaseAnchor = '',
+} = {}) {
+  return normalizeRuntimeState({
+    ...runtime,
+    company_gate_mode: 'manual',
+    company_phase_anchor: phaseAnchor || runtime?.company_phase_anchor || '',
+    active_gate: activeGate || runtime?.active_gate || '',
+    active_gate_owner: activeGateOwner || runtime?.active_gate_owner || '',
+    delivery_readiness: deliveryReadiness || runtime?.delivery_readiness || 'unknown',
+    customer_blockers: customerBlockers ?? runtime?.customer_blockers ?? [],
+    internal_blockers: internalBlockers ?? runtime?.internal_blockers ?? [],
+  });
 }
 
 export function updateRuntimeState(cwd = '.', updater) {
@@ -584,7 +1305,8 @@ export function updateAdaptiveTier(cwd = '.', { state = null, message = '' } = {
   const inferredTier = classifyTierFromMessage(message, state);
   const taskType = detectTaskType(message);
   const phaseId = state ? resolvePhase(state).id : 'develop';
-  const recommendedAgents = recommendedAgentsFor({ tier: inferredTier, taskType, phaseId });
+  const currentRuntime = readRuntimeState(cwd);
+  const recommendedAgents = recommendedAgentsFor({ tier: inferredTier, taskType, phaseId, runtime: currentRuntime });
 
   const runtime = updateRuntimeState(cwd, current => ({
     ...current,
