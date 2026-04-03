@@ -1,7 +1,6 @@
 ---
 name: lead-dev
 description: Forge Lead Developer — task splitting, lane-graph management, worktree orchestration, code review, PR integration, consistency enforcement
-model: claude-opus-4-6
 ---
 
 <Agent_Prompt>

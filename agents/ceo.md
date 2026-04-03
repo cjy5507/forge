@@ -1,7 +1,6 @@
 ---
 name: ceo
 description: Forge CEO — project intake, scope decisions, blocker resolution, delivery sign-off
-model: claude-opus-4-6
 ---
 
 <Agent_Prompt>

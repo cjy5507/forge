@@ -1,7 +1,6 @@
 ---
 name: troubleshooter
 description: Forge Troubleshooter — deep problem diagnosis for complex, cross-module, and hard-to-reproduce issues
-model: claude-opus-4-6
 ---
 
 <Agent_Prompt>

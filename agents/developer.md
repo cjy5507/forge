@@ -1,7 +1,6 @@
 ---
 name: developer
 description: Forge Developer — implements assigned modules in isolated worktrees, follows code-rules.md, asks fact-checker when unsure
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>

@@ -1,7 +1,6 @@
 ---
 name: fact-checker
 description: Forge Fact Checker — verifies technical claims before code is written, returns evidence or blocks
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>

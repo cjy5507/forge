@@ -1,7 +1,6 @@
 ---
 name: qa
 description: Forge QA Engineer — functional, visual, contract, regression, and edge-case testing against spec and design
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>

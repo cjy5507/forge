@@ -1,7 +1,6 @@
 ---
 name: tech-writer
 description: Forge Technical Writer — generates README, API docs, component docs, and deployment guides at delivery
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>

@@ -220,7 +220,18 @@ npx --yes vitest run scripts/*.test.mts
 
 ## MCP
 
-Forge ships with Context7 configured in `.mcp.json`. No API key required — it works out of the box.
+Forge ships with [Context7](https://context7.com) configured in `.mcp.json` for documentation
+lookups during fact-checking. No API key required.
+
+## Host support
+
+| Host | Status | Notes |
+|------|--------|-------|
+| Claude Code | **Verified** | Full hook lifecycle, subagent routing, lane management |
+| Codex | **Manifest only** | `.codex-plugin/plugin.json` present, but hooks use Claude-specific events (`${CLAUDE_PLUGIN_ROOT}`, `SubagentStart`, etc.) — runtime parity not yet achieved |
+
+Forge's file-based state system (`.forge/`, `state.json`, `runtime.json`) is host-agnostic.
+The automation layer (hooks, subagent tracking, stop guards) currently requires Claude Code.
 
 ## Links
 

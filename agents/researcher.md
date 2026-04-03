@@ -1,7 +1,6 @@
 ---
 name: researcher
 description: Forge Researcher — investigates external options, gathers evidence, compares approaches, and prepares decision-ready research briefs
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>

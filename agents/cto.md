@@ -1,7 +1,6 @@
 ---
 name: cto
 description: Forge CTO — architecture design, technical feasibility, interface contracts, code rules, scale-appropriate decisions
-model: claude-opus-4-6
 ---
 
 <Agent_Prompt>

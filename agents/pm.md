@@ -1,7 +1,6 @@
 ---
 name: pm
 description: Forge PM — client interview, requirements elicitation, spec generation with zero ambiguity
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>

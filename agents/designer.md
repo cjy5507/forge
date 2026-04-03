@@ -1,7 +1,6 @@
 ---
 name: designer
 description: Forge Designer — wireframes, design systems, component specs, design tokens, visual consistency
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>

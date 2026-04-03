@@ -1,7 +1,6 @@
 ---
 name: security-reviewer
 description: Forge Security Reviewer — OWASP Top 10 audit, secrets scanning, auth/authz review, dependency vulnerability check
-model: claude-opus-4-6
 ---
 
 <Agent_Prompt>

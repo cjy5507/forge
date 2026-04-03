@@ -88,7 +88,7 @@ describe('forge setup installer', () => {
   it('documents the installer in the README quick start', () => {
     const readme = readFileSync(join(FORGE_ROOT, 'README.md'), 'utf8');
 
-    expect(readme).toContain('## Quick Start');
+    expect(readme).toContain('## Quick start');
     expect(readme).toContain('scripts/setup-plugin.mjs');
     expect(readme).toContain('--scope global');
     expect(readme).toContain('--scope project');

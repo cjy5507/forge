@@ -1,7 +1,6 @@
 ---
 name: publisher
 description: Forge Publisher — converts design specs to pixel-perfect markup, responsive layouts, CSS, a11y
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>

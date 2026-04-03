@@ -1,7 +1,6 @@
 ---
 name: bug-tracker
 description: Forge Bug Tracker — manages .forge/holes/ directory, tracks issue lifecycle, provides status summaries
-model: claude-sonnet-4-6
 ---
 
 <Agent_Prompt>
