@@ -4,7 +4,7 @@ description: "Use whenever the user asks for Forge progress, current phase, acti
 ---
 
 <Purpose>
-Shows the current state of the Forge project at a glance — phase, progress, active agents, holes, and pending client questions.
+Shows the current state of the Forge project at a glance — phase, progress, active lanes, worktrees, holes, and pending client questions.
 </Purpose>
 
 <Use_When>
@@ -23,9 +23,9 @@ Shows the current state of the Forge project at a glance — phase, progress, ac
    - Phase 4-5: QA + fix (70-90%)
    - Phase 6: delivery (90-100%)
 4. Read .forge/holes/ directory for known issues count by severity
-5. Read `.forge/runtime.json` for active tier, recommended agents, and metrics
+5. Read `.forge/runtime.json` for active tier, recommended agents, metrics, lane state, and worktree activity
 6. Read .forge/tasks/ for active task status
-6. Display dashboard:
+7. Display dashboard:
 
 ```
 Forge 진행 현황: {{PROJECT_NAME}}
@@ -45,12 +45,15 @@ Forge 진행 현황: {{PROJECT_NAME}}
 │                                │
 │ ❓ 의뢰인 확인 필요: {{N}}      │
 │ 🤖 추천 에이전트: {{agents}}    │
+│ 🧩 활성 lane: {{lane_count}}    │
+│ 🌿 worktree: {{worktree_count}} │
+│ ▶️ 재개 lane: {{resume_lane}}   │
 │ 🏷️ 최신 태그: {{latest_tag}}   │
 └─────────────────────────────────┘
 ```
 </Steps>
 
 <Tool_Usage>
-- Read: .forge/state.json, .forge/runtime.json, .forge/holes/*.md, .forge/tasks/*.md
+- Read: .forge/state.json, .forge/runtime.json, .forge/holes/*.md, .forge/tasks/*.md, .forge/worktrees/
 - Bash: git tag -l "forge/*" --sort=-version:refname | head -1
 </Tool_Usage>

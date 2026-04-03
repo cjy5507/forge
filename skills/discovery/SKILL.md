@@ -22,10 +22,23 @@ If answers contradict, point it out and resolve.
 NEVER assume. ALWAYS ask.
 </Core_Rule>
 
+<Progressive_Disclosure>
+- Load `references/research-handoff.md` when PM needs external comparisons, reference products, or decision support grounded in outside evidence.
+</Progressive_Disclosure>
+
 <Steps>
 1. Dispatch PM agent in the main session (not as subagent — PM talks directly to client)
 
 2. PM conducts interview following this flow:
+   - PM owns the conversation and spec at all times
+   - Dispatch Researcher only when the answer depends on outside evidence:
+     - the client asks for reference apps, competitor examples, or "what do similar products use?"
+     - the PM needs grounded options for login, payments, chat, maps, search, analytics, CMS, or vendors
+     - pricing, licensing, regional availability, compliance, or platform support affects the requirement
+     - a vague preference needs real-world examples before the PM can ask the next question
+   - PM sends Researcher a bounded question, project constraints, and the decision it should unblock
+   - Researcher returns a concise brief with options, recommendation, evidence, and open unknowns
+   - PM translates that brief into client-language choices and updates the spec
 
    Round 1 — Big Picture:
    - "이 앱/서비스가 뭐하는 건가요? 한 문장으로 설명해주세요"
@@ -87,6 +100,7 @@ NEVER assume. ALWAYS ask.
 
 <Tool_Usage>
 - Agent tool: dispatch forge:pm (main session, not subagent)
+- Agent tool: dispatch forge:researcher when PM needs external evidence
 - Agent tool: dispatch forge:ceo for spec review
 - Write tool: create .forge/spec.md
 - Edit tool: update .forge/state.json
@@ -99,6 +113,7 @@ NEVER assume. ALWAYS ask.
 - Using technical terms with non-technical clients
 - Moving to Phase 2 with Open Questions > 0
 - Assuming features the client didn't mention
+- Using Researcher as a substitute for PM ownership of the interview
 - Not resolving contradictions in client answers
 - Skipping CEO review before client sign-off
 </Failure_Modes_To_Avoid>

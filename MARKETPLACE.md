@@ -22,7 +22,7 @@ Adaptive intervention tiers keep simple tasks lightweight while riskier work get
 
 Evidence-aware checks, security guardrails, and recovery paths make failures visible and easier to resume.
 
-Tracked subagent state and repeatable phase rules help multi-agent runs stay consistent across sessions.
+Tracked subagent state, lane-aware runtime data, and repeatable phase rules help multi-agent runs stay consistent across sessions.
 
 ## Suggested starter prompts
 

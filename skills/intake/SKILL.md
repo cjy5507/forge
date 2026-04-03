@@ -29,12 +29,17 @@ information to begin the discovery process.
 
 4. Initialize project state:
    a. Create .forge/ directory structure:
-      .forge/state.json, .forge/design/, .forge/contracts/, .forge/evidence/,
+      .forge/state.json, .forge/runtime.json, .forge/design/, .forge/contracts/, .forge/evidence/,
       .forge/holes/, .forge/tasks/, .forge/worktrees/, .forge/checkpoints/,
       .forge/knowledge/, .forge/delivery-report/
    b. Copy forge/templates/state.json → .forge/state.json
-   c. Fill in project name, client name, created_at
-   d. Set phase=1, phase_id="discovery", phase_name="discovery", status="active"
+   c. Initialize `.forge/runtime.json` for helper-backed coordination:
+      - lanes / lane graph
+      - active_worktrees
+      - resume_lane
+      - helper/runtime metadata
+   d. Fill in project name, client name, created_at
+   e. Set phase=1, phase_id="discovery", phase_name="discovery", status="active"
 
 5. Transition to Phase 1 (forge:discovery)
 </Steps>
@@ -42,6 +47,7 @@ information to begin the discovery process.
 <State_Changes>
 - Creates: .forge/ directory with all subdirectories
 - Creates: .forge/state.json (from template)
+- Creates: .forge/runtime.json (lane/runtime scaffold)
 - Sets: phase=1 on GO decision
 </State_Changes>
 

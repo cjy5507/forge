@@ -4,6 +4,8 @@ Forge is a harness-engineering plugin for teams that need coding agents to work 
 
 It runs a virtual software company with guided multi-agent workflows, session continuity, and runtime guardrails so long-running work stays coordinated.
 
+Forge now keeps lane-aware task and worktree state in `.forge/runtime.json`, so parallel work can resume without losing who owns what.
+
 ## Quick Start
 
 Choose one install shape:

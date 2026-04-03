@@ -40,10 +40,14 @@ const DEFAULT_STATS = {
 };
 
 const DEFAULT_RUNTIME = {
-  version: 2,
+  version: 3,
   active_tier: 'light',
   last_task_type: 'general',
+  task_graph_version: 1,
   recommended_agents: [],
+  lanes: {},
+  active_worktrees: {},
+  resume_lane: '',
   active_agents: {},
   recent_agents: [],
   recent_failures: [],
@@ -150,6 +154,89 @@ function mergeStats(stats = {}) {
     }
   }
   return merged;
+}
+
+export const LANE_STATUS_SEQUENCE = ['pending', 'ready', 'in_progress', 'blocked', 'in_review', 'merged', 'done'];
+
+export function normalizeLaneStatus(value) {
+  if (typeof value !== 'string') {
+    return 'pending';
+  }
+
+  const lowered = value.trim().toLowerCase();
+  return LANE_STATUS_SEQUENCE.includes(lowered) ? lowered : 'pending';
+}
+
+export function normalizeLane(lane = {}, fallbackId = '') {
+  const id = String(lane.id || fallbackId || '').trim();
+  return {
+    id,
+    title: String(lane.title || id || 'unnamed lane'),
+    owner_role: typeof lane.owner_role === 'string' ? lane.owner_role : 'developer',
+    owner_agent_id: typeof lane.owner_agent_id === 'string' ? lane.owner_agent_id : '',
+    worktree_path: typeof lane.worktree_path === 'string' ? lane.worktree_path : '',
+    dependencies: Array.isArray(lane.dependencies) ? lane.dependencies.map(String) : [],
+    status: normalizeLaneStatus(lane.status),
+    session_handoff_notes: typeof lane.session_handoff_notes === 'string' ? lane.session_handoff_notes : '',
+    review_state: typeof lane.review_state === 'string' ? lane.review_state : 'none',
+    scope: Array.isArray(lane.scope) ? lane.scope.map(String) : [],
+    acceptance_criteria: Array.isArray(lane.acceptance_criteria) ? lane.acceptance_criteria.map(String) : [],
+    last_event_at: typeof lane.last_event_at === 'string' ? lane.last_event_at : '',
+    blocked_reason: typeof lane.blocked_reason === 'string' ? lane.blocked_reason : '',
+  };
+}
+
+export function normalizeRuntimeLanes(lanes = {}) {
+  if (Array.isArray(lanes)) {
+    return Object.fromEntries(lanes.map((lane, index) => {
+      const normalized = normalizeLane(lane, lane?.id || `lane-${index + 1}`);
+      return [normalized.id, normalized];
+    }));
+  }
+
+  if (!lanes || typeof lanes !== 'object') {
+    return {};
+  }
+
+  return Object.fromEntries(Object.entries(lanes).map(([id, lane]) => {
+    const normalized = normalizeLane(lane, id);
+    return [normalized.id, normalized];
+  }));
+}
+
+export function summarizeLaneCounts(runtime = DEFAULT_RUNTIME) {
+  const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
+  const counts = { total: lanes.length, pending: 0, ready: 0, in_progress: 0, blocked: 0, in_review: 0, merged: 0, done: 0 };
+  for (const lane of lanes) {
+    counts[lane.status] += 1;
+  }
+  return counts;
+}
+
+export function selectResumeLane(runtime = DEFAULT_RUNTIME) {
+  const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
+  if (!lanes.length) {
+    return '';
+  }
+  if (typeof runtime?.resume_lane === 'string' && runtime.resume_lane && lanes.some(lane => lane.id === runtime.resume_lane)) {
+    return runtime.resume_lane;
+  }
+  const priority = ['in_progress', 'ready', 'in_review', 'blocked', 'pending', 'merged', 'done'];
+  for (const status of priority) {
+    const match = lanes.find(lane => lane.status === status);
+    if (match) {
+      return match.id;
+    }
+  }
+  return '';
+}
+
+export function summarizeLaneBriefs(runtime = DEFAULT_RUNTIME, limit = 3) {
+  const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
+  return lanes
+    .filter(lane => lane.status !== 'done')
+    .slice(0, limit)
+    .map(lane => `${lane.id}:${lane.status}`);
 }
 
 export function detectTaskType(message = '') {
@@ -274,8 +361,12 @@ export function recommendedAgentsFor({ tier = 'light', taskType = 'general', pha
     return ['developer', 'qa'];
   }
 
+  if (phaseId === 'discovery') {
+    return ['ceo', 'pm', 'researcher'];
+  }
+
   if (phaseId === 'design') {
-    return ['ceo', 'cto', 'designer'];
+    return ['ceo', 'cto', 'designer', 'researcher'];
   }
 
   if (phaseId === 'delivery') {
@@ -295,11 +386,14 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   const design = state.design_approved ? '✓design' : '×design';
   const tier = normalizeTier(runtime?.active_tier || state.tier || inferTierFromState(state));
   const agentCount = Array.isArray(runtime?.recommended_agents) ? runtime.recommended_agents.length : 0;
+  const laneCounts = summarizeLaneCounts(runtime);
+  const resumeLane = selectResumeLane(runtime);
+  const laneSuffix = laneCounts.total ? ` ${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${resumeLane ? ` ↺${resumeLane}` : ''}` : '';
 
-  return `[Forge] ${tier} ${phase.id} ${phase.index}/${PHASE_SEQUENCE.length - 1} ${spec} ${design}${agentCount ? ` ${agentCount}a` : ''}`;
+  return `[Forge] ${tier} ${phase.id} ${phase.index}/${PHASE_SEQUENCE.length - 1} ${spec} ${design}${agentCount ? ` ${agentCount}a` : ''}${laneSuffix}`;
 }
 
-export function summarizePendingWork(state) {
+export function summarizePendingWork(state, runtime = null) {
   if (!state) {
     return [];
   }
@@ -321,6 +415,16 @@ export function summarizePendingWork(state) {
 
   if ((state.tasks?.length || 0) > 0 && phase.id === 'develop') {
     pending.push(`${state.tasks.length} tasks`);
+  }
+
+  if (runtime) {
+    const laneCounts = summarizeLaneCounts(runtime);
+    if (laneCounts.total > 0 && phase.id !== 'complete') {
+      pending.push(`${laneCounts.total} lanes`);
+      if (laneCounts.blocked > 0) {
+        pending.push(`${laneCounts.blocked} blocked`);
+      }
+    }
   }
 
   if ((state.pr_queue?.length || 0) > 0) {

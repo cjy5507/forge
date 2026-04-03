@@ -5,9 +5,10 @@ description: "Use when Forge reaches the design phase or the user asks for techn
 
 <Purpose>
 Phase 2 of the Forge pipeline. CTO and Designer collaborate in parallel to produce
-architecture, code rules, interface contracts, and design specs. Every technical claim
-is verified via context7 before being committed to the design. No guessing — only
-evidence-backed decisions.
+architecture, code rules, interface contracts, and design specs. Researcher supports
+them when external option comparison is needed, but CTO and Designer keep decision
+ownership. Every technical claim is verified via context7 before being committed to
+the design. No guessing — only evidence-backed decisions.
 </Purpose>
 
 <Use_When>
@@ -20,20 +21,24 @@ evidence-backed decisions.
    - No "I think Next.js supports..." — look it up, cite the doc
    - If context7 can't confirm it, flag it as unverified
 
-2. Designer MUST define every component completely:
+2. Use Researcher before locking external choices that are still open
+   - Researcher compares viable frameworks, packages, vendors, or service options
+   - CTO still makes the final architecture call
+
+3. Designer MUST define every component completely:
    - Size, color, spacing, typography, border radius
    - All states: default, hover, active, disabled, loading, error, empty
    - Responsive breakpoints: mobile, tablet, desktop
 
-3. CTO and Designer MUST cross-review each other's work
+4. CTO and Designer MUST cross-review each other's work
    - CTO reviews design feasibility: can this be built with chosen stack?
    - Designer reviews architecture: does it support all UI needs?
 
-4. If design and tech conflict → ask the client, don't assume
+5. If design and tech conflict → ask the client, don't assume
    - Never silently drop a feature because it's "hard"
    - Never force a design that the architecture can't support
 
-5. code-rules.md MUST have examples (good + bad) for every rule:
+6. code-rules.md MUST have examples (good + bad) for every rule:
 
    Example format:
    ```
@@ -51,10 +56,13 @@ evidence-backed decisions.
 
 <Progressive_Disclosure>
 - Load `references/design-deliverables.md` for the complete deliverable and cross-review checklist.
+- Load `references/research-integration.md` when discovery hands off research or design needs external option comparison.
 </Progressive_Disclosure>
 
 <Steps>
 1. Dispatch CTO agent and Designer agent in parallel
+   - Dispatch Researcher in parallel only when discovery handed off an open research brief or a design decision depends on outside option comparison
+   - Researcher informs the choice; CTO still decides
 
 2. CTO produces:
    a. .forge/design/architecture.md
@@ -95,6 +103,7 @@ evidence-backed decisions.
    - Designer reviews CTO output:
      "Does the architecture support all screens and flows?"
      "Are the contracts complete for every UI component?"
+   - If Researcher was used, CTO folds the brief into the architecture rationale and flags any remaining unknowns
 
 5. Conflicts → route to client for decision
    - Present conflict clearly: "Designer wants X, CTO says Y because Z"
@@ -144,6 +153,7 @@ Over-engineering a small project is as bad as under-engineering a large one.
 
 <Tool_Usage>
 - Agent tool: dispatch forge:cto and forge:designer in parallel
+- Agent tool: dispatch forge:researcher for bounded external option research
 - Agent tool: dispatch forge:cto for design feasibility review
 - Agent tool: dispatch forge:designer for architecture UI review
 - context7 MCP: verify every framework pattern, package version, API behavior
@@ -155,6 +165,7 @@ Over-engineering a small project is as bad as under-engineering a large one.
 
 <Failure_Modes_To_Avoid>
 - CTO guessing framework behavior without verifying via context7
+- Locking stack or vendor choices before reviewing needed Researcher evidence
 - Designer skipping component states (only defining "happy path" appearance)
 - Skipping cross-review between CTO and Designer
 - Proceeding to Phase 3 without client approval
@@ -162,4 +173,5 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Contracts missing request/response types for API routes
 - Design tokens without responsive breakpoints
 - Over-engineering a small project or under-engineering a large one
+- Letting Researcher replace CTO decision-making
 </Failure_Modes_To_Avoid>

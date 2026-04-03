@@ -356,6 +356,9 @@ import {
   recommendedAgentsFor,
   compactForgeContext,
   summarizePendingWork,
+  summarizeLaneCounts,
+  selectResumeLane,
+  summarizeLaneBriefs,
   messageLooksInteractive,
   normalizeStateShape,
   isProjectActive,
@@ -599,6 +602,12 @@ describe('recommendedAgentsFor', () => {
     const agents = recommendedAgentsFor({ tier: 'full', phaseId: 'design' });
     expect(agents).toContain('cto');
     expect(agents).toContain('designer');
+    expect(agents).toContain('researcher');
+  });
+
+  it('returns discovery team for full/discovery phase', () => {
+    const agents = recommendedAgentsFor({ tier: 'full', phaseId: 'discovery' });
+    expect(agents).toEqual(['ceo', 'pm', 'researcher']);
   });
 });
 
@@ -643,9 +652,59 @@ describe('normalizeStateShape', () => {
 describe('compactForgeContext', () => {
   it('shows correct max phase count', () => {
     const context = compactForgeContext({ phase: 'complete' });
-    // After fix: should show 8/8, not 8/7
     expect(context).toContain(`/${PHASE_SEQUENCE.length - 1}`);
     expect(context).not.toContain('/7 ');
+  });
+
+  it('includes lane summary and resume hint when lanes exist', () => {
+    const context = compactForgeContext(
+      { phase: 'develop', spec_approved: true, design_approved: true },
+      {
+        active_tier: 'medium',
+        recommended_agents: ['developer'],
+        lanes: {
+          api: { id: 'api', status: 'ready' },
+          ui: { id: 'ui', status: 'blocked' },
+        },
+      },
+    );
+
+    expect(context).toContain('2l');
+    expect(context).toContain('1b');
+    expect(context).toContain('↺api');
+  });
+});
+
+describe('lane runtime helpers', () => {
+  it('summarizeLaneCounts counts normalized statuses', () => {
+    const counts = summarizeLaneCounts({
+      lanes: {
+        api: { id: 'api', status: 'ready' },
+        ui: { id: 'ui', status: 'blocked' },
+        review: { id: 'review', status: 'in_review' },
+      },
+    });
+
+    expect(counts.total).toBe(3);
+    expect(counts.ready).toBe(1);
+    expect(counts.blocked).toBe(1);
+    expect(counts.in_review).toBe(1);
+  });
+
+  it('selectResumeLane prefers explicit lane and then priority order', () => {
+    expect(selectResumeLane({ resume_lane: 'ui', lanes: { ui: { id: 'ui', status: 'blocked' } } })).toBe('ui');
+    expect(selectResumeLane({ lanes: { api: { id: 'api', status: 'ready' }, worker: { id: 'worker', status: 'in_progress' } } })).toBe('worker');
+  });
+
+  it('summarizeLaneBriefs produces compact lane labels', () => {
+    const briefs = summarizeLaneBriefs({ lanes: { api: { id: 'api', status: 'ready' }, doneLane: { id: 'doneLane', status: 'done' } } });
+    expect(briefs).toEqual(['api:ready']);
+  });
+
+  it('summarizePendingWork can include lane counts', () => {
+    const pending = summarizePendingWork({ phase: 'develop', tasks: [] }, { lanes: { api: { id: 'api', status: 'ready' }, ui: { id: 'ui', status: 'blocked' } } });
+    expect(pending).toContain('2 lanes');
+    expect(pending).toContain('1 blocked');
   });
 });
 

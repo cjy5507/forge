@@ -4,8 +4,7 @@ description: "Use whenever the user wants to continue an existing Forge run afte
 ---
 
 <Purpose>
-Automatically detects the current Forge project state and resumes from the last active phase.
-Used when starting a new Claude Code session with an existing .forge/ project.
+Automatically detects the current Forge project state and resumes from the last active phase and lane. Used when starting a new session with an existing .forge/ project.
 </Purpose>
 
 <Use_When>
@@ -21,11 +20,13 @@ Used when starting a new Claude Code session with an existing .forge/ project.
    - Current phase and phase name
    - Spec approved? Design approved?
    - Active holes count
+   - Active lanes, blocked lanes, and recommended resume lane from .forge/runtime.json
    - Last checkpoint from .forge/checkpoints/
 4. Display resume summary:
    "Forge 프로젝트 '{{project_name}}' 복귀합니다.
     현재 Phase: {{phase}}/7 ({{phase_name}})
     스펙 승인: {{yes/no}} | 설계 승인: {{yes/no}}
+    활성 lane: {{lane_count}} | 재개 lane: {{resume_lane}}
     미해결 이슈: {{holes_count}}건"
 5. Map phase number to skill:
    If mode === 'express', use express phase mapping:
@@ -46,9 +47,10 @@ Used when starting a new Claude Code session with an existing .forge/ project.
 6. Load relevant context files:
    - Phase 1+: .forge/spec.md
    - Phase 2+: .forge/code-rules.md, .forge/design/
-   - Phase 3+: .forge/contracts/, .forge/tasks/
+   - Phase 3+: .forge/contracts/, .forge/tasks/, .forge/runtime.json
    - Phase 4+: .forge/holes/
-7. Invoke the corresponding phase skill to continue
+7. If a resume lane exists, prefer that lane's task/worktree context first
+8. Invoke the corresponding phase skill to continue
 </Steps>
 
 <Context_Loading>
@@ -60,6 +62,6 @@ Each phase loads only what it needs (minimal context):
 </Context_Loading>
 
 <Tool_Usage>
-- Read: .forge/state.json, .forge/checkpoints/*, relevant phase files
+- Read: .forge/state.json, .forge/runtime.json, .forge/checkpoints/*, relevant phase files
 - Skill: invoke phase-specific skill (forge:intake through forge:deliver)
 </Tool_Usage>
