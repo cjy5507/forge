@@ -1,10 +1,24 @@
 # Forge
 
-Forge is a harness-engineering plugin for teams that need coding agents to work like a structured software team on build and repair tasks.
+**Forge gives coding agents structure, ownership, and continuable state.**
 
-It runs a virtual software company with guided multi-agent workflows, session continuity, and runtime guardrails so long-running work stays coordinated.
+Most agent tools optimize for speed — more agents, more parallel calls, faster output.
+Forge optimizes for *not losing your place*. It tracks which phase you're in, who owns what,
+and what was decided — so long-running work survives interruptions, session breaks, and context resets.
 
-Forge now keeps lane-aware task and worktree state in `.forge/runtime.json`, so parallel work can resume without losing who owns what.
+### When Forge fits
+
+- Work that spans multiple sessions or days
+- Tasks that need to pause and resume without re-explaining context
+- Projects where you need an audit trail of decisions and phases
+- Parallel work where ownership and merge order matter
+- Build or repair flows that benefit from structured gates (spec → design → dev → QA → ship)
+
+### When you don't need Forge
+
+- One-shot tasks that finish in a single prompt
+- Quick fixes where overhead isn't worth it
+- Exploration or research without a delivery target
 
 ## Quick Start
 
@@ -63,14 +77,14 @@ The bootstrap installer clones Forge into a reusable checkout first, then runs
 
 ## What Forge does
 
-- Organizes agents into a virtual software company for build and repair work
-- Routes work into build or repair mode
-- Persists `.forge/` state across sessions
-- Keeps multi-agent runs consistent
-- Keeps code-writing gated on required design prerequisites
-- Adapts across light, medium, and full intervention tiers
-- Uses role prompts for CEO, PM, Researcher, CTO, QA, Security, and Troubleshooter workflows
-- Enforces evidence, security, and recovery gates before phase advance
+Forge manages a `.forge/` directory that persists your project's state across sessions:
+
+- **Phase gates** — work flows through intake → discovery → design → develop → QA → delivery, each with explicit entry/exit criteria
+- **Continuable state** — `forge continue` picks up where you left off, loading only the context the current phase needs
+- **Ownership tracking** — each task lane has an assigned role, worktree, and handoff notes so nothing is orphaned
+- **Build and repair modes** — new projects get the full pipeline; existing codebases skip to diagnosis → fix → QA → ship
+- **Artifact trail** — specs, contracts, code rules, and decisions are written to files, not lost in chat history
+- **Adaptive tiers** — light for simple work, medium for standard, full for high-stakes projects
 
 ## Plugin layout
 

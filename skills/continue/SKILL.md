@@ -1,80 +1,103 @@
 ---
 name: continue
-description: "Use whenever the user wants to continue an existing Forge run after a pause, restart, compaction, or interruption. Triggers include \"forge continue\", \"이어서 해줘\", \"pick up where we left off\", and any request to continue the active `.forge/` state."
+description: "Resume an existing Forge project after a pause, restart, or interruption. Triggers: \"forge continue\", \"이어서 해줘\", \"pick up where we left off\"."
 ---
 
 <Purpose>
-Automatically detects the current Forge project state and resumes from the most actionable company task first, with lane-level continuation next and phase-level continuation as the fallback. Used when starting a new session with an existing .forge/ project.
+Reads .forge/ state and resumes from the most actionable point. The goal is zero re-explanation —
+the user should be able to type "forge continue" and immediately be back in context.
 </Purpose>
 
 <Use_When>
-- User returns after session break: "이어서 해줘", "forge continue"
+- User returns after a session break
 - SessionStart detects existing .forge/state.json
-- User wants to pick up where they left off
+- User says "forge continue", "이어서", "pick up where we left off"
 </Use_When>
 
 <Steps>
-1. Read .forge/state.json
-2. If not found → "No active Forge project. Use /forge to start a new one."
-3. Load project context:
-   - Current phase and phase name
-   - Spec approved? Design approved?
-   - Active holes count
-   - Current internal gate, delivery readiness, customer blockers, and internal blockers from .forge/runtime.json
-   - Current session goal, exit criteria, next session goal, next session owner, and session handoff summary
-   - Active lanes, blocked lanes, review lanes, merge/rebase lanes, and recommended resume lane from .forge/runtime.json
-   - Lane handoff notes and blocked reasons from the runtime record
-   - Last checkpoint from .forge/checkpoints/
-4. Display resume summary:
-   "Forge 프로젝트 '{{project_name}}' 복귀합니다.
-    현재 Phase: {{phase}}/7 ({{phase_name}})
-    현재 Gate: {{active_gate}} | Delivery: {{delivery_state}}
-    이번 세션 목표: {{current_session_goal}}
-    스펙 승인: {{yes/no}} | 설계 승인: {{yes/no}}
-    활성 lane: {{lane_count}} | 재개 lane: {{resume_lane}}
-    고객 블로커: {{customer_blockers}} | 내부 블로커: {{internal_blockers}}
-    다음 세션 시작 담당: {{next_session_owner}} | 다음 목표: {{next_session_goal}}
-    가장 중요한 handoff: {{session_handoff_summary}}
-    미해결 이슈: {{holes_count}}건"
-5. Map phase number to skill:
-   If mode === 'express', use express phase mapping:
-   - plan → forge:discovery (compressed with design)
-   - build → forge:develop (with inline QA)
-   - ship → forge:deliver (compressed with fix)
 
-   Otherwise, use standard phase mapping:
-   - 0 → forge:intake
-   - 1 → forge:discovery
-   - 2 → forge:design
-   - 3 → forge:develop
-   - 4 → forge:qa
-   - 4.5 / security → forge:security
-   - 5 / fix → forge:fix
-   - 6 / delivery → forge:deliver
-   - complete → forge:status
-6. Load relevant context files:
-   - Phase 1+: .forge/spec.md
-   - Phase 2+: .forge/code-rules.md, .forge/design/
-   - Phase 3+: .forge/contracts/, .forge/tasks/, .forge/runtime.json
-   - Phase 4+: .forge/holes/
-7. Resume in this order:
-   - If a customer blocker exists, surface the customer-owned question instead of pretending execution can continue internally
-   - Else if an internal gate is active, resume the owning team or matching phase
-   - Else if a resume lane exists, prefer that lane's task/worktree context first
-   - Else fall back to the phase skill
-8. Invoke the corresponding phase skill or lane-specific continuation path to continue
+## 1. Detect state
+
+Read `.forge/state.json`. If missing → "No active Forge project. Use `forge` to start one."
+
+## 2. Load context (minimal per phase)
+
+| Phase   | Files to load                                              |
+|---------|------------------------------------------------------------|
+| 0–1     | state.json only                                            |
+| 2       | + spec.md                                                  |
+| 3       | + spec.md, code-rules.md, design/, contracts/, runtime.json |
+| 4–5     | + spec.md, holes/, runtime.json                            |
+| 6       | + spec.md, holes/, delivery-report/                        |
+
+If `.forge/runtime.json` exists, always load it — it has lane ownership, blockers, and handoff notes.
+
+## 3. Show resume summary
+
+Keep it short. The user needs three things:
+
+```
+Forge: {{project_name}}
+Phase {{N}}/7 — {{phase_name}}
+{{one-line summary of where things stand}}
+
+Next: {{what to do now}}
+{{if blockers: list them}}
+```
+
+Examples:
+
+```
+Forge: my-saas-app
+Phase 3/7 — develop
+3 lanes active, 1 blocked (auth waiting on DB schema)
+
+Next: Continue auth-api lane after resolving DB contract
+```
+
+```
+Forge: my-saas-app
+Phase 5/7 — fix
+2 blockers remaining (login redirect loop, rate limit bypass)
+
+Next: Diagnose login redirect — attempt 1/3
+```
+
+Do NOT dump every runtime field. Surface only what's actionable.
+
+## 4. Determine resume target
+
+Priority order:
+
+1. **Customer blocker** — if one exists, surface the question. Don't pretend work can continue.
+2. **Internal blocker** — route to the owning team/phase.
+3. **Resume lane** — if runtime.json has `resume_lane`, load that lane's task and worktree context.
+4. **Phase fallback** — invoke the phase skill for the current phase.
+
+## 5. Phase → skill mapping
+
+Standard mode:
+- 0 → forge:intake
+- 1 → forge:discovery
+- 2 → forge:design
+- 3 → forge:develop
+- 4 → forge:qa
+- 4.5 → forge:security
+- 5 → forge:fix
+- 6 → forge:deliver
+
+Express mode:
+- plan → forge:discovery (compressed)
+- build → forge:develop (inline QA)
+- ship → forge:deliver (compressed)
+
+## 6. Hand off
+
+Invoke the target skill with loaded context. The skill takes over from here.
+
 </Steps>
 
-<Context_Loading>
-Each phase loads only what it needs (minimal context):
-- Phase 0-1: spec template only
-- Phase 2: approved spec
-- Phase 3: spec + design + contracts + code-rules
-- Phase 4-7: spec + holes + delivery status
-  - If company-mode runtime exists, load it before phase prose so gate, blocker, review, merge, and rebase states are preserved.
-</Context_Loading>
-
 <Tool_Usage>
-- Read: .forge/state.json, .forge/runtime.json, .forge/checkpoints/*, relevant phase files
-- Skill: invoke phase-specific skill (forge:intake through forge:deliver)
+- Read: .forge/state.json, .forge/runtime.json, phase-specific files per table above
+- Skill: invoke mapped phase skill
 </Tool_Usage>

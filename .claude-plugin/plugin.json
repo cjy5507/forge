@@ -1,7 +1,7 @@
 {
   "name": "forge",
   "version": "0.1.3",
-  "description": "Harness-engineering workflows for Claude Code build and repair tasks.",
+  "description": "Structure, ownership, and continuable state for long-running coding agent work.",
   "author": {
     "name": "Forge Contributors",
     "url": "https://github.com/cjy5507/forge"
@@ -10,12 +10,11 @@
   "repository": "https://github.com/cjy5507/forge",
   "license": "MIT",
   "keywords": [
-    "claude-code",
-    "plugin",
-    "harness-engineering",
+    "workflow",
+    "continuity",
     "build",
     "repair",
-    "multi-agent"
+    "phase-gated"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"
