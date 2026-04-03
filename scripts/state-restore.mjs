@@ -29,7 +29,7 @@ async function main() {
 
   try {
     const normalized = writeForgeState(cwd, state);
-    updateRuntimeState(cwd, current => ({
+    const nextRuntime = updateRuntimeState(cwd, current => ({
       ...current,
       active_tier: normalized.tier,
       stats: {
@@ -39,7 +39,11 @@ async function main() {
       },
     }));
 
-    const context = compactForgeContext(normalized, readRuntimeState(cwd));
+    const context = compactForgeContext(normalized, nextRuntime);
+    updateRuntimeState(cwd, current => ({
+      ...current,
+      last_compact_context: context,
+    }));
 
     console.log(JSON.stringify({
       continue: true,

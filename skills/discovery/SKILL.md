@@ -7,6 +7,8 @@ description: "Use when Forge begins requirements gathering. PM interviews the cl
 Phase 1 of the Forge pipeline. The PM conducts a structured interview with the client,
 translating their idea into a complete, unambiguous spec. The client does NOT need to know
 programming — the PM speaks their language and translates to technical requirements.
+In Autonomous Company Mode, the PM minimizes customer burden: ask only what is needed to
+avoid building the wrong thing, and route the rest internally.
 </Purpose>
 
 <Use_When>
@@ -15,11 +17,12 @@ programming — the PM speaks their language and translates to technical require
 </Use_When>
 
 <Core_Rule>
-NO AMBIGUITY, NO START.
-This Phase does NOT end until Open Questions = 0.
-If the client gives a vague answer, ask follow-up.
+NO CRITICAL AMBIGUITY, NO START.
+This Phase does NOT end until the team can proceed safely.
+If the client gives a vague answer on a business-critical point, ask follow-up.
 If answers contradict, point it out and resolve.
-NEVER assume. ALWAYS ask.
+Do not burden the client with questions the company can answer internally through research,
+design review, prototyping, or QA.
 </Core_Rule>
 
 <Progressive_Disclosure>
@@ -31,6 +34,7 @@ NEVER assume. ALWAYS ask.
 
 2. PM conducts interview following this flow:
    - PM owns the conversation and spec at all times
+   - PM asks the customer only what is necessary to set direction, define must-haves, and avoid product-level mistakes
    - Dispatch Researcher only when the answer depends on outside evidence:
      - the client asks for reference apps, competitor examples, or "what do similar products use?"
      - the PM needs grounded options for login, payments, chat, maps, search, analytics, CMS, or vendors
@@ -60,26 +64,37 @@ NEVER assume. ALWAYS ask.
 
    Round 4 — Validation:
    - Compile all answers into spec.md (using forge/templates/spec.md)
-   - Show spec summary to client
-   - "이 내용이 맞는지 확인해주세요"
-   - Resolve any mismatches
+   - Show the customer a concise summary only if a final business-level confirmation is needed
+   - Resolve any critical mismatches
+   - Record remaining non-critical unknowns as assumptions, internal validation targets, or QA checks
 
 3. Spec Completion Check:
-   - Count Open Questions in spec
+   - Count critical customer-owned questions in spec
    - If > 0: continue interview
-   - If = 0: proceed to approval
+   - If = 0: proceed to internal approval
 
 4. Approval Flow:
    a. CEO reviews spec (dispatch forge:ceo agent)
-   b. CEO confirms scope is feasible
-   c. Present final spec to client for sign-off
-   d. Client approves → Update state.json: phase=2, phase_id="design", phase_name="design", spec_approved=true
+   b. CEO confirms scope is feasible and safe to advance internally
+   c. If no customer-owned blocker remains, update state.json: phase=2, phase_id="design", phase_name="design", spec_approved=true
+   d. Update company runtime for the next gate:
+      - `node scripts/forge-lane-runtime.mjs set-company-gate --gate design_readiness --gate-owner cto --delivery-state in_progress`
+   d. Only ask the customer again if a true business blocker remains unresolved
 
-5. Save spec to .forge/spec.md
+5. PM defines the session brief for the next handoff:
+   - current_session_goal
+   - session_exit_criteria
+   - next_session_goal
+   - next_session_owner
+   - session_handoff_summary
+   - Preferred helper:
+     `node scripts/forge-lane-runtime.mjs set-session-brief --goal "Close design readiness gate" --next-owner cto --handoff "{summary}"`
 
-6. Create rollback tag: git tag forge/v1-spec
+6. Save spec to .forge/spec.md
 
-7. Transition to Phase 2 (forge:design)
+7. Create rollback tag: git tag forge/v1-spec
+
+8. Transition to Phase 2 (forge:design)
 </Steps>
 
 <Communication_Style>
@@ -95,6 +110,7 @@ NEVER assume. ALWAYS ask.
 <State_Changes>
 - Creates: .forge/spec.md
 - Updates: state.json (phase=2, spec_approved=true)
+- Updates: .forge/runtime.json (design_readiness gate + next session brief)
 - Creates: git tag forge/v1-spec
 </State_Changes>
 
@@ -111,9 +127,10 @@ NEVER assume. ALWAYS ask.
 <Failure_Modes_To_Avoid>
 - Asking 3+ questions at once
 - Using technical terms with non-technical clients
-- Moving to Phase 2 with Open Questions > 0
+- Moving to Phase 2 with critical customer-owned questions unresolved
 - Assuming features the client didn't mention
 - Using Researcher as a substitute for PM ownership of the interview
 - Not resolving contradictions in client answers
-- Skipping CEO review before client sign-off
+- Asking the customer questions the internal team should answer itself
+- Skipping CEO readiness review before internal sign-off
 </Failure_Modes_To_Avoid>

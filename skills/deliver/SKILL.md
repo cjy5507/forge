@@ -7,7 +7,8 @@ description: "Use when Forge delivers the completed product. Tech writer generat
 Phase 6 of the Forge pipeline. The final phase where the Tech Writer generates
 comprehensive documentation and the CEO compiles a delivery report summarizing
 spec coverage, test results, and known issues. The completed product is presented
-to the client with full transparency.
+to the client with full transparency. In Autonomous Company Mode, delivery begins only
+after internal readiness gates say the work is truly delivery-ready.
 </Purpose>
 
 <Use_When>
@@ -78,24 +79,43 @@ to the client with full transparency.
       - Key files and their responsibilities
       - Recommended next steps
 
-3. Present delivery to client:
+3. Internal delivery readiness gate:
+   a. QA confirms blocker count is zero
+   b. Security confirms no unresolved delivery-blocking issue remains
+   c. CEO confirms the company is ready to present the result externally
+   d. If not ready, route internally to the matching team:
+      - bug / regression → fix
+      - implementation gap → develop
+      - design mismatch → design or designer rework
+      - quality gap → QA re-check after rework
+   e. Reflect the gate in runtime:
+      - still blocked:
+        `node scripts/forge-lane-runtime.mjs set-company-gate --gate delivery_readiness --gate-owner ceo --delivery-state blocked --internal-blockers "{blocker summaries}"`
+      - ready for client:
+        `node scripts/forge-lane-runtime.mjs set-company-gate --gate customer_review --gate-owner ceo --delivery-state ready_for_review`
+
+4. Present delivery to client:
    a. Show spec coverage percentage prominently
    b. List completed features with checkmarks
    c. List known issues (minor only) with severity labels
    d. Show test results summary
    e. Provide all generated documentation links
-   f. Ask: "배달 받으시겠습니까? / Do you accept the delivery?"
+   f. Ask the client to review the completed delivery
 
-4. Client accepts → finalize delivery:
+5. Client accepts → finalize delivery:
    a. Update state.json: phase=7, phase_id="complete", phase_name="complete", status="delivered"
    b. Create git tag: forge/v1-delivery
    c. Create version tag: forge/v0.1.0
    d. Final dashboard showing complete project summary
+   e. Mark runtime delivered:
+      `node scripts/forge-lane-runtime.mjs set-company-gate --gate customer_review --gate-owner ceo --delivery-state delivered`
 
-5. Client requests changes → route back to appropriate phase:
+6. Client requests changes → route back to appropriate phase:
    - Feature change → Phase 1 (discovery) for spec amendment
    - Design change → Phase 2 (design)
    - Bug found → Phase 5 (fix)
+   - Update runtime with the customer blocker:
+     `node scripts/forge-lane-runtime.mjs set-company-gate --gate customer_review --gate-owner pm --delivery-state in_progress --customer-blockers "{customer review feedback summaries}"`
 </Steps>
 
 <State_Changes>
@@ -105,6 +125,7 @@ to the client with full transparency.
 - Creates: .forge/delivery-report/deploy-guide.md
 - Creates: README.md (project root)
 - Updates: .forge/state.json (phase=7, phase_id="complete", phase_name="complete", status="delivered")
+- Updates: .forge/runtime.json (delivery/customer_review state + customer feedback routing)
 - Creates: git tag forge/v1-delivery
 - Creates: git tag forge/v0.1.0
 </State_Changes>
@@ -113,10 +134,11 @@ to the client with full transparency.
 - Delivering without documentation
 - Inflating spec coverage percentage (counting partial implementations as complete)
 - Hiding known issues from the client
+- Presenting work to the client before internal delivery readiness is met
 - Not including deployment instructions
 - Generating docs that reference non-existent files or APIs
 - Not calculating actual spec coverage (just saying "done")
-- Skipping the client acceptance step
+- Skipping the client review step
 - Creating version tag before client accepts delivery
 - Forgetting to include environment variable documentation
 - Not providing handoff notes for future development

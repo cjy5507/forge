@@ -8,7 +8,8 @@ Phase 2 of the Forge pipeline. CTO and Designer collaborate in parallel to produ
 architecture, code rules, interface contracts, and design specs. Researcher supports
 them when external option comparison is needed, but CTO and Designer keep decision
 ownership. Every technical claim is verified via context7 before being committed to
-the design. No guessing — only evidence-backed decisions.
+the design. No guessing — only evidence-backed decisions. In Autonomous Company Mode,
+design is an internal readiness gate by default, not a customer approval checkpoint.
 </Purpose>
 
 <Use_When>
@@ -34,9 +35,13 @@ the design. No guessing — only evidence-backed decisions.
    - CTO reviews design feasibility: can this be built with chosen stack?
    - Designer reviews architecture: does it support all UI needs?
 
-5. If design and tech conflict → ask the client, don't assume
+5. If design and tech conflict → resolve internally first
    - Never silently drop a feature because it's "hard"
    - Never force a design that the architecture can't support
+   - Escalate to the client only if the blocker is truly customer-owned:
+     - unresolved business priority
+     - subjective direction with no responsible default
+     - incompatible requirements that only the client can choose between
 
 6. code-rules.md MUST have examples (good + bad) for every rule:
 
@@ -105,9 +110,12 @@ the design. No guessing — only evidence-backed decisions.
      "Are the contracts complete for every UI component?"
    - If Researcher was used, CTO folds the brief into the architecture rationale and flags any remaining unknowns
 
-5. Conflicts → route to client for decision
-   - Present conflict clearly: "Designer wants X, CTO says Y because Z"
-   - Let the client decide, then update both specs accordingly
+5. Internal design-readiness gate:
+   - CTO confirms the architecture is implementable at the chosen scale
+   - Designer confirms the design covers required flows and states
+   - Fact checker confirms technical claims are evidence-backed
+   - If the gate fails, revise internally before moving on
+   - Escalate to the client only for genuine customer-owned blockers
 
 6. Fact checker validates all technical claims:
    - Every package referenced exists and is at claimed version
@@ -115,13 +123,15 @@ the design. No guessing — only evidence-backed decisions.
    - Every TypeScript type is syntactically valid
    - Every framework feature is available in the chosen version
 
-7. Present combined design to client for approval:
-   - Architecture summary (non-technical language for client)
-   - Component preview list
-   - Design tokens visual summary
-   - Any trade-offs or limitations discovered
+7. Optional client check-in only when needed:
+   - If a real business-level design blocker remains, present it clearly in customer language
+   - Otherwise keep the design decision internal and proceed
 
-8. Client approves → update state.json: phase=3, phase_id="develop", phase_name="develop", design_approved=true
+8. Internal design readiness passes → update state.json: phase=3, phase_id="develop", phase_name="develop", design_approved=true
+   - Update company runtime for implementation:
+     `node scripts/forge-lane-runtime.mjs set-company-gate --gate implementation_readiness --gate-owner lead-dev --delivery-state in_progress`
+   - Update session handoff toward implementation:
+     `node scripts/forge-lane-runtime.mjs set-session-brief --goal "Prepare reviewable implementation lanes" --next-owner lead-dev --handoff "{summary}"`
 
 9. Create git tag: forge/v1-design
 
@@ -148,6 +158,7 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Creates: .forge/contracts/*.ts
 - Creates: .forge/code-rules.md
 - Updates: .forge/state.json (phase=3, design_approved=true)
+- Updates: .forge/runtime.json (implementation_readiness gate + next session brief)
 - Creates: git tag forge/v1-design
 </State_Changes>
 
@@ -168,7 +179,8 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Locking stack or vendor choices before reviewing needed Researcher evidence
 - Designer skipping component states (only defining "happy path" appearance)
 - Skipping cross-review between CTO and Designer
-- Proceeding to Phase 3 without client approval
+- Escalating internal design decisions to the client too early
+- Proceeding to Phase 3 without internal design-readiness
 - code-rules.md with rules but no GOOD/BAD examples
 - Contracts missing request/response types for API routes
 - Design tokens without responsive breakpoints

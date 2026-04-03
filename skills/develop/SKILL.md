@@ -10,7 +10,9 @@ physical file-system separation, not just branches. All code goes through a 3-ti
 PR-based review pipeline with code-rules enforcement. The first merged PR becomes
 the "living standard" that all subsequent PRs must match. Lane orchestration is
 runtime-backed: `.forge/runtime.json` stores the lane graph, owners, statuses,
-active worktrees, and handoff notes instead of relying on prose-only coordination.
+active worktrees, handoff notes, and review/merge/rebase signals. Common Forge
+paths should update that runtime automatically through the standard helpers, but
+the process remains human-led and review-gated; it is not an autonomous merge bot.
 </Purpose>
 
 <Use_When>
@@ -25,7 +27,9 @@ active worktrees, and handoff notes instead of relying on prose-only coordinatio
 4. Code inconsistent with already-merged code = REJECTED
 5. First merged PR becomes the "living standard"
 6. Developers load ONLY: spec subset + relevant contracts + code-rules.md (minimal context)
-7. Every active lane must be represented in `.forge/runtime.json`
+7. Every created worktree/task must have a runtime lane record before dispatch
+8. Handoff notes are required before review or reassignment
+9. Explicit review, merge, and rebase states must be reflected in runtime
 </Core_Rules>
 
 <Progressive_Disclosure>
@@ -42,7 +46,8 @@ active worktrees, and handoff notes instead of relying on prose-only coordinatio
 2. Lead defines the lane graph in `.forge/runtime.json`:
    - One lane per isolated module/feature
    - Record upstream dependencies before dispatch
-   - Keep owner, reviewer, worktree, and status current with the runtime helper
+   - Keep owner, reviewer, worktree, status, handoff notes, and next resume lane current with the runtime helper
+   - Convert the PM session brief into an implementation session brief for this session and the next
 
 3. Lead splits work into independent tasks (one per module/feature):
    - Identify module boundaries from architecture
@@ -61,6 +66,7 @@ active worktrees, and handoff notes instead of relying on prose-only coordinatio
       - Owner / reviewer / worktree / review / handoff sections
    c. Runtime lane record with the standardized helper:
       node scripts/forge-lane-runtime.mjs init-lane --lane {module} --title "{title}" --task-file .forge/tasks/{module}.md --worktree .forge/worktrees/{module} [--depends-on ...]
+      - This step should create the lane record immediately so the worktree/task pair never exists outside runtime.
 
 5. Dispatch developer/publisher agents in parallel, each with:
    - isolation: "worktree"
@@ -81,7 +87,8 @@ active worktrees, and handoff notes instead of relying on prose-only coordinatio
    h. Write a handoff note before review:
       node scripts/forge-lane-runtime.mjs write-handoff --lane {module} --note "{verification summary}"
    i. Update lane status to `in_review`
-   j. Create PR when all local tests pass
+   j. If review requests changes, or the lane needs merge/rebase follow-up, reflect that state in runtime immediately instead of leaving it implicit in chat.
+   k. Create PR when all local tests pass
 
 7. PR Review Pipeline (3 tiers — ALL must approve):
 
@@ -110,19 +117,26 @@ active worktrees, and handoff notes instead of relying on prose-only coordinatio
    All tiers approve → merge to main
 
 8. After each merge, update the lane record, then rebase all other active worktrees:
-   node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status done --note "Merged to main"
+   node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status merged --note "Merged to main"
+   node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status done --note "Worktree cleaned up"
    cd .forge/worktrees/{other-module} && git rebase main
    - If rebase conflicts: developer resolves in their worktree
    - If conflict is architectural: escalate to Lead
+   - If a lane is waiting on rebase, mark that in runtime so status/continue can surface it as an active control-tower signal.
 
 9. Repeat steps 6-8 until all PRs are merged
    - Use `node scripts/forge-lane-runtime.mjs summarize-lanes` to review the lane graph and blocked lanes
+   - Update the session handoff so the next session knows what remains and who owns the first move
 
 10. Cleanup worktrees:
    node scripts/forge-worktree.mjs remove --lane {module}
    (for each completed module)
 
 11. Update state.json: phase=4, phase_name="qa"
+    - Update company runtime for QA:
+      `node scripts/forge-lane-runtime.mjs set-company-gate --gate qa --gate-owner qa --delivery-state in_progress`
+    - Update session handoff toward QA:
+      `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "{what remains to verify}" --next-goal "Run QA and classify blockers" --next-owner qa`
 
 12. Create git tag: forge/v1-dev
 
@@ -158,6 +172,10 @@ Update lane status:
 
 Write handoff note:
   node scripts/forge-lane-runtime.mjs write-handoff --lane {module} --note "{handoff summary}"
+
+Review and merge states:
+  - Keep `in_review`, `blocked`, `merged`, and `done` current in runtime as the lane moves through review and integration.
+  - Use runtime notes to capture rebase blockers, reviewer requests, and merge completion.
 </Lane_Runtime>
 
 <PR_Review_Checklist>
@@ -207,6 +225,7 @@ When inconsistency is found, Lead rejects with explicit correction:
 - Creates: .forge/worktrees/{module}/ (git worktrees, one per task)
 - Creates: .forge/tasks/{module}.md (task definitions)
 - Updates: state.json (phase=4, phase_name="qa")
+- Updates: .forge/runtime.json (qa gate + QA session handoff)
 - Creates: git tag forge/v1-dev
 - Removes: all worktrees after completion
 </State_Changes>
@@ -232,11 +251,14 @@ When inconsistency is found, Lead rejects with explicit correction:
 - Failing to register a lane in `.forge/runtime.json` before dispatch
 - Leaving lane status stale after ownership, review, or merge changes
 - Sending work to review without a handoff note in runtime
+- Reassigning a lane without a handoff note in runtime
 - Not rebasing other worktrees after a merge
 - Leaving orphan worktrees after Phase 3 completes
 - Developers loading full project context instead of minimal subset
 - Not enforcing code-rules.md on every PR
 - Allowing inconsistent patterns between merged PRs
+- Letting merge/rebase state drift out of sync with runtime
+- Treating helper-backed runtime updates as optional instead of mandatory on the common path
 - Starting Phase 4 before all worktrees are cleaned up
 - Not creating the forge/v1-dev tag before transition
 </Failure_Modes_To_Avoid>

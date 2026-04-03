@@ -6,7 +6,8 @@ description: "Use when Forge receives a new project request. CEO evaluates feasi
 <Purpose>
 Phase 0 of the Forge pipeline. The CEO evaluates the client's request to decide
 if it's something we can build, if the scope is reasonable, and if we have enough
-information to begin the discovery process.
+critical information to begin the discovery process. The CEO acts as the internal
+operator for the company, not as a messenger waiting for customer approval at every step.
 </Purpose>
 
 <Use_When>
@@ -20,11 +21,11 @@ information to begin the discovery process.
 2. Dispatch CEO agent to evaluate:
    a. Technical feasibility — Can this be built with available tools/frameworks?
    b. Scope assessment — Is this one project or should it be split into V1/V2?
-   c. Information completeness — Do we have enough to start asking detailed questions?
+   c. Information completeness — Do we have enough critical information to start safe discovery?
 
 3. CEO Decision:
    - GO → Initialize .forge/ directory, set state.json phase=1, hand off to PM
-   - HOLD → CEO asks client for missing high-level information
+   - HOLD → CEO asks the client only for missing business-critical information
    - NO-GO → CEO explains why and suggests alternatives
 
 4. Initialize project state:
@@ -33,10 +34,12 @@ information to begin the discovery process.
       .forge/holes/, .forge/tasks/, .forge/worktrees/, .forge/checkpoints/,
       .forge/knowledge/, .forge/delivery-report/
    b. Copy forge/templates/state.json → .forge/state.json
-   c. Initialize `.forge/runtime.json` for helper-backed coordination:
+   c. Initialize `.forge/runtime.json` for helper-backed company coordination:
       - lanes / lane graph
       - active_worktrees
       - resume_lane
+      - internal gate metadata
+      - blocker / readiness metadata
       - helper/runtime metadata
    d. Fill in project name, client name, created_at
    e. Set phase=1, phase_id="discovery", phase_name="discovery", status="active"
@@ -62,5 +65,6 @@ information to begin the discovery process.
 - Starting Phase 1 without CEO approval
 - Skipping the feasibility check
 - Proceeding with a request that's clearly out of scope
+- Asking the client to manage internal phase transitions
 - Not creating the full .forge/ directory structure
 </Failure_Modes_To_Avoid>

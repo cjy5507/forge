@@ -4,7 +4,7 @@ description: "Use whenever the user wants to continue an existing Forge run afte
 ---
 
 <Purpose>
-Automatically detects the current Forge project state and resumes from the last active phase and lane. Used when starting a new session with an existing .forge/ project.
+Automatically detects the current Forge project state and resumes from the most actionable company task first, with lane-level continuation next and phase-level continuation as the fallback. Used when starting a new session with an existing .forge/ project.
 </Purpose>
 
 <Use_When>
@@ -20,13 +20,21 @@ Automatically detects the current Forge project state and resumes from the last 
    - Current phase and phase name
    - Spec approved? Design approved?
    - Active holes count
-   - Active lanes, blocked lanes, and recommended resume lane from .forge/runtime.json
+   - Current internal gate, delivery readiness, customer blockers, and internal blockers from .forge/runtime.json
+   - Current session goal, exit criteria, next session goal, next session owner, and session handoff summary
+   - Active lanes, blocked lanes, review lanes, merge/rebase lanes, and recommended resume lane from .forge/runtime.json
+   - Lane handoff notes and blocked reasons from the runtime record
    - Last checkpoint from .forge/checkpoints/
 4. Display resume summary:
    "Forge 프로젝트 '{{project_name}}' 복귀합니다.
     현재 Phase: {{phase}}/7 ({{phase_name}})
+    현재 Gate: {{active_gate}} | Delivery: {{delivery_state}}
+    이번 세션 목표: {{current_session_goal}}
     스펙 승인: {{yes/no}} | 설계 승인: {{yes/no}}
     활성 lane: {{lane_count}} | 재개 lane: {{resume_lane}}
+    고객 블로커: {{customer_blockers}} | 내부 블로커: {{internal_blockers}}
+    다음 세션 시작 담당: {{next_session_owner}} | 다음 목표: {{next_session_goal}}
+    가장 중요한 handoff: {{session_handoff_summary}}
     미해결 이슈: {{holes_count}}건"
 5. Map phase number to skill:
    If mode === 'express', use express phase mapping:
@@ -49,8 +57,12 @@ Automatically detects the current Forge project state and resumes from the last 
    - Phase 2+: .forge/code-rules.md, .forge/design/
    - Phase 3+: .forge/contracts/, .forge/tasks/, .forge/runtime.json
    - Phase 4+: .forge/holes/
-7. If a resume lane exists, prefer that lane's task/worktree context first
-8. Invoke the corresponding phase skill to continue
+7. Resume in this order:
+   - If a customer blocker exists, surface the customer-owned question instead of pretending execution can continue internally
+   - Else if an internal gate is active, resume the owning team or matching phase
+   - Else if a resume lane exists, prefer that lane's task/worktree context first
+   - Else fall back to the phase skill
+8. Invoke the corresponding phase skill or lane-specific continuation path to continue
 </Steps>
 
 <Context_Loading>
@@ -59,6 +71,7 @@ Each phase loads only what it needs (minimal context):
 - Phase 2: approved spec
 - Phase 3: spec + design + contracts + code-rules
 - Phase 4-7: spec + holes + delivery status
+  - If company-mode runtime exists, load it before phase prose so gate, blocker, review, merge, and rebase states are preserved.
 </Context_Loading>
 
 <Tool_Usage>

@@ -9,7 +9,9 @@ Two modes:
 - BUILD mode: idea → spec → design → development → QA → delivery
 - REPAIR mode: existing project → diagnosis → fix → QA → delivery
 
-The CEO evaluates the request and routes to the right mode.
+The CEO evaluates the request and routes to the right mode. After kickoff, Forge should
+operate like an internal software company: the client gives the request, answers minimum
+critical questions, and reviews the delivery at the end. Internal teams own the rest.
 </Purpose>
 
 <Use_When>
@@ -33,8 +35,8 @@ The CEO evaluates the request and routes to the right mode.
 
 <Execution_Policy>
 - Each Phase MUST complete before the next begins
-- The client (user) approves at every Phase gate
-- If ANYTHING is unclear, ASK — never assume
+- The client is NOT the default phase approver; internal readiness gates decide phase progress
+- Ask the client only when a blocker is truly customer-owned or critical ambiguity would cause the wrong product to be built
 - State is persisted in .forge/ directory
 - Cancel with "forge cancel" or "포지 취소" at any time
 - Load `references/phase-map.md` for the compact phase sequence.
@@ -61,16 +63,16 @@ Phase 0 — INTAKE / 접수 (CEO):
       → Dispatch Troubleshooter for diagnosis
       → Diagnosis → Fix → QA → Deliver (skip full Phase 1-3)
 
-  3. If unclear which mode → ask the client
+  3. If unclear which mode or critical customer intent is missing → ask the client
   4. BUILD: initialize .forge/ directory with state.json, hand off to PM
   5. REPAIR: initialize .forge/ with mode="repair", hand off to Troubleshooter
 
 Phase 1 — DISCOVERY / 발견 (PM):
   1. Invoke forge:discovery skill / 디스커버리 스킬 실행
-  2. PM interviews client one question at a time / PM이 질문으로 요구사항 파악
+  2. PM interviews the client one question at a time only until critical ambiguity is low enough for safe internal execution / PM이 꼭 필요한 질문만 최소 단위로 진행
   3. Generate spec.md from template / spec.md 생성
-  4. Open Questions must reach 0 / 미해결 질문 0건 달성
-  5. CEO reviews spec → client approves → Phase 2 / CEO 검토 → 의뢰인 승인 → 2단계
+  4. Internal assumptions and validation targets are recorded for anything non-critical that can be resolved inside the company loop
+  5. CEO reviews spec readiness → internal GO to Phase 2 / CEO가 내부 실행 가능 여부 판단 후 2단계
 
 Phase 2 — DESIGN / 설계 (CTO + Designer):
   1. Invoke forge:design skill / 디자인 스킬 실행
@@ -78,7 +80,7 @@ Phase 2 — DESIGN / 설계 (CTO + Designer):
   3. Designer: UI/UX spec + component definitions / 디자이너: UI/UX 사양 + 컴포넌트 정의
   4. Cross-review between CTO and Designer / CTO-디자이너 교차 검토
   5. Fact checker validates all technical claims via context7 / 팩트체커가 기술 주장 검증
-  6. Client approves design → Phase 3 / 의뢰인 설계 승인 → 3단계
+  6. CTO + Designer + fact-checker confirm design readiness → Phase 3 / 내부 설계 준비 완료 시 3단계
 
 Phase 3 — DEVELOPMENT / 개발 (Lead + Devs + Publisher):
   1. Invoke forge:develop skill / 개발 스킬 실행
@@ -86,7 +88,7 @@ Phase 3 — DEVELOPMENT / 개발 (Lead + Devs + Publisher):
   3. Each developer/publisher works in isolated worktree / 개발자별 격리된 워크트리에서 작업
   4. PR-based merge with 3-tier review (auto → lead → CTO) / PR 기반 머지, 3단계 리뷰
   5. Code rules enforced — inconsistent code is REJECTED / 코드 규칙 위반 시 거부
-  6. All PRs merged → Phase 4 / 모든 PR 머지 → 4단계
+  6. All required lanes merged and internally verified → Phase 4 / 필요한 lane 머지 및 내부 검증 완료 시 4단계
 
 Phase 4 — QA / 품질보증 (QA Engineer):
   1. Invoke forge:qa skill / QA 스킬 실행
@@ -103,14 +105,14 @@ Phase 5 — FIX LOOP / 수정 루프 (Fact Checker + Devs + Troubleshooter):
   1. Invoke forge:fix skill / 수정 스킬 실행
   2. Simple issues: fact-check → dev fix → QA re-verify / 단순 이슈: 팩트체크 → 개발자 수정 → QA 재검증
   3. Complex issues: troubleshooter RCA → dev fix → QA re-verify / 복잡 이슈: 근본원인 분석 → 수정 → 재검증
-  4. Max 3 iterations, then CEO reports to client with alternatives / 최대 3회 반복, 초과 시 CEO가 대안 제시
+  4. Max 3 iterations on the same blocker before CEO escalates to the client with alternatives / 같은 블로커가 3회 초과 시에만 CEO가 고객에게 대안 제시
   5. All blockers resolved → Phase 6 / 모든 블로커 해결 → 6단계
 
 Phase 6 — DELIVERY / 납품 (CEO + Tech Writer):
   1. Invoke forge:deliver skill / 딜리버리 스킬 실행
   2. Tech writer generates docs (README, API docs, deploy guide) / 테크라이터가 문서 생성
-  3. CEO compiles delivery report / CEO가 납품 보고서 작성
-  4. Present to client: coverage %, known issues, test results / 의뢰인에게 제출: 커버리지, 이슈, 테스트 결과
+  3. QA + Security + CEO confirm delivery readiness / QA + 보안 + CEO가 납품 가능 상태 확인
+  4. CEO compiles delivery report and presents it to the client for final review / CEO가 최종 납품 보고서를 고객에게 제출
 </Steps>
 
 <State_Management>
@@ -132,7 +134,8 @@ On first invocation, create .forge/ directory:
 </State_Management>
 
 <Dashboard>
-After each Phase transition, show progress to client:
+After each major transition, show progress to the client in customer language. Internal
+status may be richer than what is shown externally:
 
 Forge Progress / 진행 현황:
 ┌─────────────────────────────────┐
@@ -144,7 +147,7 @@ Forge Progress / 진행 현황:
 │ ⏳ Pending / 대기 중             │
 │                                │
 │ Known Issues / 알려진 이슈: N   │
-│ Needs Approval / 승인 필요: N   │
+│ Needs Client Input / 고객 확인 필요: N │
 └─────────────────────────────────┘
 </Dashboard>
 
@@ -163,4 +166,5 @@ Client can request rollback:
 - Use Write for .forge/ state files
 - Use Read for loading specs, contracts, code-rules
 - Do NOT use tools without evidence (PreToolUse guard may deny code writes when harness prerequisites are missing)
+- Treat the customer as the client, not the internal project manager
 </Tool_Usage>

@@ -7,7 +7,8 @@ description: "Use when Forge performs security review. Security reviewer audits 
 Phase 4.5 of the Forge pipeline. The Security Reviewer conducts a comprehensive
 security audit covering OWASP Top 10 vulnerabilities, secret/credential scanning,
 and authentication/authorization logic review. Security issues are always classified
-as blockers and route to the fix loop before delivery.
+as blockers and route to the fix loop before delivery. In Autonomous Company Mode,
+security is part of the internal delivery-readiness gate, not a passive phase hop.
 </Purpose>
 
 <Use_When>
@@ -96,21 +97,37 @@ as blockers and route to the fix loop before delivery.
      available sequence number and a kebab-case slug derived from the vulnerability summary
 
 6. Gate Decision:
-   - If any security issues found → phase=5 (fix loop)
-   - If clean → phase=6 (delivery)
+   - If any security issues found → mark delivery readiness blocked and route to phase=5 (fix loop)
+   - If clean → mark security clear for delivery readiness and phase=6 (delivery)
 
 7. Update state.json:
    - If issues: phase=5, phase_id="fix", phase_name="fix"
    - If clean: phase=6, phase_id="delivery", phase_name="delivery"
 
-8. Create git tag: forge/v1-security
+8. Update runtime expectations:
+   - Security findings must appear as internal blockers owned by security-reviewer
+   - A clean audit must contribute to delivery-readiness rather than only changing phase labels
+   - Preferred helper:
+     - If issues:
+       `node scripts/forge-lane-runtime.mjs set-company-gate --gate implementation_readiness --gate-owner lead-dev --delivery-state blocked --internal-blockers "{security blocker summaries}"`
+     - If clean:
+       `node scripts/forge-lane-runtime.mjs set-company-gate --gate delivery_readiness --gate-owner ceo --delivery-state ready_for_review`
 
-9. Transition to next phase (forge:fix or forge:deliver)
+9. Update session handoff:
+   - If issues:
+     `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "{security blockers found}" --next-goal "Fix security blockers and rerun security" --next-owner security-reviewer`
+   - If clean:
+     `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "Security clear; prep delivery review" --next-goal "Prepare customer delivery review" --next-owner ceo`
+
+10. Create git tag: forge/v1-security
+
+11. Transition to next phase (forge:fix or forge:deliver)
 </Steps>
 
 <State_Changes>
 - Creates: .forge/holes/HOLE-{NNN}-{slug}.md (one per vulnerability, via bug-tracker agent)
 - Updates: .forge/state.json (phase=5 or phase=6)
+- Updates: .forge/runtime.json (delivery gate result + next session handoff)
 - Creates: git tag forge/v1-security
 </State_Changes>
 
@@ -122,5 +139,6 @@ as blockers and route to the fix loop before delivery.
 - Approving code that stores tokens in localStorage
 - Not scanning dependencies for known CVEs
 - Logging sensitive data (passwords, tokens) in audit trail
+- Treating security as informational instead of a delivery gate
 - Moving to delivery with unresolved security issues
 </Failure_Modes_To_Avoid>

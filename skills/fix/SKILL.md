@@ -6,8 +6,9 @@ description: "Use when Forge enters the bug fix loop. Routes simple issues to de
 <Purpose>
 Phase 5 of the Forge pipeline. The fix loop triages discovered issues from QA and
 security phases, routes them to the appropriate handler (simple fix or deep diagnosis),
-and iterates until all blockers are resolved. Max 3 iterations before escalating to
-the client with alternatives.
+and iterates until all blockers are resolved. Every fix worktree gets a runtime lane
+record, and review/merge/rebase state must stay current in `.forge/runtime.json`.
+Max 3 iterations before escalating to the client with alternatives.
 </Purpose>
 
 <Use_When>
@@ -34,16 +35,20 @@ the client with alternatives.
 
    a. Simple issue (triage score 3-4):
       - Fact-checker verifies the root cause is correct
+      - Register or refresh the runtime lane record before dispatching work
       - Dispatch developer agent to fix in worktree:
         git worktree add .forge/worktrees/fix-{issue-id} -b forge/fix-{issue-id}
       - Developer implements fix
+      - Write a handoff note before sending the fix lane into review
       - PR review (Tier 1 automated + Tier 2 Lead review)
       - Merge and cleanup worktree
 
    b. Complex issue (triage score 0-2: unclear cause, spans multiple modules, or reproduces intermittently):
       - Invoke forge:troubleshoot skill for root cause analysis
       - Troubleshooter produces RCA report in .forge/evidence/rca-{issue-id}.md
+      - Register or refresh the runtime lane record before dispatching work
       - Dispatch developer agent with RCA report to implement minimal fix
+      - Record blocker/rebase/review notes in runtime if the fix is waiting on review, merge, or rebase
       - PR review (all 3 tiers — automated + Lead + CTO)
       - Merge and cleanup worktree
 
@@ -52,6 +57,7 @@ the client with alternatives.
       - Does the specific issue reproduce? (must be NO)
       - Did the fix introduce any regressions? (run full test suite)
       - Are related features still working?
+      - Does runtime still show the lane as merged/rebased/done accurately?
    b. If re-verification fails:
       - Issue goes back to step 2 with additional context
       - Increment iteration counter for this issue
@@ -61,6 +67,7 @@ the client with alternatives.
    - Track in .forge/holes/{issue-id}.md:
      - attempt_count: N
      - attempt_history: what was tried and why it failed
+   - Keep the lane handoff note in runtime aligned with the current attempt and review state
 
 5. Max Iterations Exceeded:
    - If any blocker reaches 3 failed attempts:
@@ -79,10 +86,21 @@ the client with alternatives.
 6. Gate Decision:
    - All blockers resolved (fixed or client-approved descope) → phase=6
    - Still has unresolved blockers → continue iteration
+   - Update company runtime in the same step:
+     - unresolved blockers:
+       `node scripts/forge-lane-runtime.mjs set-company-gate --gate implementation_readiness --gate-owner lead-dev --delivery-state blocked --internal-blockers "{remaining blocker summaries}"`
+     - resolved blockers:
+       `node scripts/forge-lane-runtime.mjs set-company-gate --gate delivery_readiness --gate-owner ceo --delivery-state in_progress`
 
 7. Update state.json: phase=6, phase_id="delivery", phase_name="delivery"
 
-8. Transition to Phase 6 (forge:deliver)
+8. Update session handoff:
+   - unresolved blockers:
+     `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "{what remains blocked}" --next-goal "Continue blocker resolution" --next-owner lead-dev`
+   - resolved blockers:
+     `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "Fix loop clear; move to delivery readiness" --next-goal "Prepare delivery review package" --next-owner ceo`
+
+9. Transition to Phase 6 (forge:deliver)
 </Steps>
 
 <State_Changes>
@@ -90,6 +108,7 @@ the client with alternatives.
 - Updates: .forge/holes/{issue-id}.md (attempt count, resolution status)
 - Creates: .forge/evidence/rca-{issue-id}.md (for complex issues)
 - Updates: .forge/state.json (phase=6 when all blockers resolved)
+- Updates: .forge/runtime.json (implementation/delivery gate result + next session handoff)
 - Removes: fix worktrees after merge
 </State_Changes>
 
@@ -101,6 +120,8 @@ the client with alternatives.
 - Fixing a blocker but introducing a new blocker (regression)
 - Not tracking attempt history for each issue
 - Skipping CTO review on complex multi-module fixes
+- Sending a fix to review without a runtime handoff note
+- Letting review, merge, or rebase state drift away from runtime
 - Leaving orphan fix worktrees after Phase 5 completes
 - Marking an issue as resolved without QA re-verification
 - Not presenting alternatives when max iterations are exceeded

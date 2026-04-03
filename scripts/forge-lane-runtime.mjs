@@ -2,11 +2,22 @@
 
 import {
   LANE_STATUS_SEQUENCE,
+  initLaneRecord,
+  markLaneMergeState,
+  markLaneReviewState,
   normalizeRuntimeLanes,
+  recordLaneHandoff,
+  readForgeState,
   readRuntimeState,
+  resolvePhase,
   selectResumeLane,
+  setCompanyGate,
+  setLaneOwner,
+  setSessionBrief,
+  setLaneStatus,
   summarizeLaneBriefs,
   summarizeLaneCounts,
+  writeSessionHandoff,
   writeRuntimeState,
 } from './lib/forge-state.mjs';
 
@@ -18,6 +29,11 @@ Usage:
   node scripts/forge-lane-runtime.mjs update-lane-status --lane <lane> --status <status> [--note <text>]
   node scripts/forge-lane-runtime.mjs assign-owner --lane <lane> --owner <name>
   node scripts/forge-lane-runtime.mjs write-handoff --lane <lane> --note <text>
+  node scripts/forge-lane-runtime.mjs mark-review-state --lane <lane> --state <state> [--note <text>]
+  node scripts/forge-lane-runtime.mjs mark-merge-state --lane <lane> --state <state> [--note <text>]
+  node scripts/forge-lane-runtime.mjs set-session-brief --goal <text> [--exit-criteria <item1,item2>] [--next-goal <text>] [--next-owner <owner>] [--handoff <text>]
+  node scripts/forge-lane-runtime.mjs write-session-handoff --summary <text> [--next-goal <text>] [--next-owner <owner>]
+  node scripts/forge-lane-runtime.mjs set-company-gate --gate <gate> [--gate-owner <owner>] [--delivery-state <state>] [--customer-blockers <a,b>] [--internal-blockers <a,b>]
   node scripts/forge-lane-runtime.mjs summarize-lanes [--json]
   node scripts/forge-lane-runtime.mjs --help
 
@@ -29,6 +45,18 @@ Options:
   --reviewer    designated reviewer for the lane
   --depends-on  comma-separated upstream lane ids
   --status      ${LANE_STATUS_SEQUENCE.join(' | ')}
+  --state       explicit review/merge state
+  --goal        current session goal
+  --exit-criteria comma-separated session exit criteria
+  --next-goal   next session goal
+  --next-owner  next session owner
+  --handoff     session handoff summary
+  --summary     session handoff summary
+  --gate        active company gate
+  --gate-owner  active company gate owner
+  --delivery-state delivery readiness state
+  --customer-blockers comma-separated customer blockers
+  --internal-blockers comma-separated internal blockers
   --owner       current lane owner role or label
   --note        handoff or status note
   --json        emit machine-readable summary
@@ -65,6 +93,17 @@ function parseDepends(value) {
     .filter(Boolean);
 }
 
+function parseList(value) {
+  if (!value) {
+    return [];
+  }
+
+  return String(value)
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
 function parseArgs(argv) {
   const options = {
     json: false,
@@ -92,6 +131,18 @@ function parseArgs(argv) {
       '--reviewer',
       '--depends-on',
       '--status',
+      '--state',
+      '--goal',
+      '--exit-criteria',
+      '--next-goal',
+      '--next-owner',
+      '--handoff',
+      '--summary',
+      '--gate',
+      '--gate-owner',
+      '--delivery-state',
+      '--customer-blockers',
+      '--internal-blockers',
       '--owner',
       '--note',
     ].includes(arg)) {
@@ -115,6 +166,30 @@ function parseArgs(argv) {
         options.dependsOn = parseDepends(value);
       } else if (arg === '--status') {
         options.status = value.trim();
+      } else if (arg === '--state') {
+        options.state = value.trim();
+      } else if (arg === '--goal') {
+        options.goal = value.trim();
+      } else if (arg === '--exit-criteria') {
+        options.exitCriteria = parseList(value);
+      } else if (arg === '--next-goal') {
+        options.nextGoal = value.trim();
+      } else if (arg === '--next-owner') {
+        options.nextOwner = value.trim();
+      } else if (arg === '--handoff') {
+        options.handoff = value.trim();
+      } else if (arg === '--summary') {
+        options.summary = value.trim();
+      } else if (arg === '--gate') {
+        options.gate = value.trim();
+      } else if (arg === '--gate-owner') {
+        options.gateOwner = value.trim();
+      } else if (arg === '--delivery-state') {
+        options.deliveryState = value.trim();
+      } else if (arg === '--customer-blockers') {
+        options.customerBlockers = parseList(value);
+      } else if (arg === '--internal-blockers') {
+        options.internalBlockers = parseList(value);
       } else if (arg === '--owner') {
         options.owner = value.trim();
       } else if (arg === '--note') {
@@ -174,25 +249,30 @@ function assertStatus(status) {
   }
 }
 
-function buildRuntime(runtime, lanes, eventName, laneId) {
-  const nextRuntime = {
+function buildRuntime(runtime, eventName, laneId) {
+  return writeRuntimeState(process.cwd(), {
     ...runtime,
-    lanes,
+    lanes: normalizeLaneRecords(runtime.lanes),
     task_graph_version: Number(runtime.task_graph_version) > 0 ? Number(runtime.task_graph_version) : 1,
-    active_worktrees: Object.fromEntries(
-      Object.values(lanes)
-        .filter(lane => lane.worktree_path)
-        .map(lane => [lane.id, lane.worktree_path]),
-    ),
     last_event: {
       name: eventName,
       lane: laneId,
       at: new Date().toISOString(),
     },
-  };
+  });
+}
 
-  nextRuntime.resume_lane = selectResumeLane(nextRuntime);
-  return writeRuntimeState(process.cwd(), nextRuntime);
+function hasHandoffNote(lane, fallbackNote = '') {
+  if (String(fallbackNote || '').trim()) {
+    return true;
+  }
+
+  if (String(lane.session_handoff_notes || '').trim()) {
+    return true;
+  }
+
+  return Array.isArray(lane.handoff_notes)
+    && lane.handoff_notes.some(entry => entry?.kind === 'handoff' && String(entry.note || '').trim());
 }
 
 function initLane(options) {
@@ -205,33 +285,21 @@ function initLane(options) {
     fail(`Lane already exists: ${options.lane}`);
   }
 
-  const now = new Date().toISOString();
-  const nextLanes = {
-    ...lanes,
-    [options.lane]: {
-      id: options.lane,
+  const nextRuntime = buildRuntime(
+    initLaneRecord(runtime, {
+      laneId: options.lane,
       title: options.title,
-      owner_role: '',
-      owner_agent_id: '',
-      worktree_path: options.worktree || '',
-      dependencies: options.dependsOn || [],
-      status: 'pending',
-      session_handoff_notes: '',
-      review_state: 'pending',
-      scope: [],
-      acceptance_criteria: [],
-      last_event_at: now,
-      blocked_reason: '',
+      worktreePath: options.worktree || '',
+      taskFile: options.taskFile || '',
       reviewer: options.reviewer || '',
-      task_file: options.taskFile || '',
-      handoff_notes: [],
-    },
-  };
-
-  const nextRuntime = buildRuntime(runtime, nextLanes, 'init-lane', options.lane);
+      dependencies: options.dependsOn || [],
+    }),
+    'init-lane',
+    options.lane,
+  );
   console.log(`initialized: ${options.lane}`);
-  console.log(`title: ${nextLanes[options.lane].title}`);
-  console.log(`status: ${nextLanes[options.lane].status}`);
+  console.log(`title: ${nextRuntime.lanes[options.lane].title}`);
+  console.log(`status: ${nextRuntime.lanes[options.lane].status}`);
   console.log(`resume_lane: ${nextRuntime.resume_lane || '(none)'}`);
 }
 
@@ -243,31 +311,19 @@ function updateLaneStatus(options) {
   assertStatus(options.status);
   const { runtime, lanes } = readLaneState();
   const lane = getLane(lanes, options.lane);
-  const now = new Date().toISOString();
-  const handoffNotes = [...lane.handoff_notes];
-
-  if (options.note) {
-    handoffNotes.push({
-      at: now,
-      kind: 'status',
-      note: options.note,
-    });
+  if (options.status === 'in_review' && !hasHandoffNote(lane, options.note)) {
+    fail('Lane requires a handoff note before entering review.');
   }
 
-  const nextLanes = {
-    ...lanes,
-    [options.lane]: {
-      ...lane,
+  buildRuntime(
+    setLaneStatus(runtime, {
+      laneId: options.lane,
       status: options.status,
-      blocked_reason: options.status === 'blocked' ? (options.note || lane.blocked_reason) : '',
-      review_state: options.status === 'in_review' ? 'pending' : lane.review_state,
-      session_handoff_notes: options.note || lane.session_handoff_notes,
-      handoff_notes: handoffNotes,
-      last_event_at: now,
-    },
-  };
-
-  buildRuntime(runtime, nextLanes, 'update-lane-status', options.lane);
+      note: options.note || '',
+    }),
+    'update-lane-status',
+    options.lane,
+  );
   console.log(`lane: ${options.lane}`);
   console.log(`status: ${options.status}`);
   if (options.note) {
@@ -281,17 +337,16 @@ function assignOwner(options) {
   }
 
   const { runtime, lanes } = readLaneState();
-  const lane = getLane(lanes, options.lane);
-  const nextLanes = {
-    ...lanes,
-    [options.lane]: {
-      ...lane,
-      owner_role: options.owner,
-      last_event_at: new Date().toISOString(),
-    },
-  };
+  getLane(lanes, options.lane);
 
-  buildRuntime(runtime, nextLanes, 'assign-owner', options.lane);
+  buildRuntime(
+    setLaneOwner(runtime, {
+      laneId: options.lane,
+      ownerRole: options.owner,
+    }),
+    'assign-owner',
+    options.lane,
+  );
   console.log(`lane: ${options.lane}`);
   console.log(`owner: ${options.owner}`);
 }
@@ -302,28 +357,133 @@ function writeHandoff(options) {
   }
 
   const { runtime, lanes } = readLaneState();
-  const lane = getLane(lanes, options.lane);
-  const now = new Date().toISOString();
-  const nextLanes = {
-    ...lanes,
-    [options.lane]: {
-      ...lane,
-      session_handoff_notes: options.note,
-      handoff_notes: [
-        ...lane.handoff_notes,
-        {
-          at: now,
-          kind: 'handoff',
-          note: options.note,
-        },
-      ],
-      last_event_at: now,
-    },
-  };
+  getLane(lanes, options.lane);
 
-  buildRuntime(runtime, nextLanes, 'write-handoff', options.lane);
+  buildRuntime(
+    recordLaneHandoff(runtime, {
+      laneId: options.lane,
+      note: options.note,
+    }),
+    'write-handoff',
+    options.lane,
+  );
   console.log(`lane: ${options.lane}`);
   console.log('handoff: recorded');
+}
+
+function markReview(options) {
+  if (!options.lane || !options.state) {
+    fail('Expected --lane and --state for mark-review-state');
+  }
+
+  const { runtime, lanes } = readLaneState();
+  getLane(lanes, options.lane);
+
+  buildRuntime(
+    markLaneReviewState(runtime, {
+      laneId: options.lane,
+      reviewState: options.state,
+      note: options.note || '',
+    }),
+    'mark-review-state',
+    options.lane,
+  );
+  console.log(`lane: ${options.lane}`);
+  console.log(`review_state: ${options.state}`);
+}
+
+function markMerge(options) {
+  if (!options.lane || !options.state) {
+    fail('Expected --lane and --state for mark-merge-state');
+  }
+
+  const { runtime, lanes } = readLaneState();
+  getLane(lanes, options.lane);
+
+  buildRuntime(
+    markLaneMergeState(runtime, {
+      laneId: options.lane,
+      mergeState: options.state,
+      note: options.note || '',
+    }),
+    'mark-merge-state',
+    options.lane,
+  );
+  console.log(`lane: ${options.lane}`);
+  console.log(`merge_state: ${options.state}`);
+}
+
+function setSession(options) {
+  if (!options.goal) {
+    fail('Expected --goal for set-session-brief');
+  }
+
+  const { runtime } = readLaneState();
+  const nextRuntime = buildRuntime(
+    setSessionBrief(runtime, {
+      currentSessionGoal: options.goal,
+      sessionExitCriteria: options.exitCriteria || [],
+      nextSessionGoal: options.nextGoal || '',
+      nextSessionOwner: options.nextOwner || '',
+      sessionHandoffSummary: options.handoff || '',
+    }),
+    'set-session-brief',
+    '',
+  );
+
+  console.log(`goal: ${nextRuntime.current_session_goal}`);
+  if (nextRuntime.next_session_owner) {
+    console.log(`next_owner: ${nextRuntime.next_session_owner}`);
+  }
+}
+
+function handoffSession(options) {
+  if (!options.summary) {
+    fail('Expected --summary for write-session-handoff');
+  }
+
+  const { runtime } = readLaneState();
+  const nextRuntime = buildRuntime(
+    writeSessionHandoff(runtime, {
+      summary: options.summary,
+      nextSessionGoal: options.nextGoal || '',
+      nextSessionOwner: options.nextOwner || '',
+    }),
+    'write-session-handoff',
+    '',
+  );
+
+  console.log(`handoff: ${nextRuntime.session_handoff_summary}`);
+  if (nextRuntime.next_session_owner) {
+    console.log(`next_owner: ${nextRuntime.next_session_owner}`);
+  }
+}
+
+function setGate(options) {
+  if (!options.gate) {
+    fail('Expected --gate for set-company-gate');
+  }
+
+  const { runtime } = readLaneState();
+  const state = readForgeState(process.cwd());
+  const nextRuntime = buildRuntime(
+    setCompanyGate(runtime, {
+      activeGate: options.gate,
+      activeGateOwner: options.gateOwner || '',
+      deliveryReadiness: options.deliveryState || '',
+      customerBlockers: options.customerBlockers,
+      internalBlockers: options.internalBlockers,
+      phaseAnchor: state ? resolvePhase(state).id : '',
+    }),
+    'set-company-gate',
+    '',
+  );
+
+  console.log(`gate: ${nextRuntime.active_gate}`);
+  if (nextRuntime.active_gate_owner) {
+    console.log(`gate_owner: ${nextRuntime.active_gate_owner}`);
+  }
+  console.log(`delivery: ${nextRuntime.delivery_readiness}`);
 }
 
 function summarizeLanes(options) {
@@ -342,6 +502,15 @@ function summarizeLanes(options) {
       counts,
       resume_lane: resumeLane,
       briefs,
+      active_gate: nextRuntime.active_gate || '',
+      active_gate_owner: nextRuntime.active_gate_owner || '',
+      delivery_readiness: nextRuntime.delivery_readiness || 'unknown',
+      current_session_goal: nextRuntime.current_session_goal || '',
+      next_session_goal: nextRuntime.next_session_goal || '',
+      next_session_owner: nextRuntime.next_session_owner || '',
+      session_handoff_summary: nextRuntime.session_handoff_summary || '',
+      customer_blockers: nextRuntime.customer_blockers || [],
+      internal_blockers: nextRuntime.internal_blockers || [],
       lanes: ordered,
     }, null, 2));
     return;
@@ -354,6 +523,14 @@ function summarizeLanes(options) {
 
   console.log(`Lanes: ${counts.total}`);
   console.log(`Resume lane: ${resumeLane || '(none)'}`);
+  console.log(`Gate: ${nextRuntime.active_gate || '(none)'}`);
+  console.log(`Delivery: ${nextRuntime.delivery_readiness || 'unknown'}`);
+  if (nextRuntime.current_session_goal) {
+    console.log(`Session goal: ${nextRuntime.current_session_goal}`);
+  }
+  if (nextRuntime.next_session_owner || nextRuntime.next_session_goal) {
+    console.log(`Next session: ${nextRuntime.next_session_owner || '(unassigned)'}${nextRuntime.next_session_goal ? ` -> ${nextRuntime.next_session_goal}` : ''}`);
+  }
   console.log(`Briefs: ${briefs.join(', ') || '(none)'}`);
   for (const lane of ordered) {
     console.log(`${lane.id} [${lane.status}]`);
@@ -394,6 +571,31 @@ function main() {
 
   if (command === 'write-handoff') {
     writeHandoff(options);
+    return;
+  }
+
+  if (command === 'mark-review-state') {
+    markReview(options);
+    return;
+  }
+
+  if (command === 'mark-merge-state') {
+    markMerge(options);
+    return;
+  }
+
+  if (command === 'set-session-brief') {
+    setSession(options);
+    return;
+  }
+
+  if (command === 'write-session-handoff') {
+    handoffSession(options);
+    return;
+  }
+
+  if (command === 'set-company-gate') {
+    setGate(options);
     return;
   }
 

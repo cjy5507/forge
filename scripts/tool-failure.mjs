@@ -3,7 +3,31 @@
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
-import { appendRecent, readActiveTier, readForgeState, updateRuntimeState } from './lib/forge-state.mjs';
+import {
+  appendRecent,
+  readActiveTier,
+  readForgeState,
+  resolveForgeBaseDir,
+  resolveRuntimeLaneContext,
+  updateRuntimeState,
+} from './lib/forge-state.mjs';
+
+function summarizeLaneFailure(input) {
+  const toolName = String(input?.tool_name || 'unknown');
+  const toolInput = JSON.stringify(input?.tool_input || {});
+  const errorText = String(input?.error || input?.tool_error || input?.stderr || 'unknown failure').trim();
+  const combined = `${toolName} ${toolInput} ${errorText}`.toLowerCase();
+
+  if (toolName === 'Bash' && /(git worktree|rebase|merge|conflict)/.test(combined)) {
+    return errorText || 'Git/worktree operation failed.';
+  }
+
+  if (/(review|request-changes|changes requested|pr review)/.test(combined)) {
+    return errorText || 'Review operation failed.';
+  }
+
+  return '';
+}
 
 function classifyFailure(input) {
   const toolName = String(input?.tool_name || 'unknown');
@@ -49,13 +73,15 @@ async function main() {
     return;
   }
   const cwd = input?.cwd || '.';
-  const state = readForgeState(cwd);
-  const tier = readActiveTier(cwd, state, input);
+  const rootCwd = resolveForgeBaseDir(cwd);
+  const state = readForgeState(rootCwd);
+  const tier = readActiveTier(rootCwd, state, input);
 
   try {
     const commandText = String(input?.tool_input?.command || input?.error || '');
     const testLike = /(test|vitest|jest|playwright)/i.test(commandText);
     const guidance = classifyFailure(input);
+    const laneFailureReason = summarizeLaneFailure(input);
     const toolInput = input?.tool_input || {};
     const truncatedInput = JSON.stringify(toolInput).length > 500
       ? { _truncated: true, summary: JSON.stringify(toolInput).slice(0, 500) }
@@ -68,21 +94,48 @@ async function main() {
       guidance,
     };
 
-    updateRuntimeState(cwd, current => ({
-      ...current,
-      active_tier: tier,
-      recent_failures: appendRecent(current.recent_failures, entry),
-      stats: {
-        ...current.stats,
-        failure_count: (current.stats.failure_count || 0) + 1,
-        test_runs: testLike ? (current.stats.test_runs || 0) + 1 : current.stats.test_runs || 0,
-        test_failures: testLike ? (current.stats.test_failures || 0) + 1 : current.stats.test_failures || 0,
-      },
-      last_event: {
-        name: 'PostToolUseFailure',
-        at: entry.at,
-      },
-    }));
+    updateRuntimeState(rootCwd, current => {
+      const { laneId, lane } = resolveRuntimeLaneContext(current, rootCwd, cwd);
+      const laneEntry = laneId ? { ...entry, lane_id: laneId } : entry;
+      const nextLanes = laneId && laneFailureReason
+        ? {
+            ...current.lanes,
+            [laneId]: {
+              ...lane,
+              status: 'blocked',
+              blocked_reason: laneFailureReason,
+              session_handoff_notes: laneFailureReason,
+              last_event_at: entry.at,
+              handoff_notes: [
+                ...(Array.isArray(lane?.handoff_notes) ? lane.handoff_notes : []),
+                {
+                  kind: 'tool-failure',
+                  at: entry.at,
+                  tool_name: laneEntry.tool_name,
+                  note: laneFailureReason,
+                },
+              ],
+            },
+          }
+        : current.lanes;
+
+      return {
+        ...current,
+        active_tier: tier,
+        lanes: nextLanes,
+        recent_failures: appendRecent(current.recent_failures, laneEntry),
+        stats: {
+          ...current.stats,
+          failure_count: (current.stats.failure_count || 0) + 1,
+          test_runs: testLike ? (current.stats.test_runs || 0) + 1 : current.stats.test_runs || 0,
+          test_failures: testLike ? (current.stats.test_failures || 0) + 1 : current.stats.test_failures || 0,
+        },
+        last_event: {
+          name: 'PostToolUseFailure',
+          at: entry.at,
+        },
+      };
+    });
 
     console.log(JSON.stringify({
       continue: true,
@@ -93,7 +146,7 @@ async function main() {
       },
     }));
   } catch (error) {
-    handleHookError(error, 'tool-failure', cwd);
+    handleHookError(error, 'tool-failure', rootCwd);
   }
 }
 
