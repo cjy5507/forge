@@ -306,15 +306,45 @@ function initLane(options) {
   console.log(`next_lane: ${nextRuntime.next_lane || '(none)'}`);
 }
 
-function tryRemoveWorktree(worktreePath) {
-  if (!worktreePath) return false;
+function tryDeleteBranch(branch) {
+  if (!branch || branch === 'main' || branch === 'master') return '';
+  const result = spawnSync('git', ['branch', '-D', branch], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+  return result.status === 0 ? branch : '';
+}
+
+function findWorktreeBranch(worktreePath) {
   const fullPath = resolve(worktreePath);
-  if (!existsSync(fullPath)) return false;
+  const result = spawnSync('git', ['worktree', 'list', '--porcelain'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) return '';
+  const lines = String(result.stdout).split('\n');
+  let currentPath = '';
+  for (const line of lines) {
+    if (line.startsWith('worktree ')) currentPath = resolve(line.slice(9));
+    if (line.startsWith('branch ') && currentPath === fullPath) {
+      return line.slice(7).replace(/^refs\/heads\//, '');
+    }
+  }
+  return '';
+}
+
+function tryRemoveWorktree(worktreePath) {
+  if (!worktreePath) return { removed: false, branch: '' };
+  const fullPath = resolve(worktreePath);
+  if (!existsSync(fullPath)) return { removed: false, branch: '' };
+  const branch = findWorktreeBranch(fullPath);
   const result = spawnSync('git', ['worktree', 'remove', fullPath], {
     cwd: process.cwd(),
     encoding: 'utf8',
   });
-  return result.status === 0;
+  const removed = result.status === 0;
+  const deletedBranch = removed ? tryDeleteBranch(branch) : '';
+  return { removed, branch: deletedBranch };
 }
 
 function updateLaneStatus(options) {
@@ -330,9 +360,9 @@ function updateLaneStatus(options) {
   }
 
   const isDone = options.status === 'done' || options.status === 'merged';
-  let worktreeRemoved = false;
+  let cleanup = { removed: false, branch: '' };
   if (isDone && lane.worktree_path) {
-    worktreeRemoved = tryRemoveWorktree(lane.worktree_path);
+    cleanup = tryRemoveWorktree(lane.worktree_path);
   }
 
   buildRuntime(
@@ -346,8 +376,11 @@ function updateLaneStatus(options) {
   );
   console.log(`lane: ${options.lane}`);
   console.log(`status: ${options.status}`);
-  if (worktreeRemoved) {
+  if (cleanup.removed) {
     console.log(`worktree removed: ${lane.worktree_path}`);
+  }
+  if (cleanup.branch) {
+    console.log(`branch deleted: ${cleanup.branch}`);
   }
   if (options.note) {
     console.log(`note: ${options.note}`);

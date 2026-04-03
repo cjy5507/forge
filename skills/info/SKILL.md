@@ -1,15 +1,17 @@
 ---
-name: status
-description: "Show current Forge project state. Triggers: \"forge status\", \"where are we?\", \"show progress\"."
+name: info
+description: "Show Forge project state and harness metrics. Triggers: \"forge info\", \"where are we?\", \"show progress\", \"forge metrics\", \"measure Forge\"."
 ---
 
 <Purpose>
-One-glance view of the project. Answers three questions: where are we, what's blocking, what's next.
+One-glance view of the project plus harness effectiveness.
+Answers: where are we, what's blocking, what's next, how much did Forge intervene.
 Prioritizes actionable information over completeness.
 </Purpose>
 
 <Use_When>
-- User asks "forge status", "where are we?", "show progress"
+- User asks "forge info", "where are we?", "show progress"
+- User asks for Forge metrics or harness overhead
 - Between phases to check overall state
 - When returning to a session
 </Use_When>
@@ -21,7 +23,7 @@ Prioritizes actionable information over completeness.
 Load `.forge/state.json`. If missing → "No active Forge project. Use `forge` to start one."
 
 Also load if they exist:
-- `.forge/runtime.json` — lanes, blockers, ownership
+- `.forge/runtime.json` — lanes, blockers, ownership, harness stats
 - `.forge/holes/` — issue counts by severity
 - Latest git tag matching `forge/*`
 
@@ -56,7 +58,7 @@ Within Phase 3, refine by lane completion ratio (done lanes / total lanes).
 
 ```
 Forge: {{project_name}} ({{build|repair}})
-Phase {{N}}/{{8 for build, 7 for repair}} — {{phase_name}}
+Phase {{N}}/{{max}} — {{phase_name}}
 {{progress_bar}} {{X}}%
 
 {{actionable_summary}}
@@ -64,12 +66,13 @@ Phase {{N}}/{{8 for build, 7 for repair}} — {{phase_name}}
 Lanes: {{done}}/{{total}} done{{if blocked}}, {{blocked}} blocked{{/if}}
 Issues: {{blocker}} blocker, {{major}} major, {{minor}} minor
 Tag: {{latest_tag}}
+
+Harness: tier={{tier}} sessions={{N}} agents={{N}} failures={{N}} stops={{N}}
 ```
 
 ### Actionable summary rules
 
-Pick the FIRST that applies. This is the most important line — it tells the user
-what to do right now.
+Pick the FIRST that applies:
 
 | Priority | Condition                  | Output format                                        |
 |----------|----------------------------|------------------------------------------------------|
@@ -93,17 +96,23 @@ Only show lane detail for non-done lanes. Keep it to one line per lane.
 
 ### Verbose view
 
-When the user asks "forge status --verbose", "detail", or "자세히":
+When the user asks "forge info --verbose", "detail", or "자세히":
 
 - Full lane list with status, owner, and worktree path per lane
 - All hole summaries with severity and attempt count
 - Handoff notes from runtime (latest per lane)
 - Active worktree paths
 - Phase gate status (what's satisfied, what's pending)
+- Full harness metrics: test runs, test failures, rollback count
+- If baseline data exists, show with/without harness comparison
 
 Default is always the compact view.
 
 </Steps>
+
+<Progressive_Disclosure>
+- Load `../ignite/references/harness-ab-eval.md` when a structured with/without comparison is needed.
+</Progressive_Disclosure>
 
 <Tool_Usage>
 - Read: .forge/state.json, .forge/runtime.json, .forge/holes/*.md

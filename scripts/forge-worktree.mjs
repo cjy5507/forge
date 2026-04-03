@@ -243,11 +243,29 @@ function listWorktrees(options) {
   }
 }
 
+function findWorktreeBranch(worktreePath) {
+  const fullPath = resolve(worktreePath);
+  const entries = parseWorktreeList(runGit(['worktree', 'list', '--porcelain']));
+  const match = entries.find(e => e.path === fullPath);
+  return match?.branch || '';
+}
+
+function tryDeleteBranch(branch) {
+  if (!branch || branch === 'main' || branch === 'master') return false;
+  const result = spawnSync('git', ['branch', '-D', branch], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+  return result.status === 0;
+}
+
 function removeWorktree(options) {
   const worktreePath = resolveWorktreePath(options);
   if (!existsSync(worktreePath)) {
     fail(`Worktree path does not exist: ${worktreePath}`);
   }
+
+  const branch = findWorktreeBranch(worktreePath);
 
   const args = ['worktree', 'remove'];
   if (options.force) {
@@ -257,6 +275,10 @@ function removeWorktree(options) {
   runGit(args);
 
   console.log(`removed: ${worktreePath}`);
+
+  if (branch && tryDeleteBranch(branch)) {
+    console.log(`branch deleted: ${branch}`);
+  }
 }
 
 function pruneWorktrees() {

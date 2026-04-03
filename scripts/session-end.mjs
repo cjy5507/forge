@@ -8,11 +8,12 @@
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
-import { cleanupSessionArtifacts } from './lib/session-cleanup.mjs';
+import { cleanupSessionArtifacts, cleanupForgeBranches, clearHudCustomLine } from './lib/session-cleanup.mjs';
 import {
   appendRecent,
   readActiveTier,
   readForgeState,
+  readRuntimeState,
   resolvePhase,
   summarizePendingWork,
   updateRuntimeState,
@@ -57,6 +58,8 @@ async function main() {
     }));
 
     cleanupSessionArtifacts(cwd);
+    cleanupForgeBranches(cwd, readRuntimeState(cwd));
+    clearHudCustomLine();
 
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
   } catch (error) {

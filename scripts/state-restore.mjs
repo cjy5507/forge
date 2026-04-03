@@ -10,6 +10,8 @@
 // Claude Code convention.  On other hosts this field is silently ignored if the
 // host does not understand it.
 
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
@@ -19,6 +21,36 @@ import {
   updateRuntimeState,
   writeForgeState,
 } from './lib/forge-state.mjs';
+
+function updateHudCustomLine(state, runtime) {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  if (!homeDir) return;
+  const hudConfigDir = join(homeDir, '.claude', 'plugins', 'claude-hud');
+  const hudConfigPath = join(hudConfigDir, 'config.json');
+  if (!existsSync(hudConfigDir)) return;
+
+  let config = {};
+  try {
+    config = JSON.parse(readFileSync(hudConfigPath, 'utf8'));
+  } catch { /* no config yet */ }
+
+  const mode = state.mode || 'build';
+  const phase = state.phase_name || state.phase || '?';
+  const phaseIdx = state.phase_index ?? '?';
+  const maxPhase = mode === 'repair' ? 7 : 8;
+  const lanes = runtime?.lanes || {};
+  const active = Object.values(lanes).filter(l => l.status !== 'done' && l.status !== 'merged');
+  const blockers = (runtime?.customer_blockers?.length || 0) + (runtime?.internal_blockers?.length || 0);
+  const laneInfo = active.length > 0
+    ? active.map(l => `${l.id}(${l.status})`).join(' ')
+    : 'no lanes';
+
+  const line = `⚒ forge:${phase} ${phaseIdx}/${maxPhase} ▸ ${laneInfo} ▸ ${blockers} blockers`;
+
+  config.display = config.display || {};
+  config.display.customLine = line.slice(0, 80);
+  writeFileSync(hudConfigPath, JSON.stringify(config, null, 2) + '\n');
+}
 
 async function main() {
   let input;
@@ -53,6 +85,8 @@ async function main() {
       ...current,
       last_compact_context: context,
     }));
+
+    try { updateHudCustomLine(normalized, nextRuntime); } catch { /* HUD not installed */ }
 
     console.log(JSON.stringify({
       continue: true,
