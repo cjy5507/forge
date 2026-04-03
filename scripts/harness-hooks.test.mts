@@ -257,10 +257,11 @@ describe('forge harness hooks', () => {
 
     expect(output.hookSpecificOutput.hookEventName).toBe('PreToolUse');
     expect(output.hookSpecificOutput.permissionDecision).toBe('deny');
-    expect(output.hookSpecificOutput.permissionDecisionReason).toContain('Missing');
+    // Phase gate fires first (tier-independent) when artifacts are missing
+    expect(output.hookSpecificOutput.permissionDecisionReason).toMatch(/phase gate|Missing/);
   });
 
-  it('becomes a no-op in light tier for write guards', () => {
+  it('phase gate denies even at light tier when artifacts are missing', () => {
     const cwd = makeWorkspace();
     writeState(cwd);
 
@@ -274,19 +275,24 @@ describe('forge harness hooks', () => {
       env: { FORGE_TIER: 'light' },
     });
 
-    expect(output.suppressOutput).toBe(true);
-    expect(output.hookSpecificOutput).toBeUndefined();
+    // Phase gate is tier-independent — denies at light when artifacts missing
+    expect(output.hookSpecificOutput.permissionDecision).toBe('deny');
+    expect(output.hookSpecificOutput.permissionDecisionReason).toMatch(/phase gate/);
   });
 
   it('skips spec and design approvals in repair mode', () => {
     const cwd = makeWorkspace();
     writeState(cwd, {
       mode: 'repair',
+      phase: 'fix',
+      phase_id: 'fix',
+      phase_name: 'fix',
+      phase_index: 3,
       spec_approved: false,
       design_approved: false,
     });
     mkdirSync(join(cwd, '.forge', 'contracts'), { recursive: true });
-    mkdirSync(join(cwd, '.forge', 'evidence'), { recursive: true });
+    mkdirSync(join(cwd, '.forge', 'evidence', 'rca'), { recursive: true });
     writeFileSync(join(cwd, '.forge', 'contracts', 'api.ts'), 'export interface API {}');
     writeFileSync(join(cwd, '.forge', 'code-rules.md'), '# rules\n');
 
@@ -482,11 +488,17 @@ describe('forge harness hooks', () => {
 
 import {
   PHASE_SEQUENCE,
+  REPAIR_PHASE_SEQUENCE,
+  BUILD_PHASE_GATES,
+  REPAIR_PHASE_GATES,
   TIER_SEQUENCE,
   normalizePhaseId,
   normalizeTier,
   tierAtLeast,
   resolvePhase,
+  checkPhaseGate,
+  checkRepairGate,
+  getPhaseGates,
   detectTaskType,
   classifyTierFromMessage,
   inferTierFromState,
@@ -1393,5 +1405,246 @@ describe('stop-failure hook', () => {
     const outputs = parseJsonLines(result.stdout);
     expect(outputs).toHaveLength(1);
     expect(outputs[0]).toEqual({ continue: true, suppressOutput: true });
+  });
+});
+
+// ── Phase gate enforcement ──
+
+describe('checkPhaseGate', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns canAdvance=true when no gate defined for phase', () => {
+    const result = checkPhaseGate(tmpDir, 'intake', 'build');
+    expect(result.canAdvance).toBe(true);
+    expect(result.missing).toEqual([]);
+  });
+
+  it('returns canAdvance=false when required artifacts are missing (build)', () => {
+    const result = checkPhaseGate(tmpDir, 'develop', 'build');
+    expect(result.canAdvance).toBe(false);
+    expect(result.missing).toContain('design');
+    expect(result.missing).toContain('code-rules.md');
+    expect(result.missing).toContain('contracts');
+  });
+
+  it('returns canAdvance=true when required artifacts exist (build)', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# rules');
+    const result = checkPhaseGate(tmpDir, 'develop', 'build');
+    expect(result.canAdvance).toBe(true);
+    expect(result.missing).toEqual([]);
+  });
+
+  it('returns canAdvance=false when required artifacts are missing (repair)', () => {
+    const result = checkPhaseGate(tmpDir, 'isolate', 'repair');
+    expect(result.canAdvance).toBe(false);
+    expect(result.missing).toContain('evidence');
+  });
+
+  it('returns canAdvance=true when required artifacts exist (repair)', () => {
+    mkdirSync(join(tmpDir, '.forge', 'evidence'), { recursive: true });
+    const result = checkPhaseGate(tmpDir, 'isolate', 'repair');
+    expect(result.canAdvance).toBe(true);
+  });
+
+  it('checkRepairGate delegates to checkPhaseGate', () => {
+    const direct = checkPhaseGate(tmpDir, 'isolate', 'repair');
+    const legacy = checkRepairGate(tmpDir, 'isolate');
+    expect(direct.canAdvance).toBe(legacy.canAdvance);
+    expect(direct.missing).toEqual(legacy.missing);
+  });
+});
+
+describe('getPhaseGates', () => {
+  it('returns BUILD_PHASE_GATES for build mode', () => {
+    expect(getPhaseGates('build')).toBe(BUILD_PHASE_GATES);
+  });
+
+  it('returns REPAIR_PHASE_GATES for repair mode', () => {
+    expect(getPhaseGates('repair')).toBe(REPAIR_PHASE_GATES);
+  });
+
+  it('defaults to BUILD_PHASE_GATES', () => {
+    expect(getPhaseGates()).toBe(BUILD_PHASE_GATES);
+  });
+});
+
+describe('resolvePhase mismatch detection', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('sets mismatch=false when phase belongs to its mode', () => {
+    const result = resolvePhase({ mode: 'build', phase_id: 'develop' });
+    expect(result.mismatch).toBe(false);
+  });
+
+  it('sets mismatch=true when repair mode has a build phase', () => {
+    const result = resolvePhase({ mode: 'repair', phase_id: 'develop' });
+    expect(result.mismatch).toBe(true);
+    expect(result.id).toBe('develop');
+  });
+
+  it('sets mismatch=false for shared phases like intake', () => {
+    const result = resolvePhase({ mode: 'repair', phase_id: 'intake' });
+    expect(result.mismatch).toBe(false);
+  });
+});
+
+describe('writeForgeState phase validation', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('adds _phase_gate_warning when gate requirements are not met', () => {
+    const state = {
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'light',
+    };
+    const result = writeForgeState(tmpDir, state);
+    expect(result._phase_gate_warning).toMatch(/design/);
+    expect(result._phase_gate_warning).toMatch(/code-rules\.md/);
+  });
+
+  it('adds _phase_mismatch_warning for mode-phase mismatch', () => {
+    const state = {
+      mode: 'repair',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'light',
+    };
+    const result = writeForgeState(tmpDir, state);
+    expect(result._phase_mismatch_warning).toMatch(/does not belong to repair/);
+  });
+
+  it('does not add warnings when everything is valid', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    mkdirSync(join(forgeDir, 'evidence'), { recursive: true });
+    const state = {
+      mode: 'repair',
+      phase: 'isolate',
+      phase_id: 'isolate',
+      phase_name: 'isolate',
+      tier: 'light',
+    };
+    const result = writeForgeState(tmpDir, state);
+    expect(result._phase_gate_warning).toBeUndefined();
+    expect(result._phase_mismatch_warning).toBeUndefined();
+  });
+});
+
+describe('write-gate phase gate enforcement', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('denies writes when phase gate requirements are not met (light tier)', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'light',
+      status: 'in_progress',
+    }));
+    // No design/, code-rules.md, or contracts/ → gate should deny
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
+    }, { env: { FORGE_TIER: 'light' } });
+    expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/phase gate/i);
+  });
+
+  it('allows writes to .forge/ state files even when gate fails', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'light',
+      status: 'in_progress',
+    }));
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: join(forgeDir, 'tasks', 'api.md'), content: '# task' },
+    }, { env: { FORGE_TIER: 'light' } });
+    // Should NOT deny — .forge/ files are exempt
+    expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
+  });
+
+  it('allows writes when all gate requirements are met', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# rules');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'light',
+      status: 'in_progress',
+    }));
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
+    }, { env: { FORGE_TIER: 'light' } });
+    expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
+  });
+
+  it('warns on mode-phase mismatch', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    // Satisfy all build gates so we hit the mismatch check
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# rules');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'repair',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'light',
+      status: 'in_progress',
+    }));
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
+    }, { env: { FORGE_TIER: 'light' } });
+    expect(result.hookSpecificOutput?.additionalContext).toMatch(/mismatch|not in the/i);
   });
 });
