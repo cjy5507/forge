@@ -1,7 +1,7 @@
 {
   "name": "forge",
   "version": "0.1.0",
-  "description": "Structured build and repair workflows for coding agents",
+  "description": "Harness-engineering workflows for Claude Code build and repair tasks.",
   "author": {
     "name": "Forge Contributors",
     "url": "https://github.com/cjy5507/forge"
@@ -10,41 +10,13 @@
   "repository": "https://github.com/cjy5507/forge",
   "license": "MIT",
   "keywords": [
-    "forge",
-    "virtual-company",
-    "evidence-driven",
+    "claude-code",
+    "plugin",
     "harness-engineering",
-    "orchestration",
+    "build",
+    "repair",
     "multi-agent"
   ],
   "skills": "./skills/",
-  "hooks": "./hooks/hooks.json",
-  "mcpServers": "./.mcp.json",
-  "interface": {
-    "displayName": "Forge",
-    "shortDescription": "Structured agent team for build and repair",
-    "longDescription": "Helps Claude Code run a virtual software company with phase gates, tracked subagents, runtime guardrails, and session recovery for build and repair work.",
-    "developerName": "Forge Contributors",
-    "category": "Productivity",
-    "capabilities": [
-      "Write",
-      "Interactive",
-      "Automation"
-    ],
-    "websiteURL": "https://github.com/cjy5507/forge",
-    "privacyPolicyURL": "https://github.com/cjy5507/forge/blob/main/PRIVACY.md",
-    "termsOfServiceURL": "https://github.com/cjy5507/forge/blob/main/TERMS.md",
-    "defaultPrompt": [
-      "Start a Forge harness for this project.",
-      "Show Forge status and resume the current run.",
-      "Use Forge to diagnose and fix this repo."
-    ],
-    "brandColor": "#1F6FEB",
-    "composerIcon": "./assets/forge-icon.svg",
-    "logo": "./assets/forge-logo.svg",
-    "screenshots": [
-      "./assets/screenshot-overview.png",
-      "./assets/screenshot-console.png"
-    ]
-  }
+  "mcpServers": "./.mcp.json"
 }

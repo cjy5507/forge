@@ -112,39 +112,52 @@ To create a reusable install target automatically, run `scripts/setup-plugin.mjs
 
 ### Claude Code
 
-Forge supports two installation paths in Claude Code.
+Forge now ships both a Claude plugin manifest and a Claude marketplace manifest.
 
-If Forge is published through a Claude Code marketplace, install it with the normal marketplace
-flow.
-
-Typical flow:
+Marketplace install from GitHub:
 
 ```text
-/plugin marketplace add <owner>/<marketplace-repo>
-/plugin install forge@<marketplace-name>
+/plugin marketplace add cjy5507/forge
+/plugin install forge@forge
 ```
 
-If you distribute Forge directly from GitHub, import or install the repository root folder
-that contains `.claude-plugin/plugin.json`.
+If your git client prefers HTTPS:
 
-Do not point Claude Code at `.claude-plugin/` alone. The hooks, skills, agents, templates,
-and assets live alongside it in the plugin root.
+```text
+/plugin marketplace add https://github.com/cjy5507/forge.git
+/plugin install forge@forge
+```
+
+You can also install Forge directly from the repository root folder that contains
+`.claude-plugin/plugin.json`.
+
+Do not point Claude Code at `.claude-plugin/` alone. The plugin root is the repository folder
+that also contains `skills/`, `scripts/`, `.mcp.json`, and the rest of the shipped assets.
 
 ### Codex
 
-Forge ships with a `.codex-plugin/plugin.json` manifest.
+If you are setting up Codex itself on a new machine, install the CLI first, similar to the
+`oh-my-codex` setup flow:
 
-Install it through your Codex host's plugin or import flow by pointing the host at the same
-repository root folder that contains `.codex-plugin/plugin.json`.
+```bash
+npm install -g @openai/codex
+```
 
-Do not point Codex at `.codex-plugin/` alone. The manifest expects the rest of the plugin
-files to be available through relative paths from the plugin root.
+Forge ships with a `.codex-plugin/plugin.json` manifest for Codex hosts that support plugin or
+import flows. Point the host at the repository root folder that contains `.codex-plugin/plugin.json`.
 
-If you publish Forge through a marketplace, the marketplace entry should package the repository
-root as one plugin so those relative paths stay intact.
+Recommended Forge roots for Codex:
 
-Because plugin hosts vary, Forge intentionally does not assume a fixed global install path or
-repo-local marketplace file.
+```text
+~/.forge/plugins/forge
+./.forge/plugins/forge
+```
+
+Do not point Codex at `.codex-plugin/` alone. The manifest expects the rest of the plugin files
+to be available through relative paths from the plugin root.
+
+Because Codex hosts vary, Forge intentionally does not assume one marketplace command until the
+exact host flow is confirmed.
 
 ### Local validation after install
 

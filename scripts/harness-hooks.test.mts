@@ -133,9 +133,12 @@ describe('forge harness hooks', () => {
     );
   });
 
-  it('keeps Claude and Codex marketplace metadata aligned', () => {
+  it('keeps Claude marketplace metadata aligned with the Codex manifest', () => {
     const claudeManifest = JSON.parse(
       readFileSync(join(FORGE_ROOT, '.claude-plugin', 'plugin.json'), 'utf8'),
+    );
+    const claudeMarketplace = JSON.parse(
+      readFileSync(join(FORGE_ROOT, '.claude-plugin', 'marketplace.json'), 'utf8'),
     );
     const codexManifest = JSON.parse(
       readFileSync(join(FORGE_ROOT, '.codex-plugin', 'plugin.json'), 'utf8'),
@@ -143,13 +146,8 @@ describe('forge harness hooks', () => {
 
     expect(codexManifest.repository).toBe(claudeManifest.repository);
     expect(codexManifest.homepage).toBe(claudeManifest.homepage);
-    expect(codexManifest.interface.websiteURL).toBe(claudeManifest.interface.websiteURL);
-    expect(codexManifest.interface.privacyPolicyURL).toBe(
-      claudeManifest.interface.privacyPolicyURL,
-    );
-    expect(codexManifest.interface.termsOfServiceURL).toBe(
-      claudeManifest.interface.termsOfServiceURL,
-    );
+    expect(codexManifest.interface.websiteURL).toBe(claudeMarketplace.plugins[0].homepage);
+    expect(codexManifest.name).toBe(claudeMarketplace.plugins[0].name);
   });
 
   it('publishes shared MCP wiring without repo-specific install assumptions', () => {

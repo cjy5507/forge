@@ -1,0 +1,30 @@
+{
+  "name": "forge",
+  "owner": {
+    "name": "Forge Contributors"
+  },
+  "metadata": {
+    "description": "Forge marketplace for harness-engineering workflows",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "forge",
+      "description": "Harness-engineering plugin for Claude Code with guided build and repair workflows, session continuity, runtime guardrails, and MCP-backed skills.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Forge Contributors"
+      },
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/cjy5507/forge",
+      "tags": [
+        "harness-engineering",
+        "build",
+        "repair",
+        "multi-agent",
+        "workflow"
+      ]
+    }
+  ]
+}
