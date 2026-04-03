@@ -1,7 +1,7 @@
 {
   "name": "forge",
   "version": "0.1.0",
-  "description": "A harness-engineering plugin for a virtual software company",
+  "description": "Structured build and repair workflows for coding agents",
   "author": {
     "name": "Forge Contributors",
     "url": "https://github.com/cjy5507/forge"
@@ -22,8 +22,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Forge",
-    "shortDescription": "Virtual software company for build and repair",
-    "longDescription": "Helps Codex run a virtual software company for build and repair work with phase gates, runtime guardrails, tracked subagents, and session recovery.",
+    "shortDescription": "Structured agent team for build and repair",
+    "longDescription": "Helps Codex run a virtual software company with phase gates, tracked subagents, runtime guardrails, and session recovery for build and repair work.",
     "developerName": "Forge Contributors",
     "category": "Productivity",
     "capabilities": [

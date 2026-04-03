@@ -6,23 +6,23 @@ Forge
 
 ## Tagline
 
-Harness-engineering plugin for a virtual software company.
+Harness-engineering plugin for structured agent teams.
 
 ## Short description
 
-Forge runs a virtual software company for build and repair work.
+Forge helps coding agents work like a structured software team for build and repair work.
 
 ## Long description
 
 Forge is a harness-engineering plugin that helps teams run a virtual software company for build and repair work.
 
-It adds guided multi-agent delivery and repair workflows, session continuity, phase gates, and runtime guardrails when work needs more structure.
+Instead of relying on ad-hoc prompting, it gives coding agents clear phases, specialist roles, and runtime guardrails so long-running work stays coordinated.
 
 Adaptive intervention tiers keep simple tasks lightweight while riskier work gets more oversight.
 
-Execution stays grounded in evidence, with security-aware guardrails and recovery paths that surface failures instead of hiding them.
+Evidence-aware checks, security guardrails, and recovery paths make failures visible and easier to resume.
 
-Tracked subagent lifecycle state, runtime history, and repeatable phase rules help multi-agent runs behave consistently across sessions.
+Tracked subagent state and repeatable phase rules help multi-agent runs stay consistent across sessions.
 
 ## Suggested starter prompts
 

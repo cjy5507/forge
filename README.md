@@ -1,8 +1,8 @@
 # Forge
 
-Forge is a harness-engineering plugin that helps teams run a virtual software company for build and repair work.
+Forge is a harness-engineering plugin for teams that need coding agents to work like a structured software team on build and repair tasks.
 
-It adds guided multi-agent delivery and repair workflows, session continuity, and runtime guardrails when work needs more structure.
+It runs a virtual software company with guided multi-agent workflows, session continuity, and runtime guardrails so long-running work stays coordinated.
 
 ## Quick Start
 
@@ -61,7 +61,7 @@ The bootstrap installer clones Forge into a reusable checkout first, then runs
 
 ## What Forge does
 
-- Runs a virtual software company for build and repair work
+- Organizes agents into a virtual software company for build and repair work
 - Routes work into build or repair mode
 - Persists `.forge/` state across sessions
 - Keeps multi-agent runs consistent
