@@ -15,12 +15,15 @@ Use this reference when you need the full phase sequence without loading the ent
 
 ## Repair mode
 
-Skip discovery and design when the project already exists:
+Skip discovery and design when the project already exists (7 working phases, N/7):
 
-1. Diagnose
-2. Fix
-3. QA
-4. Deliver
+0. Intake
+1. Reproduce
+2. Isolate
+3. Fix
+4. Regress
+5. Verify
+6. Delivery
 
 ## Phase gate rule
 

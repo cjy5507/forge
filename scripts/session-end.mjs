@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 // Forge Hook: SessionEnd — snapshot runtime stats for later comparison
+//
+// Host compatibility: Handles the SessionEnd event (supported on Claude Code;
+// may vary on other hosts).  On hosts that do not fire SessionEnd, readStdin()
+// rejects and the catch block returns { continue: true } — stats are simply not
+// snapshotted for that session.  No data is corrupted by the omission.
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';

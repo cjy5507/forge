@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 // Forge Hook: PreCompact — saves critical state checkpoint before context compaction
+//
+// Host compatibility: This script handles the Claude Code PreCompact event,
+// which fires before the host trims the conversation context window.  On hosts
+// that do not support PreCompact, readStdin() rejects and the catch block
+// returns { continue: true } — no checkpoint is written and the host continues.
+// The checkpoint is an optimisation; skipping it never causes data loss.
 
 import { existsSync, mkdirSync, readdirSync, unlinkSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';

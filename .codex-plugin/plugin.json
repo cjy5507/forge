@@ -19,6 +19,7 @@
   ],
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
+  "_hooksNote": "hooks.json lists event names defined by Claude Code (SubagentStart, SubagentStop, PreCompact, StopFailure, Stop, SessionStart, SessionEnd, etc.). Each hook script degrades gracefully when its event is not fired by the host: if stdin is empty or absent the script exits 0 with { continue: true } and does nothing. Hosts that support only a subset of these events are safe to use.",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Forge",

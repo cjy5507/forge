@@ -103,6 +103,11 @@ const DEFAULT_RUNTIME = {
   updated_at: '',
 };
 
+/** Safely extract a trimmed string, returning fallback for non-string values. */
+function requireString(value, fallback = '') {
+  return typeof value === 'string' ? value.trim() : fallback;
+}
+
 function ensureForgeDir(cwd = '.') {
   const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
   if (!existsSync(forgeDir)) {
@@ -300,7 +305,7 @@ export function resolveRuntimeLaneContext(runtime = DEFAULT_RUNTIME, rootCwd = '
   const currentPath = resolve(hookCwd || rootCwd);
 
   for (const [laneId, lane] of Object.entries(lanes)) {
-    const worktreePath = typeof lane?.worktree_path === 'string' ? lane.worktree_path.trim() : '';
+    const worktreePath = requireString(lane?.worktree_path);
     if (!worktreePath) {
       continue;
     }
@@ -316,7 +321,7 @@ export function resolveRuntimeLaneContext(runtime = DEFAULT_RUNTIME, rootCwd = '
 
 function deriveSessionOwner({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
   const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
-  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const activeGate = requireString(runtime?.active_gate);
   const phaseId = state ? resolvePhase(state).id : '';
 
   if (customerBlockers.length > 0 && !['develop', 'qa', 'security', 'fix'].includes(phaseId)) return 'pm';
@@ -451,7 +456,7 @@ function deriveCompanyGateFields({ state = null, runtime = DEFAULT_RUNTIME } = {
 function deriveSessionGoal({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
   const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
   const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
-  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const activeGate = requireString(runtime?.active_gate);
   const readiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
   const phaseId = state ? resolvePhase(state).id : '';
 
@@ -476,7 +481,7 @@ function deriveSessionGoal({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
 }
 
 function deriveSessionExitCriteria({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
-  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const activeGate = requireString(runtime?.active_gate);
   const phaseId = state ? resolvePhase(state).id : '';
 
   if (activeGate === 'design_readiness') return ['architecture approved internally', 'design specs complete', 'technical claims verified'];
@@ -491,7 +496,7 @@ function deriveSessionExitCriteria({ state = null, runtime = DEFAULT_RUNTIME } =
 
 function deriveSessionFields({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
   const observedPhase = state ? resolvePhase(state).id : '';
-  const observedGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const observedGate = requireString(runtime?.active_gate);
   const observedCustomerBlockers = normalizeBlockers(runtime?.customer_blockers).length;
   const observedInternalBlockers = normalizeBlockers(runtime?.internal_blockers).length;
   const briefMode = runtime?.session_brief_mode === 'manual' ? 'manual' : 'auto';
@@ -859,10 +864,10 @@ function recommendedAgentsForCompanyRuntime(runtime = {}, fallback = []) {
 
   const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
   const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
-  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
-  const activeGateOwner = typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner.trim() : '';
+  const activeGate = requireString(runtime?.active_gate);
+  const activeGateOwner = requireString(runtime?.active_gate_owner);
   const readiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
-  const nextSessionOwner = typeof runtime?.next_session_owner === 'string' ? runtime.next_session_owner.trim() : '';
+  const nextSessionOwner = requireString(runtime?.next_session_owner);
 
   if (nextSessionOwner) {
     return uniqueAgents([nextSessionOwner, activeGateOwner, ...fallback]);
@@ -954,12 +959,12 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   const design = state.design_approved ? '✓design' : '×design';
   const tier = normalizeTier(runtime?.active_tier || state.tier || inferTierFromState(state));
   const companyMode = normalizeCompanyMode(runtime?.company_mode);
-  const activeGate = typeof runtime?.active_gate === 'string' ? runtime.active_gate.trim() : '';
+  const activeGate = requireString(runtime?.active_gate);
   const deliveryReadiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
   const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
   const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
-  const currentSessionGoal = typeof runtime?.current_session_goal === 'string' ? runtime.current_session_goal.trim() : '';
-  const nextSessionOwner = typeof runtime?.next_session_owner === 'string' ? runtime.next_session_owner.trim() : '';
+  const currentSessionGoal = requireString(runtime?.current_session_goal);
+  const nextSessionOwner = requireString(runtime?.next_session_owner);
   const agentCount = Array.isArray(runtime?.recommended_agents) ? runtime.recommended_agents.length : 0;
   const laneCounts = summarizeLaneCounts(runtime);
   const nextLane = selectNextLane(runtime);

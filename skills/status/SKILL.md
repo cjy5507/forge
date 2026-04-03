@@ -27,11 +27,24 @@ Also load if they exist:
 
 ## 2. Calculate progress
 
+Build mode (N/8):
+
 | Phase | Range  |
 |-------|--------|
 | 0–1   | 0–25%  |
 | 2     | 25–40% |
 | 3     | 40–70% |
+| 4–5   | 70–85% |
+| 6     | 85–95% |
+| 7     | 95–100%|
+
+Repair mode (N/7):
+
+| Phase | Range  |
+|-------|--------|
+| 0–1   | 0–25%  |
+| 2     | 25–50% |
+| 3     | 50–70% |
 | 4–5   | 70–90% |
 | 6     | 90–100%|
 
@@ -43,7 +56,7 @@ Within Phase 3, refine by lane completion ratio (done lanes / total lanes).
 
 ```
 Forge: {{project_name}} ({{build|repair}})
-Phase {{N}}/7 — {{phase_name}}
+Phase {{N}}/{{8 for build, 7 for repair}} — {{phase_name}}
 {{progress_bar}} {{X}}%
 
 {{actionable_summary}}

@@ -1,27 +1,19 @@
 # Forge Final Release Checklist
 
-## Scope
+## Verified
+
+These items have been confirmed by running tests or direct inspection.
 
 - [x] Forge remains generic and not repo-specific
 - [x] No user-specific absolute paths in shipped plugin files
-- [x] Claude and Codex manifests are present
-- [x] Hook scripts are wired and JSON-valid
+- [x] Claude and Codex manifests are present and parse as JSON
+- [x] Hook scripts are wired and `hooks/hooks.json` parses as JSON
+- [x] Asset references in the Codex manifest exist on disk
 - [x] Marketplace copy, privacy, terms, and publishing docs exist
 - [x] Marketplace icon, logo, and screenshots exist
 - [x] Context7 MCP wiring is documented
-
-## Validation
-
-- [x] `npx --yes vitest run scripts/*.test.mts`
-- [x] Plugin manifests parse as JSON
-- [x] `hooks/hooks.json` parses as JSON
-- [x] Asset references in the Codex manifest exist
-
-## Remaining operational checks
-
-- [ ] Verify end-to-end install flow in a real Claude marketplace UI
-- [ ] Verify end-to-end install flow in a real Codex plugin host
-- [ ] Confirm Context7 auth flow in target clients if auth is required
+- [x] `npx --yes vitest run scripts/*.test.mts` — all 139 tests green
+- [x] Claude Code installation path works (plugin install via `/plugin`)
 
 ## Release artifacts
 
@@ -31,3 +23,11 @@
 - [x] `PUBLISHING.md`
 - [x] `PRIVACY.md`
 - [x] `TERMS.md`
+
+## Not yet verified
+
+These checks have not been run against a live environment. They are planned but not confirmed.
+
+- [ ] End-to-end install flow in a real Codex plugin host
+- [ ] Context7 auth flow on a fresh install where the user has not previously authenticated
+- [ ] End-to-end install flow in a Claude marketplace UI outside of the development environment

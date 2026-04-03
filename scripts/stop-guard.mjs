@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 // Forge Hook: Stop — only blocks termination in full tier
+//
+// Host compatibility: This script handles the Claude Code Stop event.  On
+// hosts that do not fire Stop, readStdin() rejects and the catch block returns
+// { continue: true } — execution is never blocked.
+//
+// Claude Code-specific input fields (all accessed with ?. / fallbacks):
+//   input.last_assistant_message — used to detect interactive prompts so the
+//                                  guard does not block when the agent is
+//                                  waiting for user input
+//   input.stop_hook_active       — set by the host to prevent recursive blocks
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';

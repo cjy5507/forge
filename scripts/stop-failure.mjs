@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 // Forge Hook: StopFailure — logs turn-ending API failures for later recovery
+//
+// Host compatibility: This script handles the Claude Code StopFailure event,
+// which fires when the host's final-turn API call fails.  On hosts that do not
+// fire StopFailure, readStdin() rejects and the catch block returns
+// { continue: true } — no failure is logged and the host continues normally.
+//
+// Claude Code-specific input fields (all accessed with ?. / fallbacks):
+//   input.error          — human-readable error string from the host
+//   input.error_details  — structured details (may be absent on other hosts)
+//   input.last_assistant_message — partial message before the failure
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError, logHookError } from './lib/error-handler.mjs';

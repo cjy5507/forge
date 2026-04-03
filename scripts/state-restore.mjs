@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 // Forge Hook: SessionStart — restores .forge/ state and injects compact adaptive context
+//
+// Host compatibility: Handles the SessionStart event.  On hosts that do not
+// fire SessionStart (or send no stdin payload), readStdin() rejects and the
+// catch block returns { continue: true } — state is not restored for that
+// session but nothing is written or corrupted.
+//
+// The hookSpecificOutput response field (used to inject additionalContext) is a
+// Claude Code convention.  On other hosts this field is silently ignored if the
+// host does not understand it.
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';

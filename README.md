@@ -30,7 +30,7 @@ Shows current phase, what's blocking, and what to do next. One glance, not a wal
 
 ```
 Forge: my-saas-app (build)
-Phase 3/7 — develop
+Phase 3/8 — develop
 ████████████░░░░ 55%
 
 Active: auth-api, payment-ui. Blocked: db-schema (waiting on contract review)
@@ -48,7 +48,7 @@ no re-explaining what you were doing.
 
 ```
 Forge: my-saas-app
-Phase 3/7 — develop
+Phase 3/8 — develop
 3 lanes active, 1 blocked (auth waiting on DB schema)
 
 Next: Continue auth-api lane after resolving DB contract

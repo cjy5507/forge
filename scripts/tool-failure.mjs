@@ -51,6 +51,9 @@ function classifyFailure(input) {
     return 'Git/worktree operation failed. Inspect repo state before retrying.';
   }
 
+  // 'Task' and 'Agent' are Claude Code-specific tool names for sub-agent
+  // delegation.  On other hosts these tool names will not appear, so this
+  // branch simply will not match — the fallthrough default message is safe.
   if (toolName === 'Task' || toolName === 'Agent') {
     return 'Delegation failed. Tighten scope and acceptance criteria before retrying.';
   }

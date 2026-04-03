@@ -27,8 +27,8 @@ Read `.forge/state.json`. If missing → "No active Forge project. Use `forge` t
 | 0–1     | state.json only                                            |
 | 2       | + spec.md                                                  |
 | 3       | + spec.md, code-rules.md, design/, contracts/, runtime.json |
-| 4–5     | + spec.md, holes/, runtime.json                            |
-| 6       | + spec.md, holes/, delivery-report/                        |
+| 4–6     | + spec.md, holes/, runtime.json                            |
+| 7       | + spec.md, holes/, delivery-report/                        |
 
 If `.forge/runtime.json` exists, always load it — it has lane ownership, blockers, and handoff notes.
 
@@ -38,7 +38,7 @@ Keep it short. The user needs three things:
 
 ```
 Forge: {{project_name}}
-Phase {{N}}/7 — {{phase_name}}
+Phase {{N}}/{{8 for build, 7 for repair}} — {{phase_name}}
 {{one-line summary of where things stand}}
 
 Next: {{what to do now}}
@@ -49,7 +49,7 @@ Examples:
 
 ```
 Forge: my-saas-app
-Phase 3/7 — develop
+Phase 3/8 — develop
 3 lanes active, 1 blocked (auth waiting on DB schema)
 
 Next: Continue auth-api lane after resolving DB contract
@@ -57,7 +57,7 @@ Next: Continue auth-api lane after resolving DB contract
 
 ```
 Forge: my-saas-app
-Phase 5/7 — fix
+Phase 6/8 — fix
 2 blockers remaining (login redirect loop, rate limit bypass)
 
 Next: Diagnose login redirect — attempt 1/3
@@ -81,14 +81,23 @@ The goal: the user types `forge continue` and lands on the single most useful th
 
 ## 5. Phase → skill mapping
 
-Standard mode:
+Standard mode (build, N/8):
 - 0 → forge:intake
 - 1 → forge:discovery
 - 2 → forge:design
 - 3 → forge:develop
 - 4 → forge:qa
-- 4.5 → forge:security
-- 5 → forge:fix
+- 5 → forge:security
+- 6 → forge:fix
+- 7 → forge:deliver
+
+Repair mode (N/7):
+- 0 → forge:intake
+- 1 → forge:discovery (reproduce)
+- 2 → forge:design (isolate)
+- 3 → forge:fix
+- 4 → forge:qa (regress)
+- 5 → forge:security (verify)
 - 6 → forge:deliver
 
 Express mode:

@@ -12,8 +12,8 @@ Max 3 iterations before escalating to the client with alternatives.
 </Purpose>
 
 <Use_When>
-- Automatically invoked when Phase 4 (QA) or Phase 4.5 (security) finds blockers
-- state.json phase=5
+- Automatically invoked when Phase 4 (QA) or Phase 5 (security) finds blockers
+- state.json phase=6
 </Use_When>
 
 <Steps>
@@ -80,11 +80,11 @@ Max 3 iterations before escalating to the client with alternatives.
           (c) Accept as known limitation with workaround
      b. Client decides which alternative to pursue
      c. If redesign → route back to Phase 2 (design) for the affected module
-     d. If descope → move issue to known-issues, continue to Phase 6
-     e. If accept → document workaround, continue to Phase 6
+     d. If descope → move issue to known-issues, continue to Phase 7
+     e. If accept → document workaround, continue to Phase 7
 
 6. Gate Decision:
-   - All blockers resolved (fixed or client-approved descope) → phase=6
+   - All blockers resolved (fixed or client-approved descope) → phase=7
    - Still has unresolved blockers → continue iteration
    - Update company runtime in the same step:
      - unresolved blockers:
@@ -92,7 +92,7 @@ Max 3 iterations before escalating to the client with alternatives.
      - resolved blockers:
        `node scripts/forge-lane-runtime.mjs set-company-gate --gate delivery_readiness --gate-owner ceo --delivery-state in_progress`
 
-7. Update state.json: phase=6, phase_id="delivery", phase_name="delivery"
+7. Update state.json: phase=7, phase_id="delivery", phase_name="delivery"
 
 8. Update session handoff:
    - unresolved blockers:
@@ -100,14 +100,14 @@ Max 3 iterations before escalating to the client with alternatives.
    - resolved blockers:
      `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "Fix loop clear; move to delivery readiness" --next-goal "Prepare delivery review package" --next-owner ceo`
 
-9. Transition to Phase 6 (forge:deliver)
+9. Transition to Phase 7 (forge:deliver)
 </Steps>
 
 <State_Changes>
 - Creates: .forge/worktrees/fix-{issue-id}/ (temporary fix worktrees)
 - Updates: .forge/holes/{issue-id}.md (attempt count, resolution status)
 - Creates: .forge/evidence/rca-{issue-id}.md (for complex issues)
-- Updates: .forge/state.json (phase=6 when all blockers resolved)
+- Updates: .forge/state.json (phase=7 when all blockers resolved)
 - Updates: .forge/runtime.json (implementation/delivery gate result + next session handoff)
 - Removes: fix worktrees after merge
 </State_Changes>

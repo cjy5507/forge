@@ -72,8 +72,8 @@ tracked in .forge/holes/ and classified by severity to determine the next phase.
 
 8. Gate Decision:
    - Count blockers and majors
-   - If blockers > 0 → set next_phase=5 (fix loop)
-   - If blockers = 0 → set next_phase=4.5 (security review)
+   - If blockers > 0 → set next_phase=6 (fix loop)
+   - If blockers = 0 → set next_phase=5 (security review)
    - Update company runtime in the same step:
      - If blockers > 0:
        `node scripts/forge-lane-runtime.mjs set-company-gate --gate implementation_readiness --gate-owner lead-dev --delivery-state blocked --internal-blockers "{blocker summaries}"`
@@ -81,8 +81,8 @@ tracked in .forge/holes/ and classified by severity to determine the next phase.
        `node scripts/forge-lane-runtime.mjs set-company-gate --gate security --gate-owner security-reviewer --delivery-state in_progress`
 
 9. Update state.json:
-   - If blockers: phase=5, phase_id="fix", phase_name="fix"
-   - If clean: phase=4.5, phase_id="security", phase_name="security"
+   - If blockers: phase=6, phase_id="fix", phase_name="fix"
+   - If clean: phase=5, phase_id="security", phase_name="security"
 
 10. Update session handoff:
    - If blockers:
@@ -97,7 +97,7 @@ tracked in .forge/holes/ and classified by severity to determine the next phase.
 
 <State_Changes>
 - Creates: .forge/holes/HOLE-{NNN}-{slug}.md (one per discovered issue, via bug-tracker agent)
-- Updates: .forge/state.json (phase=5 or phase=4.5)
+- Updates: .forge/state.json (phase=6 or phase=5)
 - Updates: .forge/runtime.json (qa/security gate result + session handoff)
 - Creates: git tag forge/v1-qa
 </State_Changes>

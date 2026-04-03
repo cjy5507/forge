@@ -1,5 +1,23 @@
 # Forge Release Notes Draft
 
+## v0.1.5
+
+Maintenance and consistency release.
+
+### Highlights
+
+- Removed model hardcoding from all agent prompts; model selection is now left to the host
+- Restored Context7 MCP wiring after it was dropped in a prior cleanup pass
+- All 139 automated tests pass
+- Host support table added to README (Claude Code confirmed; Codex pending live verification)
+- Phase numbering made consistent across agent prompts and harness docs (if phase-numbering lane merged)
+- Harness prompt DRY refactor: shared boilerplate extracted to reduce duplication (if DRY lane merged)
+
+### Notes
+
+- No behavioral changes to Forge workflows. This release cleans up configuration drift.
+- Codex plugin host support is listed as planned in the README; it has not been verified in a live Codex environment.
+
 ## v0.1.2
 
 Marketplace update detection release.

@@ -1,5 +1,16 @@
 #!/usr/bin/env node
 // Forge Hook: SubagentStart — tracks medium/full tier subagents and injects compact context
+//
+// Host compatibility: This script handles the Claude Code SubagentStart event.
+// On hosts that do not fire SubagentStart, readStdin() will reject (empty or no
+// stdin) and the catch block returns { continue: true } silently — no action is
+// taken and the host continues normally.
+//
+// Claude Code-specific input fields used below (all accessed with ?. / fallbacks
+// so missing fields are safe on other hosts):
+//   input.agent_id       — unique ID of the spawned sub-agent
+//   input.agent_type     — e.g. "forge:developer", "forge:qa"
+//   input.transcript_path — path to the sub-agent's conversation transcript
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';

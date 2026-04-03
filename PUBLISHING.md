@@ -28,12 +28,25 @@ Current Forge asset set:
 
 ## Release sanity checks
 
-- Build mode works
-- Repair mode works
-- Stop guard does not trap the user in an infinite loop
-- Subagent lifecycle events populate runtime state
-- Failure guidance is added after tool failures
-- MCP configuration is documented and optional auth requirements are clear
+### Verified by automated tests (139 tests green)
+
+- Plugin manifests parse as valid JSON
+- `hooks/hooks.json` is valid JSON and references existing scripts
+- Asset references in the Codex manifest exist on disk
+- MCP configuration is documented and optional auth requirements are noted
+- Hook scripts are present and referenced correctly
+
+### Pending live-environment verification
+
+These have not been confirmed against a running plugin host and should be tested before treating a release as fully validated.
+
+- Build mode works end-to-end in a real agent session
+- Repair mode works end-to-end in a real agent session
+- Stop guard does not trap the user in an infinite loop under real workloads
+- Subagent lifecycle events populate runtime state in a real multi-agent run
+- Failure guidance appears after tool failures in a real session
+- Codex plugin host recognizes and loads the plugin from `.codex-plugin/plugin.json`
+- Context7 auth flow completes on a fresh install
 
 ## Do not ship if
 

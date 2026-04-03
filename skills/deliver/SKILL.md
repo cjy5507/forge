@@ -4,7 +4,7 @@ description: "Use when Forge delivers the completed product. Tech writer generat
 ---
 
 <Purpose>
-Phase 6 of the Forge pipeline. The final phase where the Tech Writer generates
+Phase 7 of the Forge pipeline. The final phase where the Tech Writer generates
 comprehensive documentation and the CEO compiles a delivery report summarizing
 spec coverage, test results, and known issues. The completed product is presented
 to the client with full transparency. In Autonomous Company Mode, delivery begins only
@@ -12,8 +12,8 @@ after internal readiness gates say the work is truly delivery-ready.
 </Purpose>
 
 <Use_When>
-- Automatically invoked after Phase 5 (fix) completes or Phase 4.5 (security) passes clean
-- state.json phase=6
+- Automatically invoked after Phase 6 (fix) completes or Phase 5 (security) passes clean
+- state.json phase=7
 </Use_When>
 
 <Steps>
@@ -62,7 +62,7 @@ after internal readiness gates say the work is truly delivery-ready.
       - Total tests: N (pass: N, fail: N, skip: N)
       - Test coverage percentage (if measurable)
       - QA test case results (from Phase 4)
-      - Security audit results (from Phase 4.5)
+      - Security audit results (from Phase 5)
 
    c. Known Issues (minor/cosmetic only — blockers are resolved):
       - List each known issue from .forge/holes/ with severity=minor or cosmetic
@@ -103,7 +103,7 @@ after internal readiness gates say the work is truly delivery-ready.
    f. Ask the client to review the completed delivery
 
 5. Client accepts → finalize delivery:
-   a. Update state.json: phase=7, phase_id="complete", phase_name="complete", status="delivered"
+   a. Update state.json: phase=8, phase_id="complete", phase_name="complete", status="delivered"
    b. Create git tag: forge/v1-delivery
    c. Create version tag: forge/v0.1.0
    d. Final dashboard showing complete project summary
@@ -124,7 +124,7 @@ after internal readiness gates say the work is truly delivery-ready.
 - Creates: .forge/delivery-report/component-docs.md (if applicable)
 - Creates: .forge/delivery-report/deploy-guide.md
 - Creates: README.md (project root)
-- Updates: .forge/state.json (phase=7, phase_id="complete", phase_name="complete", status="delivered")
+- Updates: .forge/state.json (phase=8, phase_id="complete", phase_name="complete", status="delivered")
 - Updates: .forge/runtime.json (delivery/customer_review state + customer feedback routing)
 - Creates: git tag forge/v1-delivery
 - Creates: git tag forge/v0.1.0

@@ -1,5 +1,15 @@
 #!/usr/bin/env node
 // Forge Hook: SubagentStop — records completion in medium/full tier
+//
+// Host compatibility: This script handles the Claude Code SubagentStop event.
+// On hosts that do not fire SubagentStop, readStdin() rejects and the catch
+// block returns { continue: true } — the host continues normally without error.
+//
+// Claude Code-specific input fields (all accessed with ?. / fallbacks):
+//   input.agent_id             — ID of the completed sub-agent
+//   input.agent_type           — agent type string
+//   input.last_assistant_message — final message produced by the sub-agent,
+//                                  captured as a handoff note for next session
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';

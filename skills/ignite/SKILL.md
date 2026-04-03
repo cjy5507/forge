@@ -94,21 +94,21 @@ Phase 4 — QA / 품질보증 (QA Engineer):
   1. Invoke forge:qa skill / QA 스킬 실행
   2. Functional, visual, contract, regression, edge-case testing / 기능, 시각, 계약, 회귀, 엣지케이스 테스트
   3. Issues → bug tracker (.forge/holes/) / 이슈 → 버그 트래커
-  4. Blockers → Phase 5, No blockers → Phase 4.5 / 블로커 → 5단계, 없으면 → 4.5단계
+  4. Blockers → Phase 6, No blockers → Phase 5 / 블로커 → 6단계, 없으면 → 5단계
 
-Phase 4.5 — SECURITY / 보안 (Security Reviewer):
+Phase 5 — SECURITY / 보안 (Security Reviewer):
   1. Invoke forge:security skill / 보안 스킬 실행
   2. OWASP Top 10, secrets scan, auth/authz review / OWASP Top 10, 시크릿 스캔, 인증/인가 검토
-  3. Security issues = blockers → Phase 5 / 보안 이슈 = 블로커 → 5단계
+  3. Security issues = blockers → Phase 6 / 보안 이슈 = 블로커 → 6단계
 
-Phase 5 — FIX LOOP / 수정 루프 (Fact Checker + Devs + Troubleshooter):
+Phase 6 — FIX LOOP / 수정 루프 (Fact Checker + Devs + Troubleshooter):
   1. Invoke forge:fix skill / 수정 스킬 실행
   2. Simple issues: fact-check → dev fix → QA re-verify / 단순 이슈: 팩트체크 → 개발자 수정 → QA 재검증
   3. Complex issues: troubleshooter RCA → dev fix → QA re-verify / 복잡 이슈: 근본원인 분석 → 수정 → 재검증
   4. Max 3 iterations on the same blocker before CEO escalates to the client with alternatives / 같은 블로커가 3회 초과 시에만 CEO가 고객에게 대안 제시
-  5. All blockers resolved → Phase 6 / 모든 블로커 해결 → 6단계
+  5. All blockers resolved → Phase 7 / 모든 블로커 해결 → 7단계
 
-Phase 6 — DELIVERY / 납품 (CEO + Tech Writer):
+Phase 7 — DELIVERY / 납품 (CEO + Tech Writer):
   1. Invoke forge:deliver skill / 딜리버리 스킬 실행
   2. Tech writer generates docs (README, API docs, deploy guide) / 테크라이터가 문서 생성
   3. QA + Security + CEO confirm delivery readiness / QA + 보안 + CEO가 납품 가능 상태 확인

@@ -13,9 +13,9 @@ Phase 1  DISCOVERY     PM gathers requirements → spec.md
 Phase 2  DESIGN        CTO + Designer produce architecture, contracts, code rules
 Phase 3  DEVELOP       Lead splits work into lanes, devs work in isolated worktrees
 Phase 4  QA            Functional, visual, contract, regression, edge-case testing
-Phase 4.5 SECURITY     OWASP Top 10, secrets scan, auth/authz review
-Phase 5  FIX           Blocker resolution loop (max 3 attempts per issue)
-Phase 6  DELIVERY      Docs, delivery report, client review
+Phase 5  SECURITY      OWASP Top 10, secrets scan, auth/authz review
+Phase 6  FIX           Blocker resolution loop (max 3 attempts per issue)
+Phase 7  DELIVERY      Docs, delivery report, client review
 ```
 
 ### Phase gates
@@ -27,9 +27,9 @@ Phase 6  DELIVERY      Docs, delivery report, client review
 | 2     | CTO + Designer + Fact Checker confirm design           | `.forge/design/`, `.forge/contracts/`, `.forge/code-rules.md` |
 | 3     | All required lanes merged, internally verified         | merged code, `.forge/runtime.json` |
 | 4     | Testing complete, issues logged                        | `.forge/holes/`            |
-| 4.5   | Security audit complete                                | `.forge/holes/`            |
-| 5     | All blockers resolved (or escalated after 3 attempts)  | fixes merged               |
-| 6     | CEO + QA + Security confirm delivery readiness         | `.forge/delivery-report/`  |
+| 5     | Security audit complete                                | `.forge/holes/`            |
+| 6     | All blockers resolved (or escalated after 3 attempts)  | fixes merged               |
+| 7     | CEO + QA + Security confirm delivery readiness         | `.forge/delivery-report/`  |
 
 ### Git tags
 
@@ -43,13 +43,13 @@ These enable rollback: "go back to design" → restore `forge/v1-design` → con
 For existing codebases that need diagnosis and fixing. Skips discovery and design.
 
 ```
-Phase 0    INTAKE       CEO evaluates, generates baseline artifacts from existing code
-Phase R1   REPRODUCE    Confirm the bug, capture reproduction steps and evidence
-Phase R2   ISOLATE      Troubleshooter performs root cause analysis, narrows to module
-Phase R3   FIX          Developer implements targeted fix in isolated worktree
-Phase R4   REGRESS      Verify fix doesn't break adjacent functionality
-Phase R5   VERIFY       Full QA pass on the fix
-Phase 6    DELIVERY     Docs update, delivery report
+Phase 0  INTAKE       CEO evaluates, generates baseline artifacts from existing code
+Phase 1  REPRODUCE    Confirm the bug, capture reproduction steps and evidence
+Phase 2  ISOLATE      Troubleshooter performs root cause analysis, narrows to module
+Phase 3  FIX          Developer implements targeted fix in isolated worktree
+Phase 4  REGRESS      Verify fix doesn't break adjacent functionality
+Phase 5  VERIFY       Full QA pass on the fix
+Phase 6  DELIVERY     Docs update, delivery report
 ```
 
 ### Repair is not "just fix it"
