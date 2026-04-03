@@ -3,6 +3,7 @@
 
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
+import { cleanupSessionArtifacts } from './lib/session-cleanup.mjs';
 import {
   appendRecent,
   readActiveTier,
@@ -49,6 +50,8 @@ async function main() {
         pending: state ? summarizePendingWork(state) : [],
       },
     }));
+
+    cleanupSessionArtifacts(cwd);
 
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
   } catch (error) {

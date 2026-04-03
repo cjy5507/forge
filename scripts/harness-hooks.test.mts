@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
@@ -1314,6 +1314,35 @@ describe('session-end hook', () => {
     writeState(tmpDir, { phase: 'develop', status: 'active' });
     const output = runHook('session-end.mjs', tmpDir);
     expect(output.continue).toBe(true);
+  });
+
+  it('cleans generated runtime artifacts but preserves forge state and source files', () => {
+    writeState(tmpDir, { phase: 'develop', status: 'active' });
+    mkdirSync(join(tmpDir, '.omx', 'artifacts'), { recursive: true });
+    mkdirSync(join(tmpDir, '.omx', 'logs'), { recursive: true });
+    mkdirSync(join(tmpDir, '.omx', 'state'), { recursive: true });
+    mkdirSync(join(tmpDir, '.omc', 'state'), { recursive: true });
+    mkdirSync(join(tmpDir, 'scripts'), { recursive: true });
+
+    writeFileSync(join(tmpDir, '.omx', 'artifacts', 'review.md'), '# artifact\n');
+    writeFileSync(join(tmpDir, '.omx', 'logs', 'turns.jsonl'), '{}\n');
+    writeFileSync(join(tmpDir, '.omx', 'state', 'hud-state.json'), '{}\n');
+    writeFileSync(join(tmpDir, '.omc', 'state', 'hud-state.json'), '{}\n');
+    writeFileSync(join(tmpDir, '.forge', 'errors.log'), 'oops\n');
+    writeFileSync(join(tmpDir, 'scripts', 'keep.mjs'), 'export const keep = true;\n');
+
+    const output = runHook('session-end.mjs', tmpDir);
+    expect(output.continue).toBe(true);
+
+    expect(existsSync(join(tmpDir, '.forge', 'state.json'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.forge', 'runtime.json'))).toBe(true);
+    expect(existsSync(join(tmpDir, 'scripts', 'keep.mjs'))).toBe(true);
+
+    expect(existsSync(join(tmpDir, '.omx', 'artifacts', 'review.md'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.omx', 'logs', 'turns.jsonl'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.omx', 'state', 'hud-state.json'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.omc', 'state', 'hud-state.json'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.forge', 'errors.log'))).toBe(false);
   });
 });
 
