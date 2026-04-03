@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Forge marketplace for harness-engineering workflows",
-    "version": "0.1.2"
+    "version": "0.1.3"
   },
   "plugins": [
     {
       "name": "forge",
       "description": "Harness-engineering plugin for Claude Code with guided build and repair workflows, session continuity, runtime guardrails, and MCP-backed skills.",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "author": {
         "name": "Forge Contributors"
       },
