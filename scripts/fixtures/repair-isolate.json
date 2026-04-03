@@ -1,0 +1,29 @@
+{
+  "state": {
+    "version": "0.1.0",
+    "project": "api-gateway",
+    "phase_id": "isolate",
+    "mode": "repair",
+    "tier": "medium",
+    "status": "in_progress",
+    "spec_approved": false,
+    "design_approved": false
+  },
+  "runtime": {
+    "version": 3,
+    "active_tier": "medium",
+    "active_gate": "implementation_readiness",
+    "active_gate_owner": "troubleshooter",
+    "delivery_readiness": "blocked",
+    "customer_blockers": [],
+    "internal_blockers": [],
+    "next_lane": "",
+    "lanes": {}
+  },
+  "artifacts": {
+    "evidence": [
+      "reproduce-login-500.md"
+    ],
+    "holes": []
+  }
+}

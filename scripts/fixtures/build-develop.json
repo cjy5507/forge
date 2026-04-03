@@ -1,0 +1,53 @@
+{
+  "state": {
+    "version": "0.1.0",
+    "project": "my-saas-app",
+    "phase_id": "develop",
+    "phase_index": 3,
+    "mode": "build",
+    "tier": "medium",
+    "status": "in_progress",
+    "spec_approved": true,
+    "design_approved": true
+  },
+  "runtime": {
+    "version": 3,
+    "active_tier": "medium",
+    "active_gate": "implementation_readiness",
+    "active_gate_owner": "lead-dev",
+    "delivery_readiness": "in_progress",
+    "customer_blockers": [],
+    "internal_blockers": [],
+    "next_lane": "auth-api",
+    "lanes": {
+      "auth-api": {
+        "id": "auth-api",
+        "title": "Auth API routes",
+        "status": "in_progress",
+        "owner_role": "developer",
+        "worktree_path": ".forge/worktrees/auth-api",
+        "handoff_notes": [
+          { "kind": "status", "note": "JWT middleware done, testing refresh token flow", "at": "2026-04-03T10:00:00Z" }
+        ]
+      },
+      "payment-ui": {
+        "id": "payment-ui",
+        "title": "Payment checkout UI",
+        "status": "ready",
+        "owner_role": "publisher",
+        "worktree_path": ".forge/worktrees/payment-ui",
+        "handoff_notes": []
+      },
+      "db-schema": {
+        "id": "db-schema",
+        "title": "Database schema migration",
+        "status": "blocked",
+        "owner_role": "developer",
+        "blocked_reason": "Waiting on contract review from CTO",
+        "handoff_notes": [
+          { "kind": "status", "note": "Schema drafted, needs CTO sign-off on FK constraints", "at": "2026-04-03T09:00:00Z" }
+        ]
+      }
+    }
+  }
+}

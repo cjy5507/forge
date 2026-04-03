@@ -10,7 +10,7 @@ import {
   readForgeState,
   readRuntimeState,
   resolvePhase,
-  selectResumeLane,
+  selectNextLane,
   setCompanyGate,
   setLaneOwner,
   setSessionBrief,
@@ -300,7 +300,7 @@ function initLane(options) {
   console.log(`initialized: ${options.lane}`);
   console.log(`title: ${nextRuntime.lanes[options.lane].title}`);
   console.log(`status: ${nextRuntime.lanes[options.lane].status}`);
-  console.log(`resume_lane: ${nextRuntime.resume_lane || '(none)'}`);
+  console.log(`next_lane: ${nextRuntime.next_lane || '(none)'}`);
 }
 
 function updateLaneStatus(options) {
@@ -494,13 +494,13 @@ function summarizeLanes(options) {
   };
   const counts = summarizeLaneCounts(nextRuntime);
   const briefs = summarizeLaneBriefs(nextRuntime, 5);
-  const resumeLane = selectResumeLane(nextRuntime);
+  const nextLane = selectNextLane(nextRuntime);
   const ordered = Object.values(lanes).sort((left, right) => left.id.localeCompare(right.id));
 
   if (options.json) {
     console.log(JSON.stringify({
       counts,
-      resume_lane: resumeLane,
+      next_lane: nextLane,
       briefs,
       active_gate: nextRuntime.active_gate || '',
       active_gate_owner: nextRuntime.active_gate_owner || '',
@@ -522,7 +522,7 @@ function summarizeLanes(options) {
   }
 
   console.log(`Lanes: ${counts.total}`);
-  console.log(`Resume lane: ${resumeLane || '(none)'}`);
+  console.log(`Next lane: ${nextLane || '(none)'}`);
   console.log(`Gate: ${nextRuntime.active_gate || '(none)'}`);
   console.log(`Delivery: ${nextRuntime.delivery_readiness || 'unknown'}`);
   if (nextRuntime.current_session_goal) {

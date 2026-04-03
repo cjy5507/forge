@@ -46,7 +46,7 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
 2. Lead defines the lane graph in `.forge/runtime.json`:
    - One lane per isolated module/feature
    - Record upstream dependencies before dispatch
-   - Keep owner, reviewer, worktree, status, handoff notes, and next resume lane current with the runtime helper
+   - Keep owner, reviewer, worktree, status, handoff notes, and next lane current with the runtime helper
    - Convert the PM session brief into an implementation session brief for this session and the next
 
 3. Lead splits work into independent tasks (one per module/feature):

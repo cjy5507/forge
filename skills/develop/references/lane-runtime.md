@@ -13,7 +13,7 @@ Forge lane orchestration is file-backed. The canonical state lives in `.forge/ru
 - `lanes.<lane-id>.session_handoff_notes` — latest handoff summary
 - `lanes.<lane-id>.handoff_notes[]` — ordered status and handoff notes
 - `active_worktrees` — lane-to-worktree lookup
-- `resume_lane` — the next lane Forge should resume
+- `next_lane` — the next lane Forge should continue
 
 ## Standard Helper Commands
 Create the worktree:

@@ -494,7 +494,7 @@ import {
   compactForgeContext,
   summarizePendingWork,
   summarizeLaneCounts,
-  selectResumeLane,
+  selectNextLane,
   summarizeLaneBriefs,
   messageLooksInteractive,
   normalizeStateShape,
@@ -938,9 +938,9 @@ describe('lane runtime helpers', () => {
     expect(counts.in_review).toBe(1);
   });
 
-  it('selectResumeLane prefers explicit lane and then priority order', () => {
-    expect(selectResumeLane({ resume_lane: 'ui', lanes: { ui: { id: 'ui', status: 'blocked' } } })).toBe('ui');
-    expect(selectResumeLane({ lanes: { api: { id: 'api', status: 'ready' }, worker: { id: 'worker', status: 'in_progress' } } })).toBe('worker');
+  it('selectNextLane prefers explicit lane and then priority order', () => {
+    expect(selectNextLane({ next_lane: 'ui', lanes: { ui: { id: 'ui', status: 'blocked' } } })).toBe('ui');
+    expect(selectNextLane({ lanes: { api: { id: 'api', status: 'ready' }, worker: { id: 'worker', status: 'in_progress' } } })).toBe('worker');
   });
 
   it('summarizeLaneBriefs produces compact lane labels', () => {

@@ -13,6 +13,27 @@ export const PHASE_SEQUENCE = [
   'complete',
 ];
 
+export const REPAIR_PHASE_SEQUENCE = [
+  'intake',
+  'reproduce',
+  'isolate',
+  'fix',
+  'regress',
+  'verify',
+  'delivery',
+  'complete',
+];
+
+/** Map repair phase IDs to required artifacts that must exist before advancing */
+export const REPAIR_PHASE_GATES = {
+  reproduce: { requires: [], produces: ['evidence'] },
+  isolate:   { requires: ['evidence'], produces: ['evidence/rca'] },
+  fix:       { requires: ['evidence/rca'], produces: [] },
+  regress:   { requires: [], produces: ['holes'] },
+  verify:    { requires: ['holes'], produces: [] },
+  delivery:  { requires: [], produces: ['delivery-report'] },
+};
+
 export const TIER_SEQUENCE = ['off', 'light', 'medium', 'full'];
 export const LANE_REVIEW_SEQUENCE = ['none', 'pending', 'changes_requested', 'approved'];
 export const LANE_MERGE_SEQUENCE = ['none', 'queued', 'rebasing', 'ready', 'merged'];
@@ -68,7 +89,7 @@ const DEFAULT_RUNTIME = {
   recommended_agents: [],
   lanes: {},
   active_worktrees: {},
-  resume_lane: '',
+  next_lane: '',
   active_agents: {},
   recent_agents: [],
   recent_failures: [],
@@ -147,6 +168,8 @@ export function tierAtLeast(currentTier, requiredTier) {
   return TIER_SEQUENCE.indexOf(normalizeTier(currentTier)) >= TIER_SEQUENCE.indexOf(normalizeTier(requiredTier));
 }
 
+const ALL_KNOWN_PHASES = new Set([...PHASE_SEQUENCE, ...REPAIR_PHASE_SEQUENCE]);
+
 export function normalizePhaseId(value) {
   if (typeof value === 'number') {
     return LEGACY_PHASE_MAP.get(value) || 'intake';
@@ -155,7 +178,7 @@ export function normalizePhaseId(value) {
   if (typeof value === 'string') {
     const trimmed = value.trim().toLowerCase();
 
-    if (PHASE_SEQUENCE.includes(trimmed)) {
+    if (ALL_KNOWN_PHASES.has(trimmed)) {
       return trimmed;
     }
 
@@ -175,12 +198,22 @@ export function resolvePhase(state = {}) {
       ? state.phase
       : state.phase_name);
   const phaseId = normalizePhaseId(phaseSource);
-  const phaseIndex = PHASE_SEQUENCE.indexOf(phaseId);
+  const isRepair = state.mode === 'repair';
+  const primarySeq = isRepair ? REPAIR_PHASE_SEQUENCE : PHASE_SEQUENCE;
+  let phaseIndex = primarySeq.indexOf(phaseId);
+
+  // If phase not in the mode's sequence, fall back to the other for backward compat
+  const sequence = phaseIndex !== -1 ? primarySeq : (isRepair ? PHASE_SEQUENCE : REPAIR_PHASE_SEQUENCE);
+  if (phaseIndex === -1) {
+    phaseIndex = sequence.indexOf(phaseId);
+  }
 
   return {
     id: phaseId,
     index: phaseIndex === -1 ? 0 : phaseIndex,
     label: phaseId,
+    sequence,
+    mode: isRepair ? 'repair' : 'build',
   };
 }
 
@@ -611,13 +644,13 @@ export function summarizeLaneCounts(runtime = DEFAULT_RUNTIME) {
   return counts;
 }
 
-export function selectResumeLane(runtime = DEFAULT_RUNTIME) {
+export function selectNextLane(runtime = DEFAULT_RUNTIME) {
   const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
   if (!lanes.length) {
     return '';
   }
-  if (typeof runtime?.resume_lane === 'string' && runtime.resume_lane && lanes.some(lane => lane.id === runtime.resume_lane)) {
-    return runtime.resume_lane;
+  if (typeof runtime?.next_lane === 'string' && runtime.next_lane && lanes.some(lane => lane.id === runtime.next_lane)) {
+    return runtime.next_lane;
   }
   const priorityChecks = [
     lane => lane.merge_state === 'rebasing',
@@ -638,6 +671,69 @@ export function selectResumeLane(runtime = DEFAULT_RUNTIME) {
     }
   }
   return '';
+}
+
+/**
+ * Determines the best continuation target for `forge continue`.
+ * Returns { kind, target, detail } where:
+ *   kind: 'customer_blocker' | 'internal_blocker' | 'active_lane' | 'next_lane' | 'phase'
+ *   target: lane ID or phase ID
+ *   detail: human-readable reason
+ */
+export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME) {
+  const phase = resolvePhase(state);
+  const customerBlockers = runtime?.customer_blockers;
+  const internalBlockers = runtime?.internal_blockers;
+
+  // Priority 1: Customer blocker — needs user input
+  if (Array.isArray(customerBlockers) && customerBlockers.length > 0) {
+    return {
+      kind: 'customer_blocker',
+      target: phase.id,
+      detail: customerBlockers[0],
+    };
+  }
+
+  // Priority 2: Internal blocker — route to owning team
+  if (Array.isArray(internalBlockers) && internalBlockers.length > 0) {
+    const gateOwner = runtime?.active_gate_owner || '';
+    return {
+      kind: 'internal_blocker',
+      target: phase.id,
+      detail: `${internalBlockers[0]}${gateOwner ? ` (owner: ${gateOwner})` : ''}`,
+    };
+  }
+
+  // Priority 3: In-progress lane with handoff notes
+  const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
+  const activeWithHandoff = lanes.find(
+    lane => lane.status === 'in_progress' && lane.handoff_notes && lane.handoff_notes.length > 0
+  );
+  if (activeWithHandoff) {
+    const lastNote = activeWithHandoff.handoff_notes[activeWithHandoff.handoff_notes.length - 1];
+    return {
+      kind: 'active_lane',
+      target: activeWithHandoff.id,
+      detail: typeof lastNote === 'string' ? lastNote : (lastNote?.note || lastNote?.text || ''),
+    };
+  }
+
+  // Priority 4: Designated next lane
+  const nextLane = selectNextLane(runtime);
+  if (nextLane) {
+    return {
+      kind: 'next_lane',
+      target: nextLane,
+      detail: '',
+    };
+  }
+
+  // Priority 5: Phase fallback
+  return {
+    kind: 'phase',
+    target: phase.id,
+    detail: '',
+  };
 }
 
 export function summarizeLaneBriefs(runtime = DEFAULT_RUNTIME, limit = 3) {
@@ -866,14 +962,14 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   const nextSessionOwner = typeof runtime?.next_session_owner === 'string' ? runtime.next_session_owner.trim() : '';
   const agentCount = Array.isArray(runtime?.recommended_agents) ? runtime.recommended_agents.length : 0;
   const laneCounts = summarizeLaneCounts(runtime);
-  const resumeLane = selectResumeLane(runtime);
-  const resumeLaneRecord = resumeLane ? normalizeLane(runtime?.lanes?.[resumeLane], resumeLane) : null;
+  const nextLane = selectNextLane(runtime);
+  const nextLaneRecord = nextLane ? normalizeLane(runtime?.lanes?.[nextLane], nextLane) : null;
   let focusHint = '';
-  if (resumeLaneRecord?.merge_state === 'rebasing') {
+  if (nextLaneRecord?.merge_state === 'rebasing') {
     focusHint = ' rebase';
-  } else if (resumeLaneRecord?.review_state === 'changes_requested') {
+  } else if (nextLaneRecord?.review_state === 'changes_requested') {
     focusHint = ' review!';
-  } else if (resumeLaneRecord?.status === 'in_review') {
+  } else if (nextLaneRecord?.status === 'in_review') {
     focusHint = ' review';
   }
   const companySuffix = [
@@ -888,9 +984,24 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   ]
     .filter(Boolean)
     .join(' ');
-  const laneSuffix = laneCounts.total ? ` ${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${resumeLane ? ` ↺${resumeLane}${focusHint}` : ''}` : '';
+  const laneSuffix = laneCounts.total ? ` ${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${nextLane ? ` ↺${nextLane}${focusHint}` : ''}` : '';
+  const mode = state.mode === 'repair' ? 'repair' : 'build';
+  const seq = phase.sequence || PHASE_SEQUENCE;
+  const total = seq.length - 1; // exclude 'complete'
 
-  return `[Forge] ${tier} ${phase.id} ${phase.index}/${PHASE_SEQUENCE.length - 1} ${spec} ${design}${companySuffix ? ` ${companySuffix}` : ''}${agentCount ? ` ${agentCount}a` : ''}${laneSuffix}`;
+  // Actionable one-liner: most important thing first
+  let action = '';
+  if (customerBlockers.length) {
+    action = ` → waiting on client: ${customerBlockers[0]?.summary || customerBlockers[0]}`;
+  } else if (internalBlockers.length) {
+    action = ` → blocked: ${internalBlockers[0]?.summary || internalBlockers[0]}`;
+  } else if (deliveryReadiness === 'ready_for_review') {
+    action = ' → ready for review';
+  } else if (nextLane && focusHint) {
+    action = ` → ${nextLane}${focusHint}`;
+  }
+
+  return `[Forge] ${mode} ${tier} ${phase.id} ${phase.index}/${total} ${spec} ${design}${companySuffix ? ` ${companySuffix}` : ''}${agentCount ? ` ${agentCount}a` : ''}${laneSuffix}${action}`;
 }
 
 export function summarizePendingWork(state, runtime = null) {
@@ -1046,7 +1157,7 @@ function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null } = {})
   Object.assign(normalized, deriveSessionFields({ state, runtime: normalized }));
 
   normalized.active_worktrees = syncActiveWorktreesFromLanes(normalized);
-  normalized.resume_lane = selectResumeLane({
+  normalized.next_lane = selectNextLane({
     ...normalized,
     active_worktrees: normalized.active_worktrees,
   });
@@ -1205,6 +1316,33 @@ export function markLaneMergeState(runtime = DEFAULT_RUNTIME, {
     handoff_notes: appendLaneNote(lane, 'merge', note, now),
     last_event_at: now,
   }));
+}
+
+/**
+ * Check whether a repair phase's required artifacts exist.
+ * Returns { canAdvance, missing[] } for the given repair phase.
+ */
+export function checkRepairGate(cwd, phaseId) {
+  const gate = REPAIR_PHASE_GATES[phaseId];
+  if (!gate) {
+    return { canAdvance: true, missing: [] };
+  }
+  const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
+  const missing = [];
+  for (const req of gate.requires) {
+    const artifactPath = join(forgeDir, req);
+    if (!existsSync(artifactPath)) {
+      missing.push(req);
+    }
+  }
+  return { canAdvance: missing.length === 0, missing };
+}
+
+/**
+ * Get the phase sequence for a given mode.
+ */
+export function getPhaseSequence(mode = 'build') {
+  return mode === 'repair' ? REPAIR_PHASE_SEQUENCE : PHASE_SEQUENCE;
 }
 
 export function setSessionBrief(runtime = DEFAULT_RUNTIME, {

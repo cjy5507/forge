@@ -105,6 +105,33 @@ Each discovered issue gets its own file with:
 TypeScript interface stubs defining module boundaries. The contract guard hook
 (`scripts/contract-guard.mjs`) verifies written code matches these interfaces.
 
+## Artifact consistency rules
+
+`forge status` and `forge continue` read artifacts consistently per phase:
+
+| Phase         | Reads                                       | Graceful if missing             |
+|---------------|---------------------------------------------|---------------------------------|
+| 0–1 (intake/discovery) | state.json                        | runtime.json (skip lanes)       |
+| 2 (design)    | state.json, spec.md                         | runtime.json                    |
+| 3 (develop)   | state.json, spec.md, code-rules.md, design/, contracts/, runtime.json | design/ (warn) |
+| 4–5 (QA/fix)  | state.json, spec.md, holes/, runtime.json   | delivery-report/                |
+| 6 (delivery)  | state.json, spec.md, holes/, delivery-report/ | runtime.json                 |
+
+**Repair mode** adds:
+
+| Phase         | Required artifact before advancing           |
+|---------------|----------------------------------------------|
+| reproduce     | (none — this is where evidence starts)       |
+| isolate       | `.forge/evidence/` must exist                |
+| fix           | `.forge/evidence/rca-*.md` must exist        |
+| regress       | (none — this is where regression check starts)|
+| verify        | `.forge/holes/` must exist                   |
+| delivery      | (none — verify gate passed)                  |
+
+If a required artifact is missing, the phase skill should warn clearly
+("Missing .forge/evidence/ — run the reproduce phase first") rather than
+silently proceeding.
+
 ## What is NOT in .forge/
 
 - **Source code** — lives in the normal project tree, not inside `.forge/`

@@ -10,7 +10,8 @@ import {
   markLaneMergeState,
   markLaneReviewState,
   readRuntimeState,
-  selectResumeLane,
+  selectContinuationTarget,
+  selectNextLane,
   setLaneOwner,
   setLaneStatus,
   readForgeState,
@@ -117,7 +118,7 @@ describe('forge runtime core', () => {
     expect(rebasing.lanes.api.review_state).toBe('changes_requested');
     expect(rebasing.lanes.api.merge_state).toBe('rebasing');
     expect(rebasing.active_worktrees.api).toBe('.forge/worktrees/api');
-    expect(rebasing.resume_lane).toBe('api');
+    expect(rebasing.next_lane).toBe('api');
 
     const context = compactForgeContext(readForgeState(root), rebasing);
     expect(context).toContain('↺api');
@@ -125,7 +126,7 @@ describe('forge runtime core', () => {
   });
 
   it('prioritizes rebasing and changes-requested lanes for resume selection', () => {
-    const lane = selectResumeLane({
+    const lane = selectNextLane({
       lanes: {
         docs: {
           id: 'docs',
@@ -217,7 +218,7 @@ describe('forge runtime core', () => {
     const runtime = readRuntimeFile(cwd);
     expect(runtime.lanes.api.review_state).toBe('changes_requested');
     expect(runtime.lanes.api.merge_state).toBe('rebasing');
-    expect(runtime.resume_lane).toBe('api');
+    expect(runtime.next_lane).toBe('api');
   });
 
   it('summarizes lanes without crashing after explicit review and merge transitions', () => {
@@ -255,7 +256,7 @@ describe('forge runtime core', () => {
     expect(summary.status).toBe(0);
 
     const parsed = JSON.parse(summary.stdout);
-    expect(parsed.resume_lane).toBe('api');
+    expect(parsed.next_lane).toBe('api');
     expect(parsed.briefs).toContain('api:changes');
   });
 
@@ -622,5 +623,99 @@ describe('forge runtime core', () => {
     expect(parsed.delivery_readiness).toBe('blocked');
     expect(parsed.current_session_goal.toLowerCase()).toContain('security');
     expect(parsed.next_session_owner).toBe('security-reviewer');
+  });
+
+  it('selectContinuationTarget returns customer_blocker first', () => {
+    const state = { phase_id: 'develop' };
+    const runtime = {
+      customer_blockers: ['Need API key from client'],
+      internal_blockers: ['DB schema incomplete'],
+      lanes: { api: { id: 'api', status: 'in_progress', handoff_notes: [{ note: 'auth done' }] } },
+      next_lane: 'api',
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('customer_blocker');
+    expect(result.detail).toBe('Need API key from client');
+  });
+
+  it('selectContinuationTarget returns internal_blocker when no customer blocker', () => {
+    const state = { phase_id: 'develop' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: ['DB schema incomplete'],
+      active_gate_owner: 'cto',
+      lanes: { api: { id: 'api', status: 'in_progress' } },
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('internal_blocker');
+    expect(result.detail).toContain('DB schema');
+    expect(result.detail).toContain('cto');
+  });
+
+  it('selectContinuationTarget returns active_lane with handoff notes', () => {
+    const state = { phase_id: 'develop' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: [],
+      lanes: {
+        api: { id: 'api', status: 'in_progress', handoff_notes: [{ note: 'auth routes done, testing middleware' }] },
+        ui: { id: 'ui', status: 'ready' },
+      },
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('active_lane');
+    expect(result.target).toBe('api');
+    expect(result.detail).toContain('middleware');
+  });
+
+  it('selectContinuationTarget falls back to next_lane when no handoff notes', () => {
+    const state = { phase_id: 'develop' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: [],
+      lanes: {
+        api: { id: 'api', status: 'in_progress' },
+        ui: { id: 'ui', status: 'ready' },
+      },
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('next_lane');
+    expect(result.target).toBe('api');
+  });
+
+  it('selectContinuationTarget falls back to phase when no lanes', () => {
+    const state = { phase_id: 'design' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: [],
+      lanes: {},
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('phase');
+    expect(result.target).toBe('design');
+  });
+
+  it('selectContinuationTarget works with no runtime at all', () => {
+    const state = { phase_id: 'discovery' };
+    const result = selectContinuationTarget(state, undefined);
+    expect(result.kind).toBe('phase');
+    expect(result.target).toBe('discovery');
+  });
+
+  it('selectContinuationTarget ignores inactive lane with only handoff notes', () => {
+    const state = { phase_id: 'develop' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: [],
+      lanes: {
+        api: { id: 'api', status: 'done', handoff_notes: [{ note: 'completed' }] },
+        ui: { id: 'ui', status: 'ready' },
+      },
+    };
+    const result = selectContinuationTarget(state, runtime);
+    // Should not pick 'api' (done) even though it has handoff notes
+    // Should pick 'ui' via next_lane fallback
+    expect(result.kind).toBe('next_lane');
+    expect(result.target).toBe('ui');
   });
 });

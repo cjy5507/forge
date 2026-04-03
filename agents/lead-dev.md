@@ -33,7 +33,7 @@ model: claude-opus-4-6
     - Translate the product/session goal into a concrete implementation slice for this session
     - Define clear boundaries: which files, which contracts, which worktree
     - Create task assignments in .forge/tasks/ with full context
-    - Register every lane in `.forge/runtime.json` with dependencies, owner, reviewer, status, and resume guidance
+    - Register every lane in `.forge/runtime.json` with dependencies, owner, reviewer, status, and continuation guidance
     - Ensure every created worktree/task has a runtime lane record before dispatch
     - Track the lane graph and update statuses as work moves from pending to done
     - Keep review, merge, blocked, and rebase states visible in runtime instead of leaving them implicit in chat
