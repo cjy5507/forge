@@ -1210,11 +1210,13 @@ function appendLaneNote(lane, kind, note, at) {
   ];
 }
 
+const LANE_DONE_STATUSES = new Set(['done', 'merged']);
+
 export function syncActiveWorktreesFromLanes(runtime = DEFAULT_RUNTIME) {
   const lanes = normalizeRuntimeLanes(runtime?.lanes || runtime);
   return Object.fromEntries(
     Object.values(lanes)
-      .filter(lane => lane.worktree_path)
+      .filter(lane => lane.worktree_path && !LANE_DONE_STATUSES.has(lane.status))
       .map(lane => [lane.id, lane.worktree_path]),
   );
 }

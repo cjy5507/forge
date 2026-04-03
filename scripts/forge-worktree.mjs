@@ -194,12 +194,25 @@ function isForgeWorktree(entry) {
   return entry.path === forgeRoot || entry.path.startsWith(`${forgeRoot}${sep}`);
 }
 
+function assertForgeWorktreePath(worktreePath) {
+  const forgeRoot = resolve('.forge', 'worktrees');
+  if (worktreePath !== forgeRoot && !worktreePath.startsWith(`${forgeRoot}${sep}`)) {
+    fail(`Worktree path must be under .forge/worktrees/: ${worktreePath}`);
+  }
+}
+
 function createWorktree(options) {
   if (!options.branch) {
     fail('Expected --branch for create');
   }
 
   const worktreePath = resolveWorktreePath(options);
+  assertForgeWorktreePath(worktreePath);
+
+  if (existsSync(worktreePath)) {
+    fail(`Worktree already exists at: ${worktreePath}`);
+  }
+
   const baseRef = options.base || DEFAULT_BASE;
   runGit(['worktree', 'add', worktreePath, '-b', options.branch, baseRef]);
 

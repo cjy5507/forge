@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import { existsSync } from 'fs';
+import { resolve } from 'path';
+import { spawnSync } from 'child_process';
 import {
   LANE_STATUS_SEQUENCE,
   initLaneRecord,
@@ -303,6 +306,17 @@ function initLane(options) {
   console.log(`next_lane: ${nextRuntime.next_lane || '(none)'}`);
 }
 
+function tryRemoveWorktree(worktreePath) {
+  if (!worktreePath) return false;
+  const fullPath = resolve(worktreePath);
+  if (!existsSync(fullPath)) return false;
+  const result = spawnSync('git', ['worktree', 'remove', fullPath], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+  return result.status === 0;
+}
+
 function updateLaneStatus(options) {
   if (!options.lane || !options.status) {
     fail('Expected --lane and --status for update-lane-status');
@@ -313,6 +327,12 @@ function updateLaneStatus(options) {
   const lane = getLane(lanes, options.lane);
   if (options.status === 'in_review' && !hasHandoffNote(lane, options.note)) {
     fail('Lane requires a handoff note before entering review.');
+  }
+
+  const isDone = options.status === 'done' || options.status === 'merged';
+  let worktreeRemoved = false;
+  if (isDone && lane.worktree_path) {
+    worktreeRemoved = tryRemoveWorktree(lane.worktree_path);
   }
 
   buildRuntime(
@@ -326,6 +346,9 @@ function updateLaneStatus(options) {
   );
   console.log(`lane: ${options.lane}`);
   console.log(`status: ${options.status}`);
+  if (worktreeRemoved) {
+    console.log(`worktree removed: ${lane.worktree_path}`);
+  }
   if (options.note) {
     console.log(`note: ${options.note}`);
   }
