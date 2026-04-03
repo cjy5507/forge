@@ -72,8 +72,17 @@ gate — work doesn't advance until prerequisites are met.
 
 ### Build mode — new projects
 
-```
-intake → discovery → design → develop → QA → security → fix → delivery
+```mermaid
+graph LR
+    A[Intake] --> B[Discovery]
+    B --> C[Design]
+    C --> D[Develop]
+    D --> E[QA]
+    E --> F[Security]
+    F --> G{Blockers?}
+    G -- yes --> H[Fix]
+    H --> E
+    G -- no --> I[Delivery]
 ```
 
 | Phase     | What happens                                    | Output                    |
@@ -89,8 +98,16 @@ intake → discovery → design → develop → QA → security → fix → deli
 
 ### Repair mode — existing codebases
 
-```
-intake → reproduce → isolate → fix → regress → verify → delivery
+```mermaid
+graph LR
+    A[Intake] --> B[Reproduce]
+    B --> C[Isolate]
+    C --> D[Fix]
+    D --> E[Regress]
+    E --> F{Clean?}
+    F -- no --> C
+    F -- yes --> G[Verify]
+    G --> H[Delivery]
 ```
 
 | Phase     | What happens                                          | Output                    |

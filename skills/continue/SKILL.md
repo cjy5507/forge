@@ -32,7 +32,7 @@ Read `.forge/state.json`. If missing → "No active Forge project. Use `forge` t
 
 If `.forge/runtime.json` exists, always load it — it has lane ownership, blockers, and handoff notes.
 
-## 3. Show resume summary
+## 3. Show continuation summary
 
 Keep it short. The user needs three things:
 
@@ -65,14 +65,19 @@ Next: Diagnose login redirect — attempt 1/3
 
 Do NOT dump every runtime field. Surface only what's actionable.
 
-## 4. Determine resume target
+## 4. Determine continuation target
 
-Priority order:
+Evaluate in this exact order. Take the FIRST match — do not skip ahead.
 
-1. **Customer blocker** — if one exists, surface the question. Don't pretend work can continue.
-2. **Internal blocker** — route to the owning team/phase.
-3. **Resume lane** — if runtime.json has `resume_lane`, load that lane's task and worktree context.
-4. **Phase fallback** — invoke the phase skill for the current phase.
+| Priority | Condition                                      | Action                                              |
+|----------|-------------------------------------------------|-----------------------------------------------------|
+| 1        | Customer blocker exists                         | Surface the question. Don't pretend work can continue without user input. |
+| 2        | Internal blocker exists                         | Route to the owning team's phase skill with the blocker context. |
+| 3        | Lane has handoff notes and is `in_progress`     | Load that lane's task file, worktree, and latest handoff note. Continue in-lane. |
+| 4        | Runtime has a designated next lane (`resume_lane`) | Load that lane's context. This is the lead dev's recommendation for where to pick up. |
+| 5        | None of the above                               | Fall back to the current phase skill. |
+
+The goal: the user types `forge continue` and lands on the single most useful thing to work on, with full context loaded and zero re-explanation needed.
 
 ## 5. Phase → skill mapping
 

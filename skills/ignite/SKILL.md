@@ -156,7 +156,7 @@ Each Phase completion creates a git tag:
   forge/v{N}-{phase_name}
 
 Client can request rollback:
-  "아까 디자인이 더 나았어요" → rollback to forge/v1-design → resume from Phase 2
+  "아까 디자인이 더 나았어요" → rollback to forge/v1-design → continue from Phase 2
 </Rollback>
 
 <Tool_Usage>

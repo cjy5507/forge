@@ -34,7 +34,7 @@ Phase 6  DELIVERY      Docs, delivery report, client review
 ### Git tags
 
 Each phase completion creates a tag: `forge/v1-{phase_name}` (e.g., `forge/v1-design`).
-These enable rollback: "go back to design" → restore `forge/v1-design` → resume from Phase 2.
+These enable rollback: "go back to design" → restore `forge/v1-design` → continue from Phase 2.
 
 ---
 
