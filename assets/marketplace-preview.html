@@ -207,28 +207,28 @@
       <section class="hero">
         <article class="card hero-main">
           <div class="eyebrow">Harness Engineering</div>
-          <h1>Forge turns the model into a software company, not just a code assistant.</h1>
-          <p>Phase gates, stop guards, evidence checks, tracked subagents, and recovery loops for build and repair workflows.</p>
+          <h1>Forge is a harness-engineering plugin for a virtual software company.</h1>
+          <p>It adds guided multi-agent delivery and repair workflows, session continuity, and runtime guardrails when work needs more structure.</p>
           <div class="chips">
-            <div class="chip">Build mode</div>
-            <div class="chip">Repair mode</div>
-            <div class="chip">Subagent tracking</div>
-            <div class="chip">Failure loop</div>
-            <div class="chip">Context7-ready</div>
+            <div class="chip">Build + repair flows</div>
+            <div class="chip">Tracked subagents</div>
+            <div class="chip">Runtime guardrails</div>
+            <div class="chip">Session continuity</div>
+            <div class="chip">Evidence checks</div>
           </div>
         </article>
         <aside class="card hero-side">
           <div class="metric">
-            <strong>7-phase workflow</strong>
+            <strong>Guided phases</strong>
             <span>Intake → Discovery → Design → Develop → QA → Security/Fix → Delivery</span>
           </div>
           <div class="metric">
-            <strong>Runtime guardrails</strong>
-            <span>Stop protection, tracked teammates, and tool-failure feedback into the next turn.</span>
+            <strong>Continuity across sessions</strong>
+            <span>Runtime state, tracked agents, and recovery context survive handoffs.</span>
           </div>
           <div class="metric">
-            <strong>Evidence-driven</strong>
-            <span>Contracts, code rules, and up-to-date docs before write-heavy phases.</span>
+            <strong>Evidence and guardrails</strong>
+            <span>Forge keeps write-heavy phases aligned with specs, contracts, and code rules so review stays explicit when changes are ready to ship.</span>
           </div>
         </aside>
       </section>
@@ -239,15 +239,15 @@
           <ul>
             <li>Stop guard blocks premature exit while work is still active</li>
             <li>Session start and end persist Forge runtime state</li>
-            <li>Subagent lifecycle is written into `.forge/runtime.json`</li>
+            <li>Subagent lifecycle stays visible in runtime state across handoffs</li>
           </ul>
         </article>
         <article class="card panel">
           <h2>Quality gates</h2>
           <ul>
-            <li>Code writes are denied if spec, design, rules, or contracts are missing</li>
-            <li>Post-write reminders reinforce contracts and code-rule checks</li>
-            <li>A/B evaluation templates measure harness value vs baseline</li>
+            <li>Code writes stay gated on required spec, design, rule, or contract inputs</li>
+            <li>Post-write reminders keep contracts and code-rule checks in view</li>
+            <li>Evaluation templates compare harness output against a baseline</li>
           </ul>
         </article>
         <article class="card panel">
@@ -268,17 +268,17 @@ Pending: 4 tracked tasks
 Active agents: cto, lead-dev, qa
 
 $ forge resume
-[Forge] Resuming "marketplace-ready plugin"
+[Forge] Resuming "virtual software company" workflow
 Current phase: develop (#3)
 
 $ forge troubleshoot
 [Forge Failure Loop] Test command failed.
-Capture the first real assertion before retrying.</pre>
+Capture the first failing assertion, then retry with evidence.</pre>
         </article>
         <article class="card timeline">
           <h2>Delivery posture</h2>
           <div class="steps">
-            <div class="step"><span class="dot"></span><div><strong>Design first</strong> <span class="muted">Architecture, contracts, and rules before coding</span></div></div>
+            <div class="step"><span class="dot"></span><div><strong>Design first</strong> <span class="muted">Architecture, contracts, and rules stay in view before implementation starts</span></div></div>
             <div class="step"><span class="dot"></span><div><strong>Implement in lanes</strong> <span class="muted">Task splitting, worktree discipline, living standard review</span></div></div>
             <div class="step"><span class="dot"></span><div><strong>Verify before ship</strong> <span class="muted">QA, security review, and documented handoff</span></div></div>
           </div>

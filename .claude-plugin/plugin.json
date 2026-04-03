@@ -1,7 +1,7 @@
 {
   "name": "forge",
   "version": "0.1.0",
-  "description": "Virtual Software Company — evidence-driven development framework with harness engineering",
+  "description": "A harness-engineering plugin for a virtual software company",
   "author": {
     "name": "Forge Contributors",
     "url": "https://github.com/cjy5507/forge"
@@ -22,8 +22,8 @@
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Forge",
-    "shortDescription": "Phase-gated software company harness for build and repair workflows",
-    "longDescription": "Forge turns Claude Code into an evidence-driven software company with phase gates, runtime guardrails, tracked subagents, and delivery workflows for both greenfield builds and repair loops.",
+    "shortDescription": "Virtual software company for build and repair",
+    "longDescription": "Helps Claude Code run a virtual software company for build and repair work with phase gates, runtime guardrails, tracked subagents, and session recovery.",
     "developerName": "Forge Contributors",
     "category": "Productivity",
     "capabilities": [
@@ -35,10 +35,16 @@
     "privacyPolicyURL": "https://github.com/cjy5507/forge/blob/main/PRIVACY.md",
     "termsOfServiceURL": "https://github.com/cjy5507/forge/blob/main/TERMS.md",
     "defaultPrompt": [
-      "Build a forge harness for this project.",
-      "Use forge to diagnose and fix this repo.",
-      "Show forge status and next phase."
+      "Start a Forge harness for this project.",
+      "Show Forge status and resume the current run.",
+      "Use Forge to diagnose and fix this repo."
     ],
-    "brandColor": "#1F6FEB"
+    "brandColor": "#1F6FEB",
+    "composerIcon": "./assets/forge-icon.svg",
+    "logo": "./assets/forge-logo.svg",
+    "screenshots": [
+      "./assets/screenshot-overview.png",
+      "./assets/screenshot-console.png"
+    ]
   }
 }

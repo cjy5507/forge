@@ -1,6 +1,8 @@
 # Forge
 
-Forge is a harness-engineering plugin that turns an agent into a phase-gated virtual software company.
+Forge is a harness-engineering plugin that helps teams run a virtual software company for build and repair work.
+
+It adds guided multi-agent delivery and repair workflows, session continuity, and runtime guardrails when work needs more structure.
 
 ## Quick Start
 
@@ -59,12 +61,14 @@ The bootstrap installer clones Forge into a reusable checkout first, then runs
 
 ## What Forge does
 
-- Routes work through build or repair mode
+- Runs a virtual software company for build and repair work
+- Routes work into build or repair mode
 - Persists `.forge/` state across sessions
-- Tracks active subagents and recent failures
-- Guards code-writing when design prerequisites are missing
-- Adapts automatically across light, medium, and full intervention tiers
+- Keeps multi-agent runs consistent
+- Keeps code-writing gated on required design prerequisites
+- Adapts across light, medium, and full intervention tiers
 - Uses role prompts for CEO, PM, CTO, QA, Security, and Troubleshooter workflows
+- Enforces evidence, security, and recovery gates before phase advance
 
 ## Plugin layout
 
@@ -144,9 +148,11 @@ repo-local marketplace file.
 
 ### Local validation after install
 
-Use prompts such as:
+Try prompts such as:
 
-- `Build a forge harness for this project`
+- `Start a Forge harness for this project.`
+- `Show Forge status and resume the current run.`
+- `Use Forge to diagnose and fix this repo.`
 - `forge status`
 - `forge resume`
 
@@ -159,8 +165,9 @@ Forge ships with Context7 configured in `.mcp.json`.
 
 ## Suggested prompts
 
-- `Build a harness for this repo with Forge`
-- `Use forge to diagnose and fix this project`
+- `Start a Forge harness for this project.`
+- `Show Forge status and resume the current run.`
+- `Use Forge to diagnose and fix this repo.`
 - `forge status`
 - `forge stats`
 - `forge resume`
