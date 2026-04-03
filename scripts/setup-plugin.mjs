@@ -5,7 +5,8 @@ import { fileURLToPath } from 'url';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SOURCE_ROOT = dirname(SCRIPT_DIR);
-const IGNORED_NAMES = new Set(['.git', 'node_modules', '.omc']);
+const IGNORED_NAMES = new Set(['.git', 'node_modules', '.forge']);
+const ALLOWED_HIDDEN_DIRS = new Set(['.claude-plugin', '.codex-plugin']);
 
 function printUsage() {
   console.log(`Forge setup
@@ -121,7 +122,21 @@ function installByCopy(targetPath) {
     recursive: true,
     filter(sourcePath) {
       const name = basename(sourcePath);
-      return !IGNORED_NAMES.has(name);
+      if (IGNORED_NAMES.has(name)) {
+        return false;
+      }
+
+      if (sourcePath !== SOURCE_ROOT) {
+        const rel = relative(SOURCE_ROOT, sourcePath);
+        if (!rel.startsWith('..')) {
+          const [topLevel] = rel.split(/[\\/]/);
+          if (topLevel && topLevel.startsWith('.') && !ALLOWED_HIDDEN_DIRS.has(topLevel) && rel === topLevel) {
+            return false;
+          }
+        }
+      }
+
+      return true;
     },
   });
 }

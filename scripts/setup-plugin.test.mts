@@ -50,6 +50,7 @@ describe('forge setup installer', () => {
     expect(existsSync(join(target, 'hooks', 'hooks.json'))).toBe(true);
     expect(existsSync(join(target, '.git'))).toBe(false);
     expect(existsSync(join(target, 'node_modules'))).toBe(false);
+    expect(existsSync(join(target, '.forge'))).toBe(false);
     expect(lstatSync(target).isSymbolicLink()).toBe(false);
   });
 

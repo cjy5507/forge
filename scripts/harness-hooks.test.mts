@@ -1318,16 +1318,14 @@ describe('session-end hook', () => {
 
   it('cleans generated runtime artifacts but preserves forge state and source files', () => {
     writeState(tmpDir, { phase: 'develop', status: 'active' });
-    mkdirSync(join(tmpDir, '.omx', 'artifacts'), { recursive: true });
-    mkdirSync(join(tmpDir, '.omx', 'logs'), { recursive: true });
-    mkdirSync(join(tmpDir, '.omx', 'state'), { recursive: true });
-    mkdirSync(join(tmpDir, '.omc', 'state'), { recursive: true });
+    mkdirSync(join(tmpDir, '.forge', 'session-artifacts'), { recursive: true });
+    mkdirSync(join(tmpDir, '.forge', 'session-logs'), { recursive: true });
+    mkdirSync(join(tmpDir, '.forge', 'session-state'), { recursive: true });
     mkdirSync(join(tmpDir, 'scripts'), { recursive: true });
 
-    writeFileSync(join(tmpDir, '.omx', 'artifacts', 'review.md'), '# artifact\n');
-    writeFileSync(join(tmpDir, '.omx', 'logs', 'turns.jsonl'), '{}\n');
-    writeFileSync(join(tmpDir, '.omx', 'state', 'hud-state.json'), '{}\n');
-    writeFileSync(join(tmpDir, '.omc', 'state', 'hud-state.json'), '{}\n');
+    writeFileSync(join(tmpDir, '.forge', 'session-artifacts', 'review.md'), '# artifact\n');
+    writeFileSync(join(tmpDir, '.forge', 'session-logs', 'turns.jsonl'), '{}\n');
+    writeFileSync(join(tmpDir, '.forge', 'session-state', 'hud-state.json'), '{}\n');
     writeFileSync(join(tmpDir, '.forge', 'errors.log'), 'oops\n');
     writeFileSync(join(tmpDir, 'scripts', 'keep.mjs'), 'export const keep = true;\n');
 
@@ -1338,10 +1336,9 @@ describe('session-end hook', () => {
     expect(existsSync(join(tmpDir, '.forge', 'runtime.json'))).toBe(true);
     expect(existsSync(join(tmpDir, 'scripts', 'keep.mjs'))).toBe(true);
 
-    expect(existsSync(join(tmpDir, '.omx', 'artifacts', 'review.md'))).toBe(false);
-    expect(existsSync(join(tmpDir, '.omx', 'logs', 'turns.jsonl'))).toBe(false);
-    expect(existsSync(join(tmpDir, '.omx', 'state', 'hud-state.json'))).toBe(false);
-    expect(existsSync(join(tmpDir, '.omc', 'state', 'hud-state.json'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.forge', 'session-artifacts', 'review.md'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.forge', 'session-logs', 'turns.jsonl'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.forge', 'session-state', 'hud-state.json'))).toBe(false);
     expect(existsSync(join(tmpDir, '.forge', 'errors.log'))).toBe(false);
   });
 });

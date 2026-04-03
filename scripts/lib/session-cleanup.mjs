@@ -2,10 +2,9 @@ import { existsSync, rmSync } from 'fs';
 import { join } from 'path';
 
 const CLEANUP_PATHS = [
-  ['.omx', 'artifacts'],
-  ['.omx', 'logs'],
-  ['.omx', 'state'],
-  ['.omc', 'state'],
+  ['.forge', 'session-artifacts'],
+  ['.forge', 'session-logs'],
+  ['.forge', 'session-state'],
 ];
 
 export function cleanupSessionArtifacts(cwd = '.') {
