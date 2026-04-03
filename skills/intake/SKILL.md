@@ -37,7 +37,7 @@ operator for the company, not as a messenger waiting for customer approval at ev
    c. Initialize `.forge/runtime.json` for helper-backed company coordination:
       - lanes / lane graph
       - active_worktrees
-      - resume_lane
+      - next_lane
       - internal gate metadata
       - blocker / readiness metadata
       - helper/runtime metadata

@@ -739,7 +739,7 @@ export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME) 
 export function summarizeLaneBriefs(runtime = DEFAULT_RUNTIME, limit = 3) {
   const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
   return lanes
-    .filter(lane => lane.status !== 'done')
+    .filter(lane => lane.status !== 'done' && lane.status !== 'merged')
     .slice(0, limit)
     .map((lane) => {
       if (lane.merge_state === 'rebasing') {
@@ -990,11 +990,12 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   const total = seq.length - 1; // exclude 'complete'
 
   // Actionable one-liner: most important thing first
+  const truncate = (s, max = 50) => s.length > max ? s.slice(0, max - 1) + '…' : s;
   let action = '';
   if (customerBlockers.length) {
-    action = ` → waiting on client: ${customerBlockers[0]?.summary || customerBlockers[0]}`;
+    action = ` → waiting on client: ${truncate(String(customerBlockers[0]?.summary || customerBlockers[0]))}`;
   } else if (internalBlockers.length) {
-    action = ` → blocked: ${internalBlockers[0]?.summary || internalBlockers[0]}`;
+    action = ` → blocked: ${truncate(String(internalBlockers[0]?.summary || internalBlockers[0]))}`;
   } else if (deliveryReadiness === 'ready_for_review') {
     action = ' → ready for review';
   } else if (nextLane && focusHint) {
@@ -1031,7 +1032,7 @@ export function summarizePendingWork(state, runtime = null) {
   if (runtime) {
     const laneCounts = summarizeLaneCounts(runtime);
     if (laneCounts.total > 0 && phase.id !== 'complete') {
-      pending.push(`${laneCounts.total} lanes`);
+      pending.push(`${laneCounts.total} lane${laneCounts.total === 1 ? '' : 's'}`);
       if (laneCounts.blocked > 0) {
         pending.push(`${laneCounts.blocked} blocked`);
       }
