@@ -1,6 +1,6 @@
 {
   "name": "forge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Harness-engineering workflows for Claude Code build and repair tasks.",
   "author": {
     "name": "Forge Contributors",

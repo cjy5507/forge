@@ -1,5 +1,19 @@
 # Forge Release Notes Draft
 
+## v0.1.1
+
+Claude marketplace hook hotfix release.
+
+### Highlights
+
+- Fixed Claude runtime hook paths to use `${CLAUDE_PLUGIN_ROOT}` inside installed plugin copies
+- Added Claude marketplace manifest for `/plugin marketplace add` flow
+- Updated Claude install documentation to match validated marketplace behavior
+
+### Notes
+
+- Existing Claude installs on v0.1.0 may need an update or reinstall to pick up the fixed hook commands.
+
 ## v0.1.0
 
 Initial public marketplace-ready release.
