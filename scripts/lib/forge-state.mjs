@@ -1567,10 +1567,11 @@ export function updateHudLine(state, runtime) {
     config = JSON.parse(readFileSync(hudConfigPath, 'utf8'));
   } catch { /* no config yet */ }
 
-  const mode = state?.mode || 'build';
-  const phase = state?.phase_name || state?.phase || '?';
-  const phaseIdx = state?.phase_index ?? '?';
-  const maxPhase = mode === 'repair' ? 7 : 8;
+  // Use resolvePhase for consistent numbering with compactForgeContext
+  const resolved = resolvePhase(state || {});
+  const phase = resolved.id;
+  const phaseIdx = resolved.index;
+  const maxPhase = resolved.sequence.length - 1; // exclude 'complete'
 
   // Active agents
   const activeAgents = runtime?.active_agents || {};
@@ -1589,12 +1590,16 @@ export function updateHudLine(state, runtime) {
   const blockers = (runtime?.customer_blockers?.length || 0) + (runtime?.internal_blockers?.length || 0);
 
   // Build dynamic line: phase | agents | lanes | blockers
-  const parts = [`⚒ forge:${phase} ${phaseIdx}/${maxPhase}`];
-  if (agentInfo) parts.push(`🤖 ${agentInfo}`);
-  if (laneInfo) parts.push(`▸ ${laneInfo}`);
-  if (blockers > 0) parts.push(`⚠ ${blockers}`);
+  const parts = [`forge:${phase} ${phaseIdx}/${maxPhase}`];
+  if (agentInfo) parts.push(agentInfo);
+  if (laneInfo) parts.push(laneInfo);
+  parts.push(`${blockers} blockers`);
 
+  const nextLine = parts.join(' | ').slice(0, 80);
+
+  // Only write when the line actually changed to avoid HUD flickering
   config.display = config.display || {};
-  config.display.customLine = parts.join(' ').slice(0, 80);
+  if (config.display.customLine === nextLine) return;
+  config.display.customLine = nextLine;
   writeFileSync(hudConfigPath, JSON.stringify(config, null, 2) + '\n');
 }
