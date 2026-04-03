@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Forge Hook: PreToolUse (Write|Edit) — adaptive, risk-based evidence gate
+// Phase gate checks are TIER-INDEPENDENT — they run even at light tier.
 
 import { existsSync, readdirSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
+  checkPhaseGate,
   detectWriteRisk,
   readActiveTier,
   readForgeState,
@@ -12,13 +14,13 @@ import {
   tierAtLeast,
 } from './lib/forge-state.mjs';
 
-async function main() {
-  const envTier = process.env.FORGE_TIER;
-  if (envTier === 'off' || envTier === 'light') {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
+function isForgeStateFile(filePath) {
+  if (!filePath) return false;
+  const normalized = filePath.replace(/\\/g, '/');
+  return /\/.forge\//.test(normalized);
+}
 
+async function main() {
   let input;
   try {
     input = await readStdin();
@@ -38,6 +40,52 @@ async function main() {
     const phase = resolvePhase(state);
     const tier = readActiveTier(cwd, state, input);
     const risk = detectWriteRisk(input);
+    const filePath = String(
+      input?.tool_input?.file_path ||
+      input?.tool_input?.path ||
+      input?.tool_input?.target_file ||
+      input?.tool_input?.file ||
+      '',
+    );
+
+    // ── Phase gate check (TIER-INDEPENDENT) ──
+    // Runs at ALL tiers including light. Skips only for .forge/ state files.
+    if (!isForgeStateFile(filePath)) {
+      const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
+      if (!gateResult.canAdvance) {
+        console.log(JSON.stringify({
+          continue: true,
+          suppressOutput: true,
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason: `Forge phase gate: ${phase.id} requires [${gateResult.missing.join(', ')}]. Create these artifacts before writing code.`,
+          },
+        }));
+        return;
+      }
+
+      // Mode-phase mismatch warning (advisory, not blocking)
+      if (phase.mismatch) {
+        console.log(JSON.stringify({
+          continue: true,
+          suppressOutput: true,
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            additionalContext: `[Forge] warning: phase "${phase.id}" is not in the ${phase.mode} sequence — state may be inconsistent`,
+          },
+        }));
+        return;
+      }
+    }
+
+    // ── Tier-based checks (existing behavior) ──
+    const envTier = process.env.FORGE_TIER;
+    if (envTier === 'off' || envTier === 'light') {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
     const shouldSkipApprovalChecks = state.mode === 'repair' || state.mode === 'express';
 
     if (!tierAtLeast(tier, 'medium') || phase.index < resolvePhase({ phase_id: 'develop' }).index) {

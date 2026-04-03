@@ -41,6 +41,23 @@ export const REPAIR_PHASE_GATES = {
   delivery:  { requires: [], produces: ['delivery-report'] },
 };
 
+/** Map build phase IDs to required artifacts that must exist before advancing */
+export const BUILD_PHASE_GATES = {
+  discovery: { requires: [], produces: ['spec.md'] },
+  design:    { requires: ['spec.md'], produces: ['design', 'code-rules.md', 'contracts'] },
+  develop:   { requires: ['design', 'code-rules.md', 'contracts'], produces: [] },
+  qa:        { requires: [], produces: ['holes'] },
+  security:  { requires: [], produces: [] },
+  fix:       { requires: ['holes'], produces: [] },
+  delivery:  { requires: [], produces: ['delivery-report'] },
+};
+
+/** Resolve the phase gate map for a given mode */
+export function getPhaseGates(mode = 'build') {
+  if (mode === 'repair') return REPAIR_PHASE_GATES;
+  return BUILD_PHASE_GATES;
+}
+
 export const TIER_SEQUENCE = ['off', 'light', 'medium', 'full'];
 export const LANE_REVIEW_SEQUENCE = ['none', 'pending', 'changes_requested', 'approved'];
 export const LANE_MERGE_SEQUENCE = ['none', 'queued', 'rebasing', 'ready', 'merged'];
@@ -219,6 +236,7 @@ export function resolvePhase(state = {}) {
 
   // If phase not in the mode's sequence, fall back to the others for backward compat
   let sequence = primarySeq;
+  let mismatch = false;
   if (phaseIndex === -1) {
     for (const fallback of [PHASE_SEQUENCE, REPAIR_PHASE_SEQUENCE, EXPRESS_PHASE_SEQUENCE]) {
       if (fallback !== primarySeq) {
@@ -226,18 +244,21 @@ export function resolvePhase(state = {}) {
         if (idx !== -1) {
           sequence = fallback;
           phaseIndex = idx;
+          mismatch = true;
           break;
         }
       }
     }
   }
 
+  const mode = isExpress ? 'express' : isRepair ? 'repair' : 'build';
   return {
     id: phaseId,
     index: phaseIndex === -1 ? 0 : phaseIndex,
     label: phaseId,
     sequence,
-    mode: isExpress ? 'express' : isRepair ? 'repair' : 'build',
+    mode,
+    mismatch, // true when phase doesn't belong to the declared mode's sequence
   };
 }
 
@@ -1130,6 +1151,17 @@ export function writeForgeState(cwd = '.', state) {
   ensureForgeDir(cwd);
   const normalized = normalizeStateShape(state);
   normalized.updated_at = new Date().toISOString();
+
+  // Phase transition validation: check if the new phase's gate requirements are met
+  const phase = resolvePhase(normalized);
+  const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
+  if (!gateResult.canAdvance) {
+    normalized._phase_gate_warning = `Phase ${phase.id} requires missing artifacts: ${gateResult.missing.join(', ')}`;
+  }
+  if (phase.mismatch) {
+    normalized._phase_mismatch_warning = `Phase "${phase.id}" does not belong to ${phase.mode} sequence — using fallback`;
+  }
+
   writeJsonFile(getStatePath(cwd), normalized);
   const existingRuntime = readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME);
   writeRuntimeState(cwd, existingRuntime);
@@ -1348,11 +1380,22 @@ export function markLaneMergeState(runtime = DEFAULT_RUNTIME, {
 /**
  * Check whether a repair phase's required artifacts exist.
  * Returns { canAdvance, missing[] } for the given repair phase.
+ * @deprecated Use checkPhaseGate(cwd, phaseId, mode) instead.
  */
 export function checkRepairGate(cwd, phaseId) {
-  const gate = REPAIR_PHASE_GATES[phaseId];
+  return checkPhaseGate(cwd, phaseId, 'repair');
+}
+
+/**
+ * Check whether a phase's required artifacts exist for any mode.
+ * Returns { canAdvance, missing[], phase, mode }.
+ * This is the tier-independent phase integrity check.
+ */
+export function checkPhaseGate(cwd, phaseId, mode = 'build') {
+  const gates = getPhaseGates(mode);
+  const gate = gates[phaseId];
   if (!gate) {
-    return { canAdvance: true, missing: [] };
+    return { canAdvance: true, missing: [], phase: phaseId, mode };
   }
   const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
   const missing = [];
@@ -1362,7 +1405,7 @@ export function checkRepairGate(cwd, phaseId) {
       missing.push(req);
     }
   }
-  return { canAdvance: missing.length === 0, missing };
+  return { canAdvance: missing.length === 0, missing, phase: phaseId, mode };
 }
 
 /**
