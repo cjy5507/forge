@@ -1,9 +1,11 @@
 # Hole Report: {{HOLE_ID}}
 
 > Severity: {{blocker|major|minor}}
+> Category: {{category}}
 > Phase discovered: {{PHASE}}
 > Module: {{MODULE}}
-> Status: {{open|in-progress|resolved}}
+> Status: {{open|in-progress|resolved|verified|closed|reopened}}
+> Reporter: {{REPORTER}}
 > Assigned to: {{AGENT}}
 
 ---
@@ -12,9 +14,7 @@
 
 {{What went wrong — observable behavior}}
 
-## Reproduction
-
-{{Exact steps to reproduce}}
+## Reproduction Steps
 
 1. 
 2. 
@@ -27,6 +27,10 @@
 ## Actual Behavior
 
 {{What actually happened}}
+
+## Related Spec Section
+
+{{Which spec requirement is related — file path or section reference}}
 
 ## Related Contract
 
@@ -47,3 +51,7 @@
 ## Impact
 
 {{Other modules/features affected by this issue or its fix}}
+
+## History
+
+- {{date}} Created by {{reporter}} — severity: {{severity}}

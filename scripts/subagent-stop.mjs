@@ -20,6 +20,7 @@ import {
   resolveForgeBaseDir,
   resolveRuntimeLaneContext,
   tierAtLeast,
+  updateHudLine,
   updateRuntimeState,
 } from './lib/forge-state.mjs';
 
@@ -51,7 +52,7 @@ async function main() {
     const stoppedAt = new Date().toISOString();
     const agentId = input?.agent_id || 'unknown';
 
-    updateRuntimeState(rootCwd, current => {
+    const updatedRuntime = updateRuntimeState(rootCwd, current => {
       const activeAgent = current.active_agents?.[agentId] || null;
       const { laneId, lane } = resolveRuntimeLaneContext(current, rootCwd, cwd, activeAgent?.lane_id || '');
       const nextAgents = { ...current.active_agents };
@@ -95,6 +96,8 @@ async function main() {
         },
       };
     });
+
+    try { updateHudLine(state, updatedRuntime); } catch { /* HUD not installed */ }
 
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
   } catch (error) {

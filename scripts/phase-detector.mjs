@@ -11,6 +11,7 @@ import {
   readForgeState,
   readRuntimeState,
   resolvePhase,
+  updateHudLine,
   updateRuntimeState,
   updateAdaptiveTier,
 } from './lib/forge-state.mjs';
@@ -68,10 +69,11 @@ async function main() {
 
       const compactOnly = compactForgeContext(state, adaptive.runtime);
       context = `${compactOnly} → forge:${currentSkill} [${adaptive.recommendedAgents.join(', ')}]`;
-      updateRuntimeState(cwd, current => ({
+      const updatedRuntime = updateRuntimeState(cwd, current => ({
         ...current,
         last_compact_context: compactOnly,
       }));
+      try { updateHudLine(state, updatedRuntime); } catch { /* HUD not installed */ }
     } catch (error) {
       handleHookError(error, 'phase-detector', cwd);
       return;

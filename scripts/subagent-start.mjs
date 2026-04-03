@@ -24,6 +24,7 @@ import {
   recommendedAgentsFor,
   resolvePhase,
   tierAtLeast,
+  updateHudLine,
   updateRuntimeState,
 } from './lib/forge-state.mjs';
 
@@ -61,7 +62,7 @@ async function main() {
     const agentId = input?.agent_id || `unknown-${Date.now()}`;
     const agentType = input?.agent_type || 'unknown';
 
-    updateRuntimeState(rootCwd, current => {
+    const updatedRuntime = updateRuntimeState(rootCwd, current => {
       const nextLanes = laneId
         ? {
             ...current.lanes,
@@ -116,6 +117,8 @@ async function main() {
         },
       };
     });
+
+    try { updateHudLine(state, updatedRuntime); } catch { /* HUD not installed */ }
 
     if (!state) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));

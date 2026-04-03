@@ -24,6 +24,13 @@ export const REPAIR_PHASE_SEQUENCE = [
   'complete',
 ];
 
+export const EXPRESS_PHASE_SEQUENCE = [
+  'plan',
+  'build',
+  'ship',
+  'complete',
+];
+
 /** Map repair phase IDs to required artifacts that must exist before advancing */
 export const REPAIR_PHASE_GATES = {
   reproduce: { requires: [], produces: ['evidence'] },
@@ -173,7 +180,7 @@ export function tierAtLeast(currentTier, requiredTier) {
   return TIER_SEQUENCE.indexOf(normalizeTier(currentTier)) >= TIER_SEQUENCE.indexOf(normalizeTier(requiredTier));
 }
 
-const ALL_KNOWN_PHASES = new Set([...PHASE_SEQUENCE, ...REPAIR_PHASE_SEQUENCE]);
+const ALL_KNOWN_PHASES = new Set([...PHASE_SEQUENCE, ...REPAIR_PHASE_SEQUENCE, ...EXPRESS_PHASE_SEQUENCE]);
 
 export function normalizePhaseId(value) {
   if (typeof value === 'number') {
@@ -204,13 +211,25 @@ export function resolvePhase(state = {}) {
       : state.phase_name);
   const phaseId = normalizePhaseId(phaseSource);
   const isRepair = state.mode === 'repair';
-  const primarySeq = isRepair ? REPAIR_PHASE_SEQUENCE : PHASE_SEQUENCE;
+  const isExpress = state.mode === 'express';
+  const primarySeq = isExpress
+    ? EXPRESS_PHASE_SEQUENCE
+    : isRepair ? REPAIR_PHASE_SEQUENCE : PHASE_SEQUENCE;
   let phaseIndex = primarySeq.indexOf(phaseId);
 
-  // If phase not in the mode's sequence, fall back to the other for backward compat
-  const sequence = phaseIndex !== -1 ? primarySeq : (isRepair ? PHASE_SEQUENCE : REPAIR_PHASE_SEQUENCE);
+  // If phase not in the mode's sequence, fall back to the others for backward compat
+  let sequence = primarySeq;
   if (phaseIndex === -1) {
-    phaseIndex = sequence.indexOf(phaseId);
+    for (const fallback of [PHASE_SEQUENCE, REPAIR_PHASE_SEQUENCE, EXPRESS_PHASE_SEQUENCE]) {
+      if (fallback !== primarySeq) {
+        const idx = fallback.indexOf(phaseId);
+        if (idx !== -1) {
+          sequence = fallback;
+          phaseIndex = idx;
+          break;
+        }
+      }
+    }
   }
 
   return {
@@ -218,7 +237,7 @@ export function resolvePhase(state = {}) {
     index: phaseIndex === -1 ? 0 : phaseIndex,
     label: phaseId,
     sequence,
-    mode: isRepair ? 'repair' : 'build',
+    mode: isExpress ? 'express' : isRepair ? 'repair' : 'build',
   };
 }
 
@@ -1350,7 +1369,9 @@ export function checkRepairGate(cwd, phaseId) {
  * Get the phase sequence for a given mode.
  */
 export function getPhaseSequence(mode = 'build') {
-  return mode === 'repair' ? REPAIR_PHASE_SEQUENCE : PHASE_SEQUENCE;
+  if (mode === 'repair') return REPAIR_PHASE_SEQUENCE;
+  if (mode === 'express') return EXPRESS_PHASE_SEQUENCE;
+  return PHASE_SEQUENCE;
 }
 
 export function setSessionBrief(runtime = DEFAULT_RUNTIME, {
@@ -1527,4 +1548,53 @@ export function recordStateStats(cwd = '.', updater) {
     ...state,
     stats: mergeStats(next),
   });
+}
+
+/**
+ * Update the claude-hud custom status line with current Forge state.
+ * Shows phase, active agents, lanes, and blockers dynamically.
+ * Safe to call from any hook — silently no-ops if HUD is not installed.
+ */
+export function updateHudLine(state, runtime) {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  if (!homeDir) return;
+  const hudConfigDir = join(homeDir, '.claude', 'plugins', 'claude-hud');
+  const hudConfigPath = join(hudConfigDir, 'config.json');
+  if (!existsSync(hudConfigPath) && !existsSync(hudConfigDir)) return;
+
+  let config = {};
+  try {
+    config = JSON.parse(readFileSync(hudConfigPath, 'utf8'));
+  } catch { /* no config yet */ }
+
+  const mode = state?.mode || 'build';
+  const phase = state?.phase_name || state?.phase || '?';
+  const phaseIdx = state?.phase_index ?? '?';
+  const maxPhase = mode === 'repair' ? 7 : 8;
+
+  // Active agents
+  const activeAgents = runtime?.active_agents || {};
+  const agentEntries = Object.values(activeAgents).filter(a => a.status === 'running');
+  const agentInfo = agentEntries.length > 0
+    ? agentEntries.map(a => (a.type || 'agent').replace(/^forge:/, '')).join(' ')
+    : '';
+
+  // Active lanes
+  const lanes = runtime?.lanes || {};
+  const activeLanes = Object.values(lanes).filter(l => l.status !== 'done' && l.status !== 'merged');
+  const laneInfo = activeLanes.length > 0
+    ? activeLanes.map(l => `${l.id}(${l.status})`).join(' ')
+    : '';
+
+  const blockers = (runtime?.customer_blockers?.length || 0) + (runtime?.internal_blockers?.length || 0);
+
+  // Build dynamic line: phase | agents | lanes | blockers
+  const parts = [`⚒ forge:${phase} ${phaseIdx}/${maxPhase}`];
+  if (agentInfo) parts.push(`🤖 ${agentInfo}`);
+  if (laneInfo) parts.push(`▸ ${laneInfo}`);
+  if (blockers > 0) parts.push(`⚠ ${blockers}`);
+
+  config.display = config.display || {};
+  config.display.customLine = parts.join(' ').slice(0, 80);
+  writeFileSync(hudConfigPath, JSON.stringify(config, null, 2) + '\n');
 }

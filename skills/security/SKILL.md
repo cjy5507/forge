@@ -13,7 +13,7 @@ security is part of the internal delivery-readiness gate, not a passive phase ho
 
 <Use_When>
 - Automatically invoked after Phase 4 (QA) completes with no blockers
-- state.json phase=4.5
+- state.json phase=5
 </Use_When>
 
 <Steps>

@@ -4,7 +4,7 @@ description: "Use when Forge needs deep bug diagnosis instead of a quick patch. 
 ---
 
 <Purpose>
-Standalone diagnostic skill invoked by the fix skill (Phase 5) when an issue is
+Standalone diagnostic skill invoked by the fix skill (Phase 6) when an issue is
 too complex for a simple fix. The Troubleshooter agent performs evidence-based
 root cause analysis using a structured protocol: reproduce, hypothesize, gather
 evidence, verify, identify root cause, propose minimal fix, and assess impact.

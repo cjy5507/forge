@@ -4,7 +4,7 @@ description: "Use when Forge enters the bug fix loop. Routes simple issues to de
 ---
 
 <Purpose>
-Phase 5 of the Forge pipeline. The fix loop triages discovered issues from QA and
+Phase 6 of the Forge pipeline. The fix loop triages discovered issues from QA and
 security phases, routes them to the appropriate handler (simple fix or deep diagnosis),
 and iterates until all blockers are resolved. Every fix worktree gets a runtime lane
 record, and review/merge/rebase state must stay current in `.forge/runtime.json`.
@@ -84,31 +84,34 @@ Max 3 iterations before escalating to the client with alternatives.
      e. If accept → document workaround, continue to Phase 7
 
 6. Gate Decision:
-   - All blockers resolved (fixed or client-approved descope) → phase=7
+   - All blockers resolved (fixed or client-approved descope) → route to Phase 5 (Security) for re-review
    - Still has unresolved blockers → continue iteration
    - Update company runtime in the same step:
      - unresolved blockers:
        `node scripts/forge-lane-runtime.mjs set-company-gate --gate implementation_readiness --gate-owner lead-dev --delivery-state blocked --internal-blockers "{remaining blocker summaries}"`
      - resolved blockers:
-       `node scripts/forge-lane-runtime.mjs set-company-gate --gate delivery_readiness --gate-owner ceo --delivery-state in_progress`
+       `node scripts/forge-lane-runtime.mjs set-company-gate --gate security_re_review --gate-owner security-reviewer --delivery-state in_progress`
 
-7. Update state.json: phase=7, phase_id="delivery", phase_name="delivery"
+7. Update state.json: phase=5, phase_id="security", phase_name="security"
+   (Security must re-verify after fixes. If security passes, Security routes to Phase 7 delivery.)
 
 8. Update session handoff:
    - unresolved blockers:
      `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "{what remains blocked}" --next-goal "Continue blocker resolution" --next-owner lead-dev`
    - resolved blockers:
-     `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "Fix loop clear; move to delivery readiness" --next-goal "Prepare delivery review package" --next-owner ceo`
+     `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "Fix loop clear; re-running security review before delivery" --next-goal "Security re-review of fixed code" --next-owner security-reviewer`
 
-9. Transition to Phase 7 (forge:deliver)
+9. Transition to Phase 5 (forge:security) — Security re-reviews after fixes.
+   If security finds new issues → back to Phase 6 (fix loop).
+   If security passes → Security skill advances to Phase 7 (forge:deliver).
 </Steps>
 
 <State_Changes>
 - Creates: .forge/worktrees/fix-{issue-id}/ (temporary fix worktrees)
 - Updates: .forge/holes/{issue-id}.md (attempt count, resolution status)
 - Creates: .forge/evidence/rca-{issue-id}.md (for complex issues)
-- Updates: .forge/state.json (phase=7 when all blockers resolved)
-- Updates: .forge/runtime.json (implementation/delivery gate result + next session handoff)
+- Updates: .forge/state.json (phase=5 security re-review when all blockers resolved)
+- Updates: .forge/runtime.json (implementation/security re-review gate result + next session handoff)
 - Removes: fix worktrees after merge
 </State_Changes>
 
@@ -122,7 +125,7 @@ Max 3 iterations before escalating to the client with alternatives.
 - Skipping CTO review on complex multi-module fixes
 - Sending a fix to review without a runtime handoff note
 - Letting review, merge, or rebase state drift away from runtime
-- Leaving orphan fix worktrees after Phase 5 completes
+- Leaving orphan fix worktrees after Phase 6 completes
 - Marking an issue as resolved without QA re-verification
 - Not presenting alternatives when max iterations are exceeded
 </Failure_Modes_To_Avoid>

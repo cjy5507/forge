@@ -245,7 +245,7 @@ describe('forge harness hooks', () => {
     const cwd = makeWorkspace();
     writeState(cwd, { spec_approved: false, design_approved: false });
 
-    const output = runHook('fact-check.mjs', cwd, {
+    const output = runHook('write-gate.mjs', cwd, {
       tool_name: 'Write',
       tool_input: {
         file_path: 'package.json',
@@ -264,7 +264,7 @@ describe('forge harness hooks', () => {
     const cwd = makeWorkspace();
     writeState(cwd);
 
-    const output = runHook('fact-check.mjs', cwd, {
+    const output = runHook('write-gate.mjs', cwd, {
       tool_name: 'Write',
       tool_input: {
         file_path: 'src/utils/formatDate.ts',
@@ -290,7 +290,7 @@ describe('forge harness hooks', () => {
     writeFileSync(join(cwd, '.forge', 'contracts', 'api.ts'), 'export interface API {}');
     writeFileSync(join(cwd, '.forge', 'code-rules.md'), '# rules\n');
 
-    const output = runHook('fact-check.mjs', cwd, {
+    const output = runHook('write-gate.mjs', cwd, {
       tool_name: 'Write',
       tool_input: {
         file_path: 'package.json',

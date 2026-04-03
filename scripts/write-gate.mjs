@@ -112,7 +112,7 @@ async function main() {
       },
     }));
   } catch (error) {
-    handleHookError(error, 'fact-check', cwd);
+    handleHookError(error, 'write-gate', cwd);
   }
 }
 

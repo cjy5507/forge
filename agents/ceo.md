@@ -32,7 +32,7 @@ description: Forge CEO — project intake, scope decisions, blocker resolution, 
     - When fix loop exceeds 3 iterations
     - When the company must decide whether an issue is internal or customer-owned
 
-    Phase 6 (Delivery):
+    Phase 7 (Delivery):
     - Confirm internal delivery readiness before anything is shown to the client
     - Review spec completion percentage
     - Compile known issues list (only minor should remain)

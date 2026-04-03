@@ -113,7 +113,7 @@ after internal readiness gates say the work is truly delivery-ready.
 6. Client requests changes → route back to appropriate phase:
    - Feature change → Phase 1 (discovery) for spec amendment
    - Design change → Phase 2 (design)
-   - Bug found → Phase 5 (fix)
+   - Bug found → Phase 6 (fix)
    - Update runtime with the customer blocker:
      `node scripts/forge-lane-runtime.mjs set-company-gate --gate customer_review --gate-owner pm --delivery-state in_progress --customer-blockers "{customer review feedback summaries}"`
 </Steps>

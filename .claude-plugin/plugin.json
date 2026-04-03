@@ -17,5 +17,6 @@
     "phase-gated"
   ],
   "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
   "mcpServers": "./.mcp.json"
 }

@@ -79,7 +79,7 @@ design review, prototyping, or QA.
    c. If no customer-owned blocker remains, update state.json: phase=2, phase_id="design", phase_name="design", spec_approved=true
    d. Update company runtime for the next gate:
       - `node scripts/forge-lane-runtime.mjs set-company-gate --gate design_readiness --gate-owner cto --delivery-state in_progress`
-   d. Only ask the customer again if a true business blocker remains unresolved
+   e. Only ask the customer again if a true business blocker remains unresolved
 
 5. PM defines the session brief for the next handoff:
    - current_session_goal

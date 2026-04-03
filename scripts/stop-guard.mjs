@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Forge Hook: Stop — only blocks termination in full tier
+// Forge Hook: Stop — blocks termination during critical phases (develop/fix/qa)
+// at any tier; blocks all phases at full tier only
 //
 // Host compatibility: This script handles the Claude Code Stop event.  On
 // hosts that do not fire Stop, readStdin() rejects and the catch block returns
@@ -25,9 +26,11 @@ import {
   updateRuntimeState,
 } from './lib/forge-state.mjs';
 
+const CRITICAL_PHASES = new Set(['develop', 'fix', 'qa']);
+
 async function main() {
   const envTier = process.env.FORGE_TIER;
-  if (envTier === 'off' || envTier === 'light' || envTier === 'medium') {
+  if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
@@ -49,12 +52,15 @@ async function main() {
 
   try {
     const tier = readActiveTier(cwd, state, input);
-    if (!tierAtLeast(tier, 'full')) {
+    const phase = resolvePhase(state);
+    const isCritical = CRITICAL_PHASES.has(phase.id);
+
+    // For non-critical phases, only full tier gets stop protection
+    if (!isCritical && !tierAtLeast(tier, 'full')) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
     }
 
-    const phase = resolvePhase(state);
     const lastMessage = String(input?.last_assistant_message || '');
     const interactive = messageLooksInteractive(lastMessage);
 
@@ -77,6 +83,35 @@ async function main() {
     }
 
     const pending = summarizePendingWork(state);
+
+    // Critical phases at light/medium tier get a softer warning instead of a hard block
+    if (isCritical && !tierAtLeast(tier, 'full')) {
+      const warning = `[Forge Stop Guard] Warning: stopping during critical phase "${phase.id}" may leave work incomplete. Pending: ${pending.join(', ')}.`;
+      updateRuntimeState(cwd, current => ({
+        ...current,
+        stop_guard: {
+          block_count: (runtime.stop_guard?.block_count || 0) + 1,
+          last_reason: warning,
+          last_message: lastMessage,
+        },
+        stats: {
+          ...current.stats,
+          stop_block_count: (current.stats.stop_block_count || 0) + 1,
+        },
+        last_event: {
+          name: 'StopWarned',
+          at: new Date().toISOString(),
+        },
+      }));
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: true,
+        decision: 'warn',
+        reason: warning,
+      }));
+      return;
+    }
+
     const reason = `[Forge Stop Guard] Project "${state.project || 'unnamed'}" is still active in phase ${phase.id}. Pending: ${pending.join(', ')}.`;
 
     updateRuntimeState(cwd, current => ({
