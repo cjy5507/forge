@@ -1,5 +1,18 @@
 # Forge Release Notes Draft
 
+## v0.1.2
+
+Marketplace update detection release.
+
+### Highlights
+
+- Bumped package, plugin, and marketplace manifest versions to `0.1.2`
+- Added deeper runtime re-entry verification coverage, including customer-review to internal-fix smoke coverage
+
+### Notes
+
+- Claude `/plugin` update flows use manifest version metadata, so this release is intended to make the latest published changes discoverable.
+
 ## v0.1.1
 
 Claude marketplace hook hotfix release.
