@@ -178,7 +178,7 @@ describe('forge harness hooks', () => {
     }
   });
 
-  it('uses relative hook commands without Claude-specific root variables', () => {
+  it('uses plugin-root hook commands that Claude can resolve at runtime', () => {
     const hooksConfig = JSON.parse(
       readFileSync(join(FORGE_ROOT, 'hooks', 'hooks.json'), 'utf8'),
     );
@@ -187,8 +187,8 @@ describe('forge harness hooks', () => {
       .flatMap((entry) => entry.hooks.map((hook) => hook.command));
 
     for (const command of commands) {
-      expect(command.includes('CLAUDE_PLUGIN_ROOT')).toBe(false);
-      expect(command).toMatch(/^node "\.\/scripts\/.+\.mjs"$/);
+      expect(command).toContain('${CLAUDE_PLUGIN_ROOT}');
+      expect(command).toMatch(/^node "\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/.+\.mjs"$/);
     }
   });
 
