@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Forge marketplace — continuable project workflows for coding agents",
-    "version": "0.3.0"
+    "version": "0.3.1"
   },
   "plugins": [
     {
       "name": "forge",
       "description": "Gives long-running coding agent work persistent project structure — phase gates, ownership tracking, and continuable state across sessions.",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "author": {
         "name": "Forge Contributors"
       },
