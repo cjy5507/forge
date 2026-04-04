@@ -105,9 +105,8 @@ async function main() {
       }));
       console.log(JSON.stringify({
         continue: true,
-        suppressOutput: true,
-        decision: 'warn',
-        reason: warning,
+        suppressOutput: false,
+        stopReason: warning,
       }));
       return;
     }
