@@ -61,11 +61,17 @@ Phase 0 — INTAKE / 접수 (CEO):
       - If no global lessons exist → log "No global lessons found, skipping" and set lessons_brief=[]
       - Pattern lessons feed into CTO's code-rules, QA's test plan
       - Estimation lessons calibrate scope assessment
-  2. CEO agent evaluates and ROUTES / CEO가 평가 후 라우팅:
+  2. **Internal Deliberation** — CEO가 혼자 판단하지 않고 내부 회의 진행:
+     - CEO가 CTO에게 기술적 실현 가능성 + 대안 아키텍처 요청 (context7 사용)
+     - 고객 의도가 모호하면 PM에게 해석 요청
+     - CTO + PM 의견 수렴 후 CEO가 종합 판단
+     - 고객에게는 "가능합니다 + 방법은 이겁니다"로 제시 (내부 논의 과정은 비노출)
+
+  3. CEO agent evaluates and ROUTES / CEO가 평가 후 라우팅:
 
      [BUILD mode] — new product request
       "만들어줘", "build me", idea description
-      → Can we build this? Scope reasonable?
+      → Can we build this? If not directly, what alternative achieves the same goal?
       → GO: initialize .forge/, Phase 1 (Discovery)
 
      [REPAIR mode] — existing project fix/analysis
