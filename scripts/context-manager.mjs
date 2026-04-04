@@ -13,7 +13,7 @@ import { handleHookError } from './lib/error-handler.mjs';
 import { readForgeState, compactForgeContext, readRuntimeState, writeJsonFile } from './lib/forge-state.mjs';
 
 async function main() {
-  const envTier = process.env.FORGE_TIER;
+  const envTier = (process.env.FORGE_TIER || '').toLowerCase();
   if (envTier === 'off' || envTier === 'light') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;

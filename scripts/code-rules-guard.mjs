@@ -8,7 +8,7 @@ import { detectWriteRisk, readActiveTier, readForgeState, tierAtLeast } from './
 
 async function main() {
   const envTier = (process.env.FORGE_TIER || '').toLowerCase();
-  if (envTier === 'off' || envTier === 'light') {
+  if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }

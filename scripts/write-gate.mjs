@@ -5,11 +5,13 @@
 import { existsSync, readdirSync } from 'fs';
 import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
+import { resolve } from 'path';
 import {
   checkPhaseGate,
   detectWriteRisk,
   readActiveTier,
   readForgeState,
+  resolveForgeBaseDir,
   resolvePhase,
   tierAtLeast,
 } from './lib/forge-state.mjs';
@@ -18,10 +20,11 @@ import {
 // (spec, design, contracts) only apply at or past this threshold.
 const CODE_WRITING_THRESHOLD = resolvePhase({ phase_id: 'develop' }).index;
 
-function isForgeStateFile(filePath) {
+function isForgeStateFile(filePath, cwd = '.') {
   if (!filePath) return false;
-  const normalized = filePath.replace(/\\/g, '/');
-  return /(?:^|\/)\.forge\//.test(normalized);
+  const forgeDir = resolve(resolveForgeBaseDir(cwd), '.forge');
+  const resolved = resolve(cwd, filePath);
+  return resolved.startsWith(forgeDir + '/') || resolved === forgeDir;
 }
 
 async function main() {
@@ -54,7 +57,7 @@ async function main() {
 
     // ── Phase checks (TIER-INDEPENDENT) ──
     // Runs at ALL tiers including light. Skips only for .forge/ state files.
-    if (!isForgeStateFile(filePath)) {
+    if (!isForgeStateFile(filePath, cwd)) {
       // Mode-phase mismatch — check first since it's more fundamental
       if (phase.mismatch) {
         console.log(JSON.stringify({
@@ -87,7 +90,7 @@ async function main() {
 
     // ── Tier-based checks (existing behavior) ──
     const envTier = (process.env.FORGE_TIER || '').toLowerCase();
-    if (envTier === 'off' || envTier === 'light') {
+    if (envTier === 'off') {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
     }
@@ -109,7 +112,9 @@ async function main() {
     const contractsDir = `${cwd}/.forge/contracts`;
     const evidenceDir = `${cwd}/.forge/evidence`;
     const contracts = existsSync(contractsDir)
-      ? readdirSync(contractsDir).filter(file => file.endsWith('.ts'))
+      ? readdirSync(contractsDir).filter(file =>
+          file.endsWith('.ts') || file.endsWith('.json') || file.endsWith('.mjs') || file.endsWith('.zod')
+        )
       : [];
 
     if (!shouldSkipApprovalChecks && !state.spec_approved) {

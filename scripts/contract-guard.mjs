@@ -7,8 +7,8 @@ import { handleHookError } from './lib/error-handler.mjs';
 import { detectWriteRisk, readActiveTier, readForgeState, tierAtLeast } from './lib/forge-state.mjs';
 
 async function main() {
-  const envTier = process.env.FORGE_TIER;
-  if (envTier === 'off' || envTier === 'light') {
+  const envTier = (process.env.FORGE_TIER || '').toLowerCase();
+  if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }

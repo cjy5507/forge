@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync, renameSync, unlinkSync } from 'fs';
 import { dirname, join, resolve, sep } from 'path';
 
 export const PHASE_SEQUENCE = [
@@ -1503,11 +1503,20 @@ export function checkPhaseGate(cwd, phaseId, mode = 'build') {
     return { canAdvance: true, missing: [], phase: phaseId, mode };
   }
   const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
+  const MIN_ARTIFACT_BYTES = 100;
   const missing = [];
   for (const req of gate.requires) {
     const artifactPath = join(forgeDir, req);
     if (!existsSync(artifactPath)) {
       missing.push(req);
+    } else {
+      // For file artifacts (not directories), verify minimum content size
+      try {
+        const stat = statSync(artifactPath);
+        if (stat.isFile() && stat.size < MIN_ARTIFACT_BYTES) {
+          missing.push(req);
+        }
+      } catch {}
     }
   }
   return { canAdvance: missing.length === 0, missing, phase: phaseId, mode };
@@ -1608,21 +1617,23 @@ export function updateRuntimeState(cwd = '.', updater) {
       if (err.code === 'EEXIST') {
         // Lock held — check staleness (>5s = stale)
         try {
-          const lockStat = readFileSync(lockPath, 'utf8');
-          const lockAge = Date.now() - parseInt(lockStat.split('.')[1] || '0', 10);
-          if (lockAge > 5000 || isNaN(lockAge)) {
+          const lockContent = readFileSync(lockPath, 'utf8');
+          const parts = lockContent.split('.');
+          const lockTimestamp = parts.length >= 2 ? parseInt(parts[1], 10) : NaN;
+          if (!Number.isFinite(lockTimestamp) || Date.now() - lockTimestamp > 5000) {
             try { unlinkSync(lockPath); } catch {}
           }
         } catch {}
-        const jitter = Math.random() * retryDelay;
-        const start = Date.now();
-        while (Date.now() - start < retryDelay + jitter) { /* spin wait */ }
+        // Exponential backoff via Atomics.wait (non-blocking to other threads, no spin)
+        const delay = retryDelay * Math.pow(2, attempt) + Math.random() * retryDelay;
+        try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay | 0); } catch { /* fallback: no-op */ }
         continue;
       }
       throw err;
     }
   }
-  // Fallback: proceed without lock after exhausting retries
+  // Fallback: proceed without lock after exhausting retries (log warning)
+  try { process.stderr.write(`[Forge] WARNING: lock acquisition failed after ${maxRetries} retries on ${lockPath}, proceeding without lock\n`); } catch {}
   const state = readForgeState(cwd);
   const current = normalizeRuntimeState(
     readJsonFile(runtimePath, DEFAULT_RUNTIME),

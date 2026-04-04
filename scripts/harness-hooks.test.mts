@@ -1460,7 +1460,7 @@ describe('checkPhaseGate', () => {
     const forgeDir = join(tmpDir, '.forge');
     mkdirSync(join(forgeDir, 'design'), { recursive: true });
     mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
-    writeFileSync(join(forgeDir, 'code-rules.md'), '# rules');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# Code Rules\n\nAll code must follow these conventions for consistency and quality across the project.\n\n- Use TypeScript strict mode\n');
     const result = checkPhaseGate(tmpDir, 'develop', 'build');
     expect(result.canAdvance).toBe(true);
     expect(result.missing).toEqual([]);
@@ -1743,7 +1743,7 @@ describe('write-gate phase gate enforcement', () => {
     const forgeDir = join(tmpDir, '.forge');
     mkdirSync(join(forgeDir, 'design'), { recursive: true });
     mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
-    writeFileSync(join(forgeDir, 'code-rules.md'), '# rules');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# Code Rules\n\nAll code must follow these conventions for consistency and quality across the project.\n\n- Use TypeScript strict mode\n');
     writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
       mode: 'build',
       phase: 'develop',
