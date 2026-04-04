@@ -112,7 +112,8 @@ async function main() {
       return;
     }
 
-    const currentSkill = phase.id === 'complete' ? 'info' : phase.id;
+    const PHASE_TO_SKILL = { delivery: 'deliver', complete: 'info' };
+    const currentSkill = PHASE_TO_SKILL[phase.id] || phase.id;
     const reason = `[Forge Stop Guard] Project "${state.project || 'unnamed'}" is still active in phase ${phase.id}. Pending: ${pending.join(', ')}.
 
 [MAGIC KEYWORD: FORGE:${currentSkill.toUpperCase()}]

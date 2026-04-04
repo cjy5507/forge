@@ -1582,7 +1582,7 @@ export function updateRuntimeState(cwd = '.', updater) {
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      writeFileSync(lockPath, `${process.pid}`, { flag: 'wx' });
+      writeFileSync(lockPath, `${process.pid}.${Date.now()}`, { flag: 'wx' });
       try {
         const state = readForgeState(cwd);
         const current = normalizeRuntimeState(
@@ -1595,6 +1595,16 @@ export function updateRuntimeState(cwd = '.', updater) {
         try { unlinkSync(lockPath); } catch {}
       }
     } catch (err) {
+      if (err.code === 'ENOENT') {
+        // No .forge/ directory — proceed without lock (no project active)
+        const state = readForgeState(cwd);
+        const current = normalizeRuntimeState(
+          readJsonFile(runtimePath, DEFAULT_RUNTIME),
+          { state },
+        );
+        const next = updater(current);
+        return writeRuntimeState(cwd, next, { state });
+      }
       if (err.code === 'EEXIST') {
         // Lock held — check staleness (>5s = stale)
         try {
@@ -1801,5 +1811,5 @@ export function updateHudLine(state, runtime, staleTier = 'fresh') {
   config.display = config.display || {};
   if (config.display.customLine === nextLine) return;
   config.display.customLine = nextLine;
-  writeFileSync(hudConfigPath, JSON.stringify(config, null, 2) + '\n');
+  writeJsonFile(hudConfigPath, config);
 }

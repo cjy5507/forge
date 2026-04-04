@@ -252,7 +252,7 @@ function findWorktreeBranch(worktreePath) {
 
 function tryDeleteBranch(branch) {
   if (!branch || branch === 'main' || branch === 'master') return false;
-  const result = spawnSync('git', ['branch', '-D', branch], {
+  const result = spawnSync('git', ['branch', '-d', branch], {
     cwd: process.cwd(),
     encoding: 'utf8',
   });

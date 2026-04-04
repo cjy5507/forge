@@ -88,7 +88,9 @@ async function main() {
       const adaptive = updateAdaptiveTier(cwd, { state, message });
       const phase = resolvePhase(state);
       const runtime = readRuntimeState(cwd);
-      let currentSkill = phase.id === 'complete' ? 'info' : phase.id;
+      // Map phase_id to skill name (delivery→deliver, complete→info)
+      const PHASE_TO_SKILL = { delivery: 'deliver', complete: 'info' };
+      let currentSkill = PHASE_TO_SKILL[phase.id] || phase.id;
       const nextOwner = typeof runtime.next_session_owner === 'string' ? runtime.next_session_owner.trim() : '';
 
       if ((runtime.customer_blockers?.length || 0) > 0 && nextOwner === 'pm') {
