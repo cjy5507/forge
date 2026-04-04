@@ -33,6 +33,15 @@ Max 3 iterations before escalating to the client with alternatives.
    Score 3-4: SIMPLE → fact-check → dev fix → QA re-verify
    Score 0-2: COMPLEX → troubleshooter RCA → dev fix → QA re-verify
 
+   Layer Classification:
+   - SIMPLE issues: dispatch developer (layer2_subagent, isolated worktree)
+   - COMPLEX issues: dispatch troubleshooter + analyst in parallel (both layer2_subagent)
+     - Analyst provides structural context: dependency graph, impact radius, related modules
+       (see agents/analyst.md for full capabilities)
+     - Troubleshooter does RCA: reproduce, hypothesize, verify
+     - Combined output guides the fix — Analyst's impact report scopes the change,
+       Troubleshooter's RCA report identifies the root cause
+
    a. Simple issue (triage score 3-4):
       - Fact-checker verifies the root cause is correct
       - Register or refresh the runtime lane record before dispatching work
@@ -44,10 +53,13 @@ Max 3 iterations before escalating to the client with alternatives.
       - Merge and cleanup worktree
 
    b. Complex issue (triage score 0-2: unclear cause, spans multiple modules, or reproduces intermittently):
-      - Invoke forge:troubleshoot skill for root cause analysis
+      - Dispatch Analyst and Troubleshooter in parallel:
+        - Analyst: dependency tracing + impact analysis for the affected area
+        - Troubleshooter: root cause analysis via forge:troubleshoot skill
       - Troubleshooter produces RCA report in .forge/evidence/rca-{issue-id}.md
+      - Analyst produces impact report scoping affected modules and callers
       - Register or refresh the runtime lane record before dispatching work
-      - Dispatch developer agent with RCA report to implement minimal fix
+      - Dispatch developer agent with both RCA and impact reports to implement minimal fix
       - Record blocker/rebase/review notes in runtime if the fix is waiting on review, merge, or rebase
       - PR review (all 3 tiers — automated + Lead + CTO)
       - Merge and cleanup worktree

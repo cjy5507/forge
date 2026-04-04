@@ -79,6 +79,16 @@ Evaluate in this exact order. Take the FIRST match — do not skip ahead.
 
 The goal: the user types `forge continue` and lands on the single most useful thing to work on, with full context loaded and zero re-explanation needed.
 
+## 4a. AgentRecommendation routing
+
+On resume, `recommendedAgentsFor()` provides layer-classified agent recommendations.
+Dispatch agents according to their layer classification (layer0, layer2_subagent, etc.).
+
+Apply staleness-aware dispatch (from state-restore.mjs):
+- **Fresh (<1hr)**: full context available — dispatch per layer recommendation immediately
+- **Warm (1-24hr)**: abbreviated context — confirm direction with user before dispatching agents
+- **Stale (>24hr)**: minimal context — suggest `forge cancel` or require explicit `forge continue` confirmation before proceeding
+
 ## 5. Phase → skill mapping
 
 Standard mode (build, N/8):

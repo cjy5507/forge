@@ -32,6 +32,30 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
 9. Explicit review, merge, and rebase states must be reflected in runtime
 </Core_Rules>
 
+<Hybrid_Dispatch>
+Forge uses a 3-layer dispatch model. AgentRecommendation from
+scripts/lib/forge-state.mjs classifies agents automatically into the
+appropriate layer. Choose the lightest layer that meets the need.
+
+Layer 0 — Prompt Switch (in-conversation):
+  Lead-dev operates in the main conversation, not as a separate subagent.
+  Claude switches to the lead-dev role by loading agents/lead-dev.md context.
+  Use for: task splitting, lane-graph management, code review, merge decisions.
+  No isolation needed — the lead works on the main branch.
+
+Layer 1 — Team (iterative collaboration):
+  When multiple agents need multi-turn back-and-forth (e.g., Developer ↔ Lead
+  review cycles), use TeamCreate + SendMessage.
+  Use for: review rounds, design discussions, cross-lane coordination.
+  Context is preserved across rounds — no re-dispatch needed.
+
+Layer 2 — Isolated Subagent (parallel execution):
+  Developers and fact-checkers dispatch with Agent tool using
+  isolation: "worktree" or subagent_type: "forge:developer" / "forge:fact-checker".
+  Use for: module implementation, technical verification.
+  Each agent gets its own worktree and minimal context.
+</Hybrid_Dispatch>
+
 <Progressive_Disclosure>
 - Load `references/review-pipeline.md` when you need the full review tiers or worktree rules.
 - Load `references/lane-runtime.md` when you need the standard runtime helper commands and lane graph rules.
@@ -43,21 +67,32 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
    - .forge/contracts/*.ts
    - .forge/code-rules.md
 
-2. Lead defines the lane graph in `.forge/runtime.json`:
+2. Dispatch Analyst (forge:analyst) for impact analysis:
+   - Analyst uses codebase-memory-mcp (search_graph, trace_call_path, get_architecture)
+     to map existing module boundaries and dependencies
+   - Output: impact report showing which existing code will be affected by each planned module
+   - Lead uses this to make informed lane splitting decisions
+   - Skip if project is greenfield (no existing codebase to analyze)
+
+3. Lead defines the lane graph in `.forge/runtime.json`:
    - One lane per isolated module/feature
    - Record upstream dependencies before dispatch
    - Keep owner, reviewer, worktree, status, handoff notes, and next lane current with the runtime helper
    - Convert the PM session brief into an implementation session brief for this session and the next
 
-3. Lead splits work into independent tasks (one per module/feature):
+4. Lead splits work into independent tasks (one per module/feature):
    - Identify module boundaries from architecture
    - Map each task to its interface contracts
    - Define test criteria each module must pass
    - Ensure tasks have minimal cross-dependencies
 
-4. For each task, Lead creates:
-   a. Git worktree with the standardized helper:
-      node scripts/forge-worktree.mjs create --lane {module} --branch forge/{module}
+5. For each task, Lead creates:
+   a. Worktree Isolation (choose one):
+      - Native (recommended): Use Agent tool with isolation: "worktree" parameter.
+        The worktree is auto-created and cleaned up. Record the path in runtime:
+        node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --worktree {returned-path}
+      - Manual: node scripts/forge-worktree.mjs create --lane {module} --branch forge/{module}
+        Then dispatch agent with working directory set to the worktree.
    b. Task definition from `templates/task.md`: .forge/tasks/{module}.md containing:
       - Scope: which files to create/modify
       - Contracts: which interfaces to implement
@@ -68,15 +103,16 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
       node scripts/forge-lane-runtime.mjs init-lane --lane {module} --title "{title}" --task-file .forge/tasks/{module}.md --worktree .forge/worktrees/{module} [--depends-on ...]
       - This step should create the lane record immediately so the worktree/task pair never exists outside runtime.
 
-5. Dispatch developer/publisher agents in parallel, each with:
-   - isolation: "worktree"
-   - Working directory: .forge/worktrees/{module}
-   - Context loaded: spec subset + module contract + code-rules.md
-   - NO access to other worktrees or modules
+6. Dispatch agents by layer:
+   - Layer 0 (lead-dev): Continue in main conversation. Load agents/lead-dev.md context.
+   - Layer 2 (developers): Agent tool with subagent_type="forge:developer", isolation="worktree"
+   - Layer 2 (publishers): Agent tool with subagent_type="forge:publisher", isolation="worktree"
+   - Layer 2 (fact-checker): Agent tool with subagent_type="forge:fact-checker" (no worktree needed)
+   - Each developer receives: spec subset + module contract + code-rules.md
    - Lane owner assigned via:
      node scripts/forge-lane-runtime.mjs assign-owner --lane {module} --owner {agent}
 
-6. Each developer implements their module:
+7. Each developer implements their module:
    a. Read assigned task definition (.forge/tasks/{module}.md)
    b. Read relevant contracts (.forge/contracts/)
    c. Read code-rules.md
@@ -90,21 +126,33 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
    j. If review requests changes, or the lane needs merge/rebase follow-up, reflect that state in runtime immediately instead of leaving it implicit in chat.
    k. Create PR when all local tests pass
 
-7. PR Review Pipeline (3 tiers — ALL must approve):
+8. PR Review Pipeline (3 tiers):
+
+   Teams-based review (recommended for multi-turn feedback):
+   - Create a review team: TeamCreate(team_name="forge-review-{module}")
+   - Add Developer and Lead as team members
+   - Tier 2 review via SendMessage:
+     Lead -> Developer: "fetchUser()로 맞춰주세요" (specific correction)
+     Developer -> Lead: "수정했습니다, 재검토 부탁드립니다"
+     Lead -> Developer: "LGTM" -> merge
+   - Benefits: context preserved across review rounds, no re-dispatch needed
+   - Handoff notes still required in forge-lane-runtime.mjs (audit trail)
+
+   Sequential review (fallback — ALL tiers must approve):
 
    Tier 1 — Automated Checks (instant):
    - Lint passes
    - TypeScript typecheck passes
    - All tests pass
    - No secrets or credentials in diff
-   → Fail = instant reject, developer fixes and resubmits
+   -> Fail = instant reject, developer fixes and resubmits
 
    Tier 2 — Lead Developer Review:
    - code-rules.md compliance (naming, patterns, structure)
    - Consistency with already-merged code
    - Contract implementation correctness
    - No scope creep (only touches files in task definition)
-   → Violate = reject with specific instructions:
+   -> Violate = reject with specific instructions:
      "개발자 B는 fetchUser()인데 당신은 getUser(). fetchUser()로 맞춰주세요"
 
    Tier 3 — CTO Review (architecture):
@@ -112,11 +160,11 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
    - No hidden coupling or circular dependencies
    - Performance and scalability concerns
    - Only invoked if Lead flags architectural concerns
-   → Reject = CTO provides redesign guidance
+   -> Reject = CTO provides redesign guidance
 
-   All tiers approve → merge to main
+   All tiers approve -> merge to main
 
-8. After each merge, update the lane record, then rebase all other active worktrees:
+9. After each merge, update the lane record, then rebase all other active worktrees:
    node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status merged --note "Merged to main"
    node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status done --note "Worktree cleaned up"
    cd .forge/worktrees/{other-module} && git rebase main
@@ -124,23 +172,23 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
    - If conflict is architectural: escalate to Lead
    - If a lane is waiting on rebase, mark that in runtime so status/continue can surface it as an active control-tower signal.
 
-9. Repeat steps 6-8 until all PRs are merged
-   - Use `node scripts/forge-lane-runtime.mjs summarize-lanes` to review the lane graph and blocked lanes
-   - Update the session handoff so the next session knows what remains and who owns the first move
+10. Repeat steps 7-9 until all PRs are merged
+    - Use `node scripts/forge-lane-runtime.mjs summarize-lanes` to review the lane graph and blocked lanes
+    - Update the session handoff so the next session knows what remains and who owns the first move
 
-10. Cleanup worktrees:
-   node scripts/forge-worktree.mjs remove --lane {module}
-   (for each completed module)
+11. Cleanup worktrees:
+    node scripts/forge-worktree.mjs remove --lane {module}
+    (for each completed module)
 
-11. Update state.json: phase=4, phase_name="qa"
+12. Update state.json: phase=4, phase_name="qa"
     - Update company runtime for QA:
       `node scripts/forge-lane-runtime.mjs set-company-gate --gate qa --gate-owner qa --delivery-state in_progress`
     - Update session handoff toward QA:
       `node scripts/forge-lane-runtime.mjs write-session-handoff --summary "{what remains to verify}" --next-goal "Run QA and classify blockers" --next-owner qa`
 
-12. Create git tag: forge/v1-dev
+13. Create git tag: forge/v1-dev
 
-13. Transition to Phase 4 (forge:qa)
+14. Transition to Phase 4 (forge:qa)
 </Steps>
 
 <Worktree_Management>
@@ -231,13 +279,15 @@ When inconsistency is found, Lead rejects with explicit correction:
 </State_Changes>
 
 <Tool_Usage>
-- Agent tool: dispatch forge:lead-dev for task splitting and PR review
-- Agent tool: dispatch forge:developer (parallel, one per module)
-- Agent tool: dispatch forge:publisher (parallel, for UI modules)
+- Layer 0: Load agents/lead-dev.md context for task splitting, review, merge decisions
+- Layer 1: TeamCreate + SendMessage for iterative Developer <-> Lead review cycles
+- Layer 2: Agent tool with subagent_type="forge:developer", isolation="worktree" (parallel, one per module)
+- Layer 2: Agent tool with subagent_type="forge:publisher", isolation="worktree" (parallel, for UI modules)
+- Layer 2: Agent tool with subagent_type="forge:analyst" for codebase impact analysis
+- Layer 2: Agent tool with subagent_type="forge:fact-checker" for technical verification
 - Agent tool: dispatch forge:cto for Tier 3 reviews
-- Agent tool: dispatch forge:fact-checker for technical verification
 - Bash tool: git rebase, git tag
-- CLI helper: `node scripts/forge-worktree.mjs` for worktree create/list/remove/prune
+- CLI helper: `node scripts/forge-worktree.mjs` for worktree create/list/remove/prune (manual worktree path)
 - CLI helper: `node scripts/forge-lane-runtime.mjs` for lane graph, owner, status, and handoff updates
 - Write tool: create `.forge/tasks/{module}.md` from `templates/task.md`
 - Read tool: load contracts, code-rules.md, architecture

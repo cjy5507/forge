@@ -15,6 +15,16 @@ tracked in .forge/holes/ and classified by severity to determine the next phase.
 - state.json phase=4
 </Use_When>
 
+<Layer_Classification>
+QA agent is dispatched as layer2_subagent — process isolation from developers is critical
+to maintain independent verification.
+
+Optional Analyst support: Analyst can augment QA with quality assessment — dead code detection,
+complexity hotspots, and pattern violations (see agents/analyst.md). QA decides whether to
+invoke Analyst based on project size and scope; skip for small projects, recommend for
+multi-module codebases.
+</Layer_Classification>
+
 <Steps>
 1. Dispatch QA Engineer agent with context:
    - .forge/spec.md (requirements reference)

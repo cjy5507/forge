@@ -44,12 +44,16 @@ No guessing — only evidence-backed conclusions.
    c. Rank hypotheses by likelihood based on available evidence
 
 4. EVIDENCE — Gather evidence for each hypothesis:
-   a. Trace the execution path through affected code
-   b. Check interface contract boundaries (is data crossing correctly?)
-   c. Check state transitions (is state mutating unexpectedly?)
-   d. Check timing/ordering (race conditions, async issues?)
-   e. Check error handling paths (are errors swallowed silently?)
-   f. Record evidence for and against each hypothesis
+   a. For cross-module issues, dispatch Analyst first for dependency mapping —
+      Analyst pre-computes call paths, dependency chains, and module boundaries
+      so Troubleshooter can focus on runtime behavior rather than static structure
+   b. Trace the execution path through affected code
+   c. Check interface contract boundaries (is data crossing correctly?)
+   d. Check state transitions (is state mutating unexpectedly?)
+   e. Check timing/ordering (race conditions, async issues?)
+   f. Check error handling paths (are errors swallowed silently?)
+   g. Integrate Analyst's structural context with runtime evidence
+   h. Record evidence for and against each hypothesis
 
 5. VERIFY — Test the leading hypothesis:
    a. Design a test that isolates the suspected root cause

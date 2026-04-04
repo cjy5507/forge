@@ -4,9 +4,10 @@ description: "Use when Forge reaches the design phase or the user asks for techn
 ---
 
 <Purpose>
-Phase 2 of the Forge pipeline. CTO and Designer collaborate in parallel to produce
-architecture, code rules, interface contracts, and design specs. Researcher supports
-them when external option comparison is needed, but CTO and Designer keep decision
+Phase 2 of the Forge pipeline. CTO and Designer collaborate as a persistent Team
+(via TeamCreate + SendMessage) to produce architecture, code rules, interface contracts,
+and design specs. Analyst grounds them in the existing codebase before they begin.
+Researcher supports external option comparison, but CTO and Designer keep decision
 ownership. Every technical claim is verified via context7 before being committed to
 the design. No guessing — only evidence-backed decisions. In Autonomous Company Mode,
 design is an internal readiness gate by default, not a customer approval checkpoint.
@@ -62,14 +63,54 @@ design is an internal readiness gate by default, not a customer approval checkpo
 <Progressive_Disclosure>
 - Load `references/design-deliverables.md` for the complete deliverable and cross-review checklist.
 - Load `references/research-integration.md` when discovery hands off research or design needs external option comparison.
+- Load `agents/design-team.md` for the 4-phase CTO↔Designer collaboration protocol.
+- Load `agents/analyst.md` for codebase analysis tool reference.
 </Progressive_Disclosure>
 
-<Steps>
-1. Dispatch CTO agent and Designer agent in parallel
-   - Dispatch Researcher in parallel only when discovery handed off an open research brief or a design decision depends on outside option comparison
-   - Researcher informs the choice; CTO still decides
+<Team_Collaboration>
+When both CTO and Designer are needed (the common case):
+- Use TeamCreate(team_name="forge-design") to create a design team
+- Add CTO and Designer as team members via Agent tool with team_name parameter
+- They collaborate via SendMessage for real-time cross-review
+- Reference: agents/design-team.md for the 4-phase collaboration protocol
+  Phase 1: Parallel Analysis (CTO: architecture, Designer: UX)
+  Phase 2: Cross-Review via SendMessage
+  Phase 3: Convergence (resolve conflicts)
+  Phase 4: Handoff (unified design artifact)
 
-2. CTO produces:
+When only CTO is needed (pure backend/API project):
+- Dispatch CTO as individual subagent (no Team needed)
+
+When only Designer is needed (UI-only change):
+- Dispatch Designer as individual subagent (no Team needed)
+</Team_Collaboration>
+
+<Researcher_Scope>
+Researcher is for EXTERNAL investigation only:
+- Dispatched when CTO or Designer needs external comparison (libraries, frameworks, vendors)
+- NOT for internal codebase analysis — that is the Analyst's job
+- Researcher uses context7 + WebSearch; Analyst uses codebase-memory-mcp
+- CTO still makes the final architecture call after reviewing Researcher output
+</Researcher_Scope>
+
+<Steps>
+0. Codebase Analysis (skip if greenfield project):
+   Dispatch Analyst (forge:analyst) to map existing architecture:
+   - Uses codebase-memory-mcp: get_architecture, search_graph, trace_call_path
+   - Produces: module map, dependency graph, coupling hotspots, architectural patterns
+   - Output saved to .forge/design/codebase-analysis.md
+   - CTO uses this as input for architecture decisions
+   - Designer uses this to understand existing UI patterns and components
+
+1. Create design team and dispatch agents:
+   - Use TeamCreate(team_name="forge-design") to create a persistent design team
+   - Add CTO and Designer as team members via Agent tool with team_name parameter
+   - Dispatch Researcher in parallel only when discovery handed off an open research brief
+     or a design decision depends on outside option comparison
+   - Researcher informs the choice; CTO still decides
+   - If only CTO or only Designer is needed, dispatch as individual subagent instead
+
+2. CTO produces (informed by Analyst's codebase-analysis.md):
    a. .forge/design/architecture.md
       - Tech stack with version numbers (verified via context7)
       - Directory structure
@@ -87,7 +128,7 @@ design is an internal readiness gate by default, not a customer approval checkpo
       - Database model types
       - Component prop types
 
-3. Designer produces:
+3. Designer produces (informed by Analyst's codebase-analysis.md):
    a. .forge/design/components.md
       - Component inventory (every UI element)
       - Per-component spec: size, color, spacing, states
@@ -101,14 +142,16 @@ design is an internal readiness gate by default, not a customer approval checkpo
       - Shadow definitions
       - Breakpoints
 
-4. Cross-review:
-   - CTO reviews Designer output:
-     "Can I build every component with the chosen stack?"
-     "Are animations/interactions feasible within performance budget?"
-   - Designer reviews CTO output:
-     "Does the architecture support all screens and flows?"
-     "Are the contracts complete for every UI component?"
-   - If Researcher was used, CTO folds the brief into the architecture rationale and flags any remaining unknowns
+4. Cross-Review via Team:
+   - CTO sends architecture proposal to Designer: SendMessage(to="designer", ...)
+     "이 아키텍처로 모든 컴포넌트 구현 가능한지 확인해주세요"
+   - Designer sends UX proposal to CTO: SendMessage(to="cto", ...)
+     "이 인터랙션 플로우를 지원하려면 이런 API가 필요합니다"
+   - They negotiate directly until convergence
+   - Conflict resolution: CTO decides technical feasibility, Designer decides UX quality
+   - If deadlocked: escalate to CEO (rare)
+   - If Researcher was used, CTO folds the brief into the architecture rationale
+     and flags any remaining unknowns
 
 5. Internal design-readiness gate:
    - CTO confirms the architecture is implementable at the chosen scale
@@ -152,6 +195,7 @@ Over-engineering a small project is as bad as under-engineering a large one.
 </Scale_Decision>
 
 <State_Changes>
+- Creates: .forge/design/codebase-analysis.md (Analyst output, skipped for greenfield)
 - Creates: .forge/design/architecture.md
 - Creates: .forge/design/components.md
 - Creates: .forge/design/tokens.json
@@ -163,11 +207,14 @@ Over-engineering a small project is as bad as under-engineering a large one.
 </State_Changes>
 
 <Tool_Usage>
-- Agent tool: dispatch forge:cto and forge:designer in parallel
-- Agent tool: dispatch forge:researcher for bounded external option research
-- Agent tool: dispatch forge:cto for design feasibility review
-- Agent tool: dispatch forge:designer for architecture UI review
+- Agent tool: dispatch forge:analyst for codebase analysis (Step 0)
+- TeamCreate: create forge-design team when both CTO and Designer are needed
+- Agent tool (with team_name): add CTO and Designer to the forge-design team
+- SendMessage: CTO↔Designer cross-review within the team
+- Agent tool: dispatch forge:researcher for bounded external option research (external only)
+- Agent tool: dispatch forge:cto or forge:designer individually when only one is needed
 - context7 MCP: verify every framework pattern, package version, API behavior
+- codebase-memory-mcp: Analyst uses get_architecture, search_graph, trace_call_path
 - Write tool: create design files, contracts, code-rules
 - Read tool: load .forge/spec.md for requirements reference
 - Edit tool: update .forge/state.json
@@ -186,4 +233,8 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Design tokens without responsive breakpoints
 - Over-engineering a small project or under-engineering a large one
 - Letting Researcher replace CTO decision-making
+- Skipping Analyst step for non-greenfield projects (CTO designs blind)
+- Using Researcher for internal codebase analysis (Analyst's job)
+- Dispatching CTO and Designer as isolated subagents when Team is needed
+- CTO and Designer producing independent outputs without SendMessage cross-review
 </Failure_Modes_To_Avoid>

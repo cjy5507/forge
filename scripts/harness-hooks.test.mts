@@ -753,6 +753,23 @@ describe('recommendedAgentsFor', () => {
     expect(agents).toContain('cto');
     expect(agents).toContain('designer');
     expect(agents).toContain('researcher');
+    expect(agents).toContain('analyst');
+  });
+
+  it('returns analyst for full/isolate and full/reproduce phases', () => {
+    const isolateAgents = recommendedAgentsFor({ tier: 'full', phaseId: 'isolate' });
+    expect(isolateAgents).toContain('analyst');
+    expect(isolateAgents).toContain('troubleshooter');
+
+    const reproduceAgents = recommendedAgentsFor({ tier: 'full', phaseId: 'reproduce' });
+    expect(reproduceAgents).toContain('analyst');
+    expect(reproduceAgents).toContain('troubleshooter');
+  });
+
+  it('classifies analyst as layer2_subagent with codebase-memory-mcp tool', () => {
+    const agents = recommendedAgentsFor({ tier: 'full', phaseId: 'design' });
+    expect(agents.layer2_subagent).toContain('analyst');
+    expect(agents.tools).toContain('codebase-memory-mcp');
   });
 
   it('returns discovery team for full/discovery phase', () => {

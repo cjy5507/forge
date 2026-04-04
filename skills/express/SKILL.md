@@ -30,11 +30,15 @@ Step 1 — PLAN:
   1. Initialize .forge/ with tier='medium', mode='express'
   2. PM: Generate compact spec (max 1 page) from user's request
   3. CTO: Define code-rules and key interfaces inline
-  4. Single approval gate: "Plan looks good? (y/n)"
+  4. Optional: dispatch Analyst for quick architecture snapshot (skip if trivial task —
+     only useful when touching 3+ modules or unfamiliar areas)
+  5. Single approval gate: "Plan looks good? (y/n)"
 
 Step 2 — BUILD:
   1. Lead-dev: Split into tasks, assign to developer(s)
   2. Developer: Implement with inline QA checks (test as you go)
+     - Recommend native worktree isolation (Agent tool isolation: "worktree") for
+       parallel developer lanes
   3. Fact-checker validates key claims
   4. Auto-merge if tests pass, else flag issues
 
@@ -44,6 +48,12 @@ Step 3 — SHIP:
   3. Present delivery summary
   4. Done — no separate QA or security phase (already inline)
 </Steps>
+
+<Layer_Classification>
+Express uses layer0 only — no Teams overhead. Speed is the priority.
+Keep the process compressed: Analyst snapshot is optional, worktree isolation is
+recommended but not enforced.
+</Layer_Classification>
 
 <State_Management>
 Express mode uses the same .forge/ directory but with mode='express'.
