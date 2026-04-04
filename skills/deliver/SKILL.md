@@ -79,6 +79,18 @@ after internal readiness gates say the work is truly delivery-ready.
       - Key files and their responsibilities
       - Recommended next steps
 
+2b. **Harness Learning — Project Retrospective**:
+    a. CEO reviews the full project lifecycle:
+       - Compare spec scope vs delivered scope (estimation lesson)
+       - Note phases that took disproportionately long (process lesson)
+       - Collect all lessons from .forge/lessons/ created during QA/Fix phases
+    b. CEO decides which lessons to promote to global:
+       - Pattern lessons matching common project types → copy to ~/.claude/forge-lessons/
+       - Process lessons revealing harness bugs → promote AND create fix ticket for harness
+       - Estimation lessons → always promote (calibration data is cumulative)
+    c. If global lessons exceed 30: curate — merge similar ones, archive outdated ones
+    d. Record lesson summary in delivery report
+
 3. Internal delivery readiness gate:
    a. QA confirms blocker count is zero
    b. Security confirms no unresolved delivery-blocking issue remains
@@ -126,6 +138,7 @@ after internal readiness gates say the work is truly delivery-ready.
 - Creates: README.md (project root)
 - Updates: .forge/state.json (phase=8, phase_id="complete", phase_name="complete", status="delivered")
 - Updates: .forge/runtime.json (delivery/customer_review state + customer feedback routing)
+- Promotes: .forge/lessons/*.md → ~/.claude/forge-lessons/ (selected by CEO)
 - Creates: git tag forge/v1-delivery
 - Creates: git tag forge/v0.1.0
 </State_Changes>

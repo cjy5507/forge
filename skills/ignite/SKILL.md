@@ -31,6 +31,11 @@ critical questions, and reviews the delivery at the end. Internal teams own the 
 2. No Ambiguity, No Start — 모호하면 구현 말고 질문
 3. No Hole Left Behind — 발견된 구멍은 반드시 추적
 4. Right Architecture, Right Scale — 규모에 맞는 최적 설계
+5. No Handoff Without Understanding — 이해 없이 인계 금지
+   Each phase transition requires a Handoff Interview: the receiving team reads artifacts,
+   generates domain-specific questions, CEO triages (internal vs client), questions are
+   resolved, and receiving team confirms understanding before starting work.
+   Load `references/handoff-interview.md` for the full protocol.
 </Core_Principles>
 
 <Execution_Policy>
@@ -40,12 +45,21 @@ critical questions, and reviews the delivery at the end. Internal teams own the 
 - State is persisted in .forge/ directory
 - Cancel with "forge cancel" or "포지 취소" at any time
 - Load `references/phase-map.md` for the compact phase sequence.
+- Load `references/handoff-interview.md` for the handoff interview protocol between phases.
+- Load `references/constraint-propagation.md` when an artifact changes and downstream impact must be tracked.
+- Load `references/context-budget.md` when dispatching agents to determine correct context loading.
+- Load `references/harness-learning.md` at project start (intake) to check lessons from past projects, and at delivery to record new lessons.
 - Load `references/harness-ab-eval.md` when asked to prove Forge's value against a baseline.
 </Execution_Policy>
 
 <Steps>
 Phase 0 — INTAKE / 접수 (CEO):
   1. Read the client's request / 의뢰인 요청 확인
+  1b. **Lessons Check**: CEO loads global lessons from ~/.claude/forge-lessons/ (if exists)
+      - Match project type against lesson `applies_when` conditions
+      - Relevant lessons → record in state.json as `lessons_brief`
+      - Pattern lessons feed into CTO's code-rules, QA's test plan
+      - Estimation lessons calibrate scope assessment
   2. CEO agent evaluates and ROUTES / CEO가 평가 후 라우팅:
 
      [BUILD mode] — new product request
@@ -69,26 +83,41 @@ Phase 0 — INTAKE / 접수 (CEO):
 
 Phase 1 — DISCOVERY / 발견 (PM):
   1. Invoke forge:discovery skill / 디스커버리 스킬 실행
-  2. PM interviews the client one question at a time only until critical ambiguity is low enough for safe internal execution / PM이 꼭 필요한 질문만 최소 단위로 진행
+  2. PM interviews the client with understanding verification loops / PM이 이해 확인 루프로 인터뷰
+     - After each major topic, PM summarizes understanding back to client
+     - Client confirms or corrects before moving to next topic
   3. Generate spec.md from template / spec.md 생성
-  4. Internal assumptions and validation targets are recorded for anything non-critical that can be resolved inside the company loop
-  5. CEO reviews spec readiness → internal GO to Phase 2 / CEO가 내부 실행 가능 여부 판단 후 2단계
+  4. Internal assumptions and validation targets are recorded
+  5. **Pre-handoff: PM pre-generates questions CTO/Designer will likely have**
+     - PM anticipates technical/design ambiguities in the spec
+     - CEO reviews and resolves what can be answered internally
+  6. CEO reviews spec readiness → internal GO to Phase 2
 
 Phase 2 — DESIGN / 설계 (CTO + Designer):
-  1. Invoke forge:design skill / 디자인 스킬 실행
-  2. CTO: architecture + code-rules.md + interface contracts / CTO: 아키텍처 + 코드 규칙 + 인터페이스 계약
-  3. Designer: UI/UX spec + component definitions / 디자이너: UI/UX 사양 + 컴포넌트 정의
-  4. Cross-review between CTO and Designer / CTO-디자이너 교차 검토
-  5. Fact checker validates all technical claims via context7 / 팩트체커가 기술 주장 검증
-  6. CTO + Designer + fact-checker confirm design readiness → Phase 3 / 내부 설계 준비 완료 시 3단계
+  1. **Handoff Interview: CTO + Designer read spec.md and generate domain questions**
+     - CTO: technical feasibility questions, missing constraints, integration gaps
+     - Designer: UX flow gaps, missing states, interaction ambiguities
+     - CEO triages: internal (PM/CEO answers) vs client-owned (ask client)
+     - Questions resolved before design work begins
+  2. Invoke forge:design skill / 디자인 스킬 실행
+  3. CTO: architecture + code-rules.md + interface contracts
+  4. Designer: UI/UX spec + component definitions
+  5. Cross-review between CTO and Designer
+  6. Fact checker validates all technical claims via context7
+  7. **Pre-handoff: CTO generates implementation questions Lead Dev will need**
+  8. CTO + Designer + fact-checker confirm design readiness → Phase 3
 
 Phase 3 — DEVELOPMENT / 개발 (Lead + Devs + Publisher):
-  1. Invoke forge:develop skill / 개발 스킬 실행
-  2. Lead splits work into tasks, creates git worktrees / 리드가 작업 분할, 워크트리 생성
-  3. Each developer/publisher works in isolated worktree / 개발자별 격리된 워크트리에서 작업
-  4. PR-based merge with 3-tier review (auto → lead → CTO) / PR 기반 머지, 3단계 리뷰
-  5. Code rules enforced — inconsistent code is REJECTED / 코드 규칙 위반 시 거부
-  6. All required lanes merged and internally verified → Phase 4 / 필요한 lane 머지 및 내부 검증 완료 시 4단계
+  1. **Handoff Interview: Lead reads architecture, contracts, code-rules, components**
+     - Lead generates implementation questions (ambiguous boundaries, unclear contracts)
+     - CEO triages: CTO answers technical, Designer answers UX, client if business-owned
+     - Lead confirms understanding before splitting tasks
+  2. Invoke forge:develop skill / 개발 스킬 실행
+  3. Lead splits work into tasks, creates git worktrees
+  4. Each developer/publisher works in isolated worktree
+  5. PR-based merge with 3-tier review (auto → lead → CTO)
+  6. Code rules enforced — inconsistent code is REJECTED
+  7. All required lanes merged and internally verified → Phase 4
 
 Phase 4 — QA / 품질보증 (QA Engineer):
   1. Invoke forge:qa skill / QA 스킬 실행
@@ -119,7 +148,7 @@ Phase 7 — DELIVERY / 납품 (CEO + Tech Writer):
 On first invocation, create .forge/ directory:
 
 .forge/
-├── state.json      ← current phase, progress, active agents
+├── state.json      ← current phase, progress, active agents, artifact_versions, staleness
 ├── spec.md         ← client-approved spec (Phase 1 output)
 ├── code-rules.md   ← CTO-defined code rules (Phase 2 output)
 ├── design/         ← architecture + UI design (Phase 2 output)
@@ -130,7 +159,11 @@ On first invocation, create .forge/ directory:
 ├── worktrees/      ← git worktree directories
 ├── checkpoints/    ← context checkpoints
 ├── knowledge/      ← project knowledge base
+├── lessons/        ← harness learning: lessons from QA, fixes, and delivery
 └── delivery-report/← final delivery docs
+
+state.json includes `artifact_versions` and `staleness` fields for constraint propagation.
+See `references/constraint-propagation.md` for the full protocol.
 </State_Management>
 
 <Dashboard>

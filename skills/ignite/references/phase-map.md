@@ -31,3 +31,15 @@ Do not advance to the next phase until:
 - the current phase output exists,
 - the client gate is satisfied when required,
 - and the state file is updated.
+
+## Handoff interview rule
+
+Every phase transition (1→2, 2→3, 3→4) triggers a Handoff Interview:
+1. Receiving team reads previous phase artifacts
+2. Receiving team generates domain-specific questions
+3. CEO triages: internal answer vs client question vs safe assumption
+4. Questions resolved → receiving team writes understanding statement
+5. Handing-off team confirms understanding → phase proceeds
+
+See `references/handoff-interview.md` for full protocol.
+Skip conditions: express mode, repair same-team transitions, handoff-note-only cases.

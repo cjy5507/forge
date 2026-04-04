@@ -62,6 +62,43 @@ Layer 2 — Isolated Subagent (parallel execution):
 </Progressive_Disclosure>
 
 <Steps>
+-1. **Staleness Check (constraint propagation)**
+    - Read state.json.staleness — if architecture, contracts, code_rules, components, or tokens are stale, BLOCK.
+    - Route to CTO/Designer to update stale artifacts before implementation proceeds.
+    - Only continue when all staleness entries relevant to this phase are cleared.
+
+0. **Handoff Interview — Implementation Intake (BEFORE task splitting)**
+   a. Lead Developer reads ALL design artifacts:
+      - .forge/design/architecture.md
+      - .forge/contracts/*.ts
+      - .forge/code-rules.md
+      - .forge/design/components.md
+      - .forge/design/tokens.json
+      - CTO's pre-generated questions from handoff brief
+
+   b. Lead generates implementation questions:
+      - Ambiguous module boundaries: "Does module X own this shared state, or module Y?"
+      - Missing contracts: "The spec mentions feature Z but no contract exists for it"
+      - Dependency ordering: "Can module A start before module B's types are available?"
+      - Testing gaps: "What's the test strategy for [integration point]?"
+      - Performance budgets: "Is there a response time target for [critical path]?"
+      Format: "Q: ... | Domain: architecture/contract/testing | Blocker: yes/no | Default assumption: ..."
+
+   c. CEO triages questions:
+      - CTO answers architecture/contract questions
+      - Designer answers UX/component questions
+      - PM answers business logic questions
+      - CLIENT → only if truly customer-owned (rare at this stage)
+
+   d. Lead writes understanding statement:
+      "I will split the implementation into [N] modules: [list with boundaries].
+       Critical path: [ordering]. Key risk: [risk]. Test strategy: [approach]."
+
+   e. CTO reviews Lead's understanding statement against architecture intent.
+      Mismatches → correct immediately. Accurate → sign off.
+
+   f. Understanding confirmed → task splitting begins.
+
 1. Lead Developer reads:
    - .forge/design/architecture.md
    - .forge/contracts/*.ts
@@ -103,12 +140,26 @@ Layer 2 — Isolated Subagent (parallel execution):
       node scripts/forge-lane-runtime.mjs init-lane --lane {module} --title "{title}" --task-file .forge/tasks/{module}.md --worktree .forge/worktrees/{module} [--depends-on ...]
       - This step should create the lane record immediately so the worktree/task pair never exists outside runtime.
 
-6. Dispatch agents by layer:
+6. Dispatch agents by layer with context budget
+   (see `references/context-budget.md` for full protocol):
+
+   Layer dispatch:
    - Layer 0 (lead-dev): Continue in main conversation. Load agents/lead-dev.md context.
    - Layer 2 (developers): Agent tool with subagent_type="forge:developer", isolation="worktree"
    - Layer 2 (publishers): Agent tool with subagent_type="forge:publisher", isolation="worktree"
    - Layer 2 (fact-checker): Agent tool with subagent_type="forge:fact-checker" (no worktree needed)
-   - Each developer receives: spec subset + module contract + code-rules.md
+
+   **Developer context budget:**
+   - T0 (mandatory): tasks/{module}.md, contracts/{relevant}.ts, code-rules.md
+   - T1 (relevant):  living standard reference (patterns from first merged PR)
+   - T2 (on-demand): architecture.md (module boundaries section only)
+   - EXCLUDED: full spec, other modules' tasks, design docs, other worktrees
+
+   **Publisher context budget:**
+   - T0 (mandatory): tasks/{module}.md, contracts/{relevant}.ts, code-rules.md, components.md (assigned only), tokens.json
+   - T1 (relevant):  living standard reference
+   - T2 (on-demand): architecture.md (frontend section only)
+   - EXCLUDED: backend contracts, other modules, full spec
    - Lane owner assigned via:
      node scripts/forge-lane-runtime.mjs assign-owner --lane {module} --owner {agent}
 
@@ -295,6 +346,9 @@ When inconsistency is found, Lead rejects with explicit correction:
 </Tool_Usage>
 
 <Failure_Modes_To_Avoid>
+- Starting task splitting before Handoff Interview is complete
+- Lead not writing understanding statement before splitting work
+- CTO rubber-stamping Lead's understanding without reviewing it
 - Developers modifying files outside their worktree scope
 - Skipping any tier of code review
 - Merging without all 3 tiers approving

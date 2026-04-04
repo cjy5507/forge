@@ -49,11 +49,15 @@ design review, prototyping, or QA.
    - "주로 누가 사용하나요?"
    - "핵심 가치가 뭐예요? 사용자가 왜 이걸 쓰나요?"
    - "참고할 만한 앱이나 사이트 있으세요?"
+   → **Understanding Check**: PM summarizes Big Picture back to client in 2-3 sentences.
+     Client confirms or corrects before proceeding.
 
    Round 2 — Features (one at a time):
    - For each user type: "이 사용자는 주로 뭘 하나요?"
    - "이 기능에서 에러가 나면 어떻게 되어야 하나요?"
    - "반드시 있어야 하는 기능과 나중에 해도 되는 기능을 나눠주세요"
+   → **Understanding Check**: PM summarizes feature priorities back to client.
+     "제가 이해한 걸 정리하면: [핵심 기능 A, B, C]는 필수, [D, E]는 나중. 맞나요?"
 
    Round 3 — Constraints (one at a time):
    - "웹? 모바일? 둘 다?"
@@ -61,12 +65,22 @@ design review, prototyping, or QA.
    - "로그인이 필요한가요? 어떤 방식?"
    - "결제 기능이 필요한가요?"
    - "실시간 기능이 필요한가요? (채팅, 알림, 위치추적 등)"
+   → **Understanding Check**: PM summarizes technical constraints.
 
    Round 4 — Validation:
    - Compile all answers into spec.md (using forge/templates/spec.md)
    - Show the customer a concise summary only if a final business-level confirmation is needed
    - Resolve any critical mismatches
    - Record remaining non-critical unknowns as assumptions, internal validation targets, or QA checks
+
+   Round 5 — Pre-Handoff Question Generation (NEW):
+   - PM anticipates questions the Design team (CTO + Designer) will have:
+     - Technical ambiguities: unclear data flows, missing integration details
+     - UX ambiguities: unspecified user flows, missing edge-case behaviors
+     - Business ambiguities: priority conflicts, unclear scope boundaries
+   - PM attempts to answer from interview knowledge; unresolvable ones go to CEO
+   - CEO triages: answer internally or ask client ONE focused question
+   - Resolved questions are appended to spec.md as "Design Team Pre-Brief" section
 
 3. Spec Completion Check:
    - Count critical customer-owned questions in spec
@@ -110,6 +124,7 @@ design review, prototyping, or QA.
 <State_Changes>
 - Creates: .forge/spec.md
 - Updates: state.json (phase=2, spec_approved=true)
+- Updates: state.json artifact_versions: initialize `spec` with version=1
 - Updates: .forge/runtime.json (design_readiness gate + next session brief)
 - Creates: git tag forge/v1-spec
 </State_Changes>
@@ -133,4 +148,7 @@ design review, prototyping, or QA.
 - Not resolving contradictions in client answers
 - Asking the customer questions the internal team should answer itself
 - Skipping CEO readiness review before internal sign-off
+- Skipping understanding checks after each interview round
+- Not generating pre-handoff questions for CTO/Designer
+- Passing spec to Design team without "Design Team Pre-Brief" section
 </Failure_Modes_To_Avoid>

@@ -26,6 +26,18 @@ multi-module codebases.
 </Layer_Classification>
 
 <Steps>
+0. **Handoff Interview — QA Intake**
+   a. QA Engineer reads:
+      - .forge/spec.md, .forge/design/components.md, .forge/contracts/*.ts
+      - Lead Dev's session handoff notes
+      - Merged code (git log of Phase 3 work)
+   b. QA generates clarification questions:
+      - "Spec says X but I see Y implemented — is this intentional?"
+      - "No test criteria defined for feature Z — what's the expected behavior?"
+      - "Contract type A doesn't match the implementation — which is correct?"
+   c. Lead Dev / CTO answers implementation questions; PM answers spec intent questions
+   d. QA confirms understanding: "I will test [N features] against [these criteria]."
+
 1. Dispatch QA Engineer agent with context:
    - .forge/spec.md (requirements reference)
    - .forge/design/components.md (visual reference)
@@ -79,6 +91,15 @@ multi-module codebases.
      - Affected spec section
    - The bug-tracker agent writes .forge/holes/HOLE-{NNN}-{slug}.md with the next
      available sequence number and a kebab-case slug derived from the issue summary
+
+7b. **Lesson Check + Extraction (harness learning)**:
+    a. Before testing, load relevant pattern lessons from ~/.claude/forge-lessons/ and .forge/lessons/
+       - Match lessons against current tech stack and project type
+       - Known bug patterns from past projects → add as extra test cases
+    b. After testing, if 3+ blockers found:
+       - Categorize blockers by root cause type
+       - If a category has 2+ blockers → create pattern lesson in .forge/lessons/
+       - See `references/harness-learning.md` for format
 
 8. Gate Decision:
    - Count blockers and majors

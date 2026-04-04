@@ -94,6 +94,42 @@ Researcher is for EXTERNAL investigation only:
 </Researcher_Scope>
 
 <Steps>
+-1. **Staleness Check (constraint propagation)**
+    - Read state.json.staleness — if `spec` is marked stale, BLOCK.
+    - Route to PM to update spec before design proceeds.
+    - Only continue when spec staleness is cleared.
+
+-0. **Handoff Interview — Design Intake (BEFORE any design work begins)**
+   a. CTO reads spec.md completely, generates technical questions:
+      - Missing data flow details, unclear API boundaries
+      - Unspecified performance/scalability requirements
+      - Ambiguous integration points, unclear state management needs
+      Format: "Q: ... | Domain: technical | Blocker: yes/no | Default assumption: ..."
+
+   b. Designer reads spec.md completely, generates UX questions:
+      - Missing user flows, unspecified edge-case behaviors
+      - Unclear navigation patterns, missing responsive requirements
+      - Ambiguous interaction patterns (what happens on error? on empty state?)
+      Format: "Q: ... | Domain: design | Blocker: yes/no | Default assumption: ..."
+
+   c. CEO triages all questions:
+      - INTERNAL → PM answers from interview knowledge, or CTO/Designer resolves internally
+      - CLIENT → only truly customer-owned decisions (max 1-2 questions batched)
+      - ASSUMPTION OK → record assumption in spec.md, proceed
+
+   d. After questions resolved, CTO and Designer each write an understanding statement:
+      - CTO: "I will build [architecture summary] to support [key requirements]. Key constraints: [list]."
+      - Designer: "I will design [UX summary] for [user types]. Key flows: [list]."
+      - PM reviews these statements against spec intent. Mismatches → correct immediately.
+
+   e. Understanding confirmed → design work begins.
+
+-0b. **Lessons Check (harness learning)**
+    - CTO loads relevant pattern lessons from ~/.claude/forge-lessons/ and state.json.lessons_brief
+    - Known bug patterns for the chosen tech stack → add preventive rules to code-rules.md
+    - Known QA-failure patterns → add to contracts as explicit constraints
+    - Known estimation gaps → flag to CEO for scope calibration
+
 0. Codebase Analysis (skip if greenfield project):
    Dispatch Analyst (forge:analyst) to map existing architecture:
    - Uses codebase-memory-mcp: get_architecture, search_graph, trace_call_path
@@ -170,15 +206,23 @@ Researcher is for EXTERNAL investigation only:
    - If a real business-level design blocker remains, present it clearly in customer language
    - Otherwise keep the design decision internal and proceed
 
-8. Internal design readiness passes → update state.json: phase=3, phase_id="develop", phase_name="develop", design_approved=true
+8. **Pre-Handoff: Generate Lead Dev questions**
+   - CTO anticipates implementation questions Lead Dev will have:
+     - Ambiguous module boundaries, unclear dependency ordering
+     - Missing contract details, unspecified error propagation paths
+     - Performance budget per module, unclear testing requirements
+   - CTO resolves what they can; remaining questions are recorded in the handoff brief
+   - These become the starting point for Lead Dev's Handoff Interview in Phase 3
+
+9. Internal design readiness passes → update state.json: phase=3, phase_id="develop", phase_name="develop", design_approved=true
    - Update company runtime for implementation:
      `node scripts/forge-lane-runtime.mjs set-company-gate --gate implementation_readiness --gate-owner lead-dev --delivery-state in_progress`
-   - Update session handoff toward implementation:
-     `node scripts/forge-lane-runtime.mjs set-session-brief --goal "Prepare reviewable implementation lanes" --next-owner lead-dev --handoff "{summary}"`
+   - Update session handoff toward implementation (include pre-generated questions):
+     `node scripts/forge-lane-runtime.mjs set-session-brief --goal "Prepare reviewable implementation lanes" --next-owner lead-dev --handoff "{summary + pre-generated questions}"`
 
-9. Create git tag: forge/v1-design
+10. Create git tag: forge/v1-design
 
-10. Transition to Phase 3 (forge:develop)
+11. Transition to Phase 3 (forge:develop)
 </Steps>
 
 <Scale_Decision>
@@ -202,6 +246,7 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Creates: .forge/contracts/*.ts
 - Creates: .forge/code-rules.md
 - Updates: .forge/state.json (phase=3, design_approved=true)
+- Updates: .forge/state.json artifact_versions: bump architecture, contracts, components, code_rules, tokens
 - Updates: .forge/runtime.json (implementation_readiness gate + next session brief)
 - Creates: git tag forge/v1-design
 </State_Changes>
@@ -237,4 +282,9 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Using Researcher for internal codebase analysis (Analyst's job)
 - Dispatching CTO and Designer as isolated subagents when Team is needed
 - CTO and Designer producing independent outputs without SendMessage cross-review
+- Starting design work before Handoff Interview is complete
+- CTO/Designer not writing understanding statements before starting
+- PM rubber-stamping understanding statements without reading them
+- Not generating pre-handoff questions for Lead Dev
+- Routing more than 2 questions to client when internal resolution is possible
 </Failure_Modes_To_Avoid>

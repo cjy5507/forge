@@ -64,6 +64,14 @@ Max 3 iterations before escalating to the client with alternatives.
       - PR review (all 3 tiers — automated + Lead + CTO)
       - Merge and cleanup worktree
 
+2b. **Lesson Extraction (after each COMPLEX fix)**:
+    - If triage score was 0-2 (complex) and RCA was performed:
+      a. Troubleshooter identifies the structural cause (not just the symptom)
+      b. Lead Dev evaluates: is this a recurring pattern or one-off?
+      c. If recurring → create pattern lesson in .forge/lessons/{issue-id}-lesson.md
+      d. If the fix reveals a code-rules gap → note in lesson's prevention checklist
+    - See `references/harness-learning.md` for lesson format
+
 3. QA Re-verification:
    a. After each fix is merged, dispatch QA engineer to re-verify:
       - Does the specific issue reproduce? (must be NO)

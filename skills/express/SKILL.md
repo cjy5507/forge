@@ -29,7 +29,10 @@ This reduces approval gates from 5 to 2 and turns from ~20 to ~8.
 Step 1 — PLAN:
   1. Initialize .forge/ with tier='medium', mode='express'
   2. PM: Generate compact spec (max 1 page) from user's request
+     - Include understanding check: PM summarizes back to user before finalizing
   3. CTO: Define code-rules and key interfaces inline
+     - **Lightweight Handoff Interview**: CTO reads spec, flags any gaps in 1 round
+     - PM/CEO resolves gaps immediately (no multi-round interview in express mode)
   4. Optional: dispatch Analyst for quick architecture snapshot (skip if trivial task —
      only useful when touching 3+ modules or unfamiliar areas)
   5. Single approval gate: "Plan looks good? (y/n)"
