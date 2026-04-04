@@ -24,7 +24,7 @@ exactly where the last one stopped.
 
 ## Core UX
 
-### `forge status` — see where you are
+### `forge info` — see where you are
 
 Shows current phase, what's blocking, and what to do next. One glance, not a wall of fields.
 
@@ -141,7 +141,7 @@ Then:
 
 ```
 forge                  # start a new project or fix an existing one
-forge status           # see current phase, blockers, next steps
+forge info             # see current phase, blockers, next steps
 forge continue         # restore state and pick up where you left off
 ```
 
