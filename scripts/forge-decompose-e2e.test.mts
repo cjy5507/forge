@@ -57,7 +57,7 @@ function runLaneRuntime(args: string[], cwd: string) {
   const result = spawnSync(
     process.execPath,
     [join(FORGE_ROOT, 'scripts', 'forge-lane-runtime.mjs'), ...args],
-    { cwd, encoding: 'utf8', env: { ...process.env, FORGE_TIER: 'off' } },
+    { cwd, encoding: 'utf8', env: { ...process.env, FORGE_TIER: 'off', FORGE_LLM_TIMEOUT_MS: '3000' } },
   );
   return result;
 }

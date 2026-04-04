@@ -18,6 +18,7 @@ critical questions, and reviews the delivery at the end. Internal teams own the 
 - User invokes /forge:ignite or says "forge"
 - BUILD: "build me a ~~", "I want an app that ~~", "create a ~~"
 - REPAIR: "fix this bug", "analyze this error", "why isn't this working?"
+- KO: "만들어줘", "고쳐줘", "포지"  JA: "作って", "直して", "フォージ"  ZH: "做一个", "修复", "锻造"
 - User wants team-based development or debugging
 </Use_When>
 

@@ -13,6 +13,7 @@ No guessing — only evidence-backed conclusions.
 
 <Use_When>
 - Invoked by forge:fix skill when an issue is classified as complex
+- KO: "분석해줘", "원인 찾아줘"  JA: "分析して", "原因を調べて"  ZH: "分析一下", "查找原因"
 - Bug spans multiple modules or has unclear cause
 - Bug reproduces intermittently
 - Previous fix attempt failed (regression or incomplete fix)

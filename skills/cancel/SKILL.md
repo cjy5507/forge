@@ -10,6 +10,7 @@ but preserves any code already merged to main branch.
 
 <Use_When>
 - User says "forge cancel", "cancel project"
+- KO: "포지 취소", "취소해줘"  JA: "キャンセル", "フォージ取消"  ZH: "取消", "锻造取消"
 - Need to abort mid-project
 - Need to clean up after a completed project
 </Use_When>

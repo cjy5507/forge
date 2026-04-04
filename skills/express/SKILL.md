@@ -15,6 +15,7 @@ This reduces approval gates from 5 to 2 and turns from ~20 to ~8.
 <Use_When>
 - Task is medium complexity (2-5 files, clear requirements)
 - User explicitly requests express mode
+- KO: "빠르게", "간단하게"  JA: "簡単に", "エクスプレス"  ZH: "快速", "简单"
 - Task type is 'feature' or 'refactor' with clear scope
 </Use_When>
 

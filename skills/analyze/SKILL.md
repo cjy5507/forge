@@ -12,6 +12,7 @@ Forge phase (design, develop, fix).
 
 <Use_When>
 - User asks "forge analyze", "analyze this codebase", "code analysis"
+- KO: "코드 분석", "아키텍처 분석"  JA: "コード分析", "アーキテクチャ分析"  ZH: "代码分析", "架构分析"
 - User wants architecture mapping before making changes
 - User asks "what would break if I change X?"
 - User asks about dependencies, coupling, dead code, or complexity

@@ -17,6 +17,7 @@ export const DEFAULT_STATS = {
 export const DEFAULT_RUNTIME = {
   version: 3,
   active_tier: 'light',
+  detected_locale: 'en',
   last_task_type: 'general',
   task_graph_version: 1,
   company_mode: 'guided',

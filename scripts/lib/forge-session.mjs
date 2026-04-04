@@ -28,6 +28,7 @@ import {
   detectTaskType,
   recommendedAgentsFor,
 } from './forge-tiers.mjs';
+import { allTriggers, INTERACTIVE_PATTERNS } from './i18n-patterns.mjs';
 import {
   normalizeLane,
   normalizeLaneStatus,
@@ -811,25 +812,11 @@ export function summarizePendingWork(state, runtime = null) {
   return pending;
 }
 
+const interactivePatterns = allTriggers(INTERACTIVE_PATTERNS);
+
 export function messageLooksInteractive(message = '') {
   const text = String(message).toLowerCase();
-  const patterns = [
-    /\bconfirm\b(?!ed|ing)/,
-    /\bapproval\b/,
-    /\bapprove\b(?!d)/,
-    /\bchoose\b/,
-    /\bwhich option\b/,
-    /\bwaiting for\b/,
-    /\bneed your input\b/,
-    /\bdo you want\b/,
-    /계속할까요/,
-    /확인(?!.*완료)/,
-    /선택/,
-    /어느/,
-    /입력이 필요/,
-  ];
-
-  return patterns.some(re => re.test(text));
+  return interactivePatterns.some(re => re.test(text));
 }
 
 export function isProjectActive(state) {

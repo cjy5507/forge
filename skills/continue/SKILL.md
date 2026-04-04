@@ -12,6 +12,7 @@ the user should be able to type "forge continue" and immediately be back in cont
 - User returns after a session break
 - SessionStart detects existing .forge/state.json
 - User says "forge continue", "resume", "pick up where we left off"
+- KO: "이어서 해줘", "계속해줘", "포지 계속"  JA: "続けて", "フォージ続行"  ZH: "继续", "锻造继续"
 </Use_When>
 
 <Steps>

@@ -4,47 +4,41 @@
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join, relative, extname } from 'path';
 import { spawnSync } from 'child_process';
+import { TASK_PATTERNS_I18N, AREA_PATTERNS_I18N, mergeIntoRegex } from './i18n-patterns.mjs';
 
 // ── Constants ──
 
 const MAX_FILES = 50;
 const SCAN_TIMEOUT_MS = 3000;
-const LLM_TIMEOUT_MS = 3000;
+const LLM_TIMEOUT_MS = Number(process.env.FORGE_LLM_TIMEOUT_MS) || 12000;
 const MAX_LINES_PER_FILE = 200;
 const MAX_SPEC_EXCERPT = 2000;
 const MAX_COMPONENTS = 8;
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '.turbo', 'coverage']);
 
-// Task type detection patterns — Korean alternatives enable multilingual input matching:
-// 기능 = "feature", 만들어 = "make/create", 추가 = "add", 리팩토링 = "refactoring",
-// 정리 = "clean up", 안 돼 = "doesn't work", 고쳐 = "fix", 오류/에러 = "error",
-// 테스트 = "test", 문서 = "document", 이전 = "migration", 마이그레이션 = "migration",
-// 빠르게 = "quickly", 최적화 = "optimization"
+// Task type detection patterns — i18n-aware (EN/KO/JA/ZH) via centralized registry
 const TASK_PATTERNS = {
   'fullstack-app': /\b(full.?stack|app|application|website|web app|SaaS|dashboard)\b/i,
-  'feature': /\b(add|implement|create|build|new feature|기능|만들어|추가)\b/i,
-  'refactoring': /\b(refactor|restructure|reorganize|clean.?up|리팩토링|정리)\b/i,
-  'bug-fix': /\b(fix|bug|error|broken|crash|안 ?돼|고쳐|오류|에러)\b/i,
-  'testing': /\b(test|spec|coverage|테스트)\b/i,
-  'documentation': /\b(docs?|documentation|readme|guide|문서)\b/i,
-  'migration': /\b(migrat|upgrade|convert|이전|마이그레이션)\b/i,
-  'optimization': /\b(optimi[sz]|perf|speed|빠르게|최적화)\b/i,
+  'feature': mergeIntoRegex(/\b(add|implement|create|build|new feature)\b/i, TASK_PATTERNS_I18N['feature']),
+  'refactoring': mergeIntoRegex(/\b(refactor|restructure|reorganize|clean.?up)\b/i, TASK_PATTERNS_I18N['refactoring']),
+  'bug-fix': mergeIntoRegex(/\b(fix|bug|error|broken|crash)\b/i, TASK_PATTERNS_I18N['bug-fix']),
+  'testing': mergeIntoRegex(/\b(test|spec|coverage)\b/i, TASK_PATTERNS_I18N['testing']),
+  'documentation': mergeIntoRegex(/\b(docs?|documentation|readme|guide)\b/i, TASK_PATTERNS_I18N['documentation']),
+  'migration': mergeIntoRegex(/\b(migrat|upgrade|convert)\b/i, TASK_PATTERNS_I18N['migration']),
+  'optimization': mergeIntoRegex(/\b(optimi[sz]|perf|speed)\b/i, TASK_PATTERNS_I18N['optimization']),
 };
 
 const VALID_TASK_TYPES = new Set(Object.keys(TASK_PATTERNS));
 
-// Area detection patterns — Korean alternatives for multilingual input matching:
-// 프론트 = "frontend", 백엔드 = "backend", 서버 = "server", 디비 = "DB",
-// 데이터베이스 = "database", 인증 = "auth", 로그인 = "login",
-// 테스트 = "test", 인프라 = "infra", 배포 = "deploy"
+// Area detection patterns — i18n-aware (EN/KO/JA/ZH) via centralized registry
 const AREA_PATTERNS = {
-  frontend: /(\bui\b|\bux\b|component|page|layout|style|css|react|vue|svelte|next|frontend|프론트)/i,
-  backend: /(api|server|route|controller|endpoint|express|fastapi|backend|백엔드|서버)/i,
-  database: /(\bdb\b|database|schema|migration|model|prisma|drizzle|\bsql\b|디비|데이터베이스)/i,
-  auth: /(auth|login|signup|session|token|permission|인증|로그인)/i,
-  testing: /(test|spec|e2e|unit|integration|테스트)/i,
-  infra: /(deploy|\bci\b|\bcd\b|docker|k8s|vercel|\baws\b|infra|인프라|배포)/i,
+  frontend: mergeIntoRegex(/(\bui\b|\bux\b|component|page|layout|style|css|react|vue|svelte|next|frontend)/i, AREA_PATTERNS_I18N.frontend),
+  backend: mergeIntoRegex(/(api|server|route|controller|endpoint|express|fastapi|backend)/i, AREA_PATTERNS_I18N.backend),
+  database: mergeIntoRegex(/(\bdb\b|database|schema|migration|model|prisma|drizzle|\bsql\b)/i, AREA_PATTERNS_I18N.database),
+  auth: mergeIntoRegex(/(auth|login|signup|session|token|permission)/i, AREA_PATTERNS_I18N.auth),
+  testing: mergeIntoRegex(/(test|spec|e2e|unit|integration)/i, AREA_PATTERNS_I18N.testing),
+  infra: mergeIntoRegex(/(deploy|\bci\b|\bcd\b|docker|k8s|vercel|\baws\b|infra)/i, AREA_PATTERNS_I18N.infra),
 };
 
 export const AREA_FILE_PATTERNS = {

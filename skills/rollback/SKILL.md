@@ -10,6 +10,7 @@ The client can say "The earlier design was better" and Forge rolls back to that 
 
 <Use_When>
 - Client wants to undo recent work: "rollback", "go back", "the earlier version was better"
+- KO: "되돌려줘", "아까가 더 나았어"  JA: "戻して", "前の方が良かった"  ZH: "回滚", "之前的更好"
 - A phase produced unsatisfactory results
 - Need to restart from a specific phase
 </Use_When>

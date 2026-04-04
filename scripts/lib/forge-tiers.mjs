@@ -9,6 +9,7 @@ import {
   getRuntimePath,
 } from './forge-io.mjs';
 import { resolvePhase } from './forge-phases.mjs';
+import { TASK_TYPE_PATTERNS, FULL_TIER_PATTERNS, mergeIntoRegex } from './i18n-patterns.mjs';
 
 export const TIER_SEQUENCE = ['off', 'light', 'medium', 'full'];
 
@@ -25,6 +26,15 @@ export function tierAtLeast(currentTier, requiredTier) {
   return TIER_SEQUENCE.indexOf(normalizeTier(currentTier)) >= TIER_SEQUENCE.indexOf(normalizeTier(requiredTier));
 }
 
+// Combined i18n-aware regexes for task type detection (built once at module load)
+const BUGFIX_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.bugfix.en, { ko: TASK_TYPE_PATTERNS.bugfix.ko, ja: TASK_TYPE_PATTERNS.bugfix.ja, zh: TASK_TYPE_PATTERNS.bugfix.zh });
+const REFACTOR_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.refactor.en, { ko: TASK_TYPE_PATTERNS.refactor.ko, ja: TASK_TYPE_PATTERNS.refactor.ja, zh: TASK_TYPE_PATTERNS.refactor.zh });
+const REVIEW_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.review.en, { ko: TASK_TYPE_PATTERNS.review.ko, ja: TASK_TYPE_PATTERNS.review.ja, zh: TASK_TYPE_PATTERNS.review.zh });
+const QUESTION_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.question.en, { ko: TASK_TYPE_PATTERNS.question.ko, ja: TASK_TYPE_PATTERNS.question.ja, zh: TASK_TYPE_PATTERNS.question.zh });
+const PIPELINE_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.pipeline.en, { ko: TASK_TYPE_PATTERNS.pipeline.ko, ja: TASK_TYPE_PATTERNS.pipeline.ja, zh: TASK_TYPE_PATTERNS.pipeline.zh });
+const FEATURE_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.feature.en, { ko: TASK_TYPE_PATTERNS.feature.ko, ja: TASK_TYPE_PATTERNS.feature.ja, zh: TASK_TYPE_PATTERNS.feature.zh });
+const FULL_TIER_RE = mergeIntoRegex(FULL_TIER_PATTERNS.en, { ko: FULL_TIER_PATTERNS.ko, ja: FULL_TIER_PATTERNS.ja, zh: FULL_TIER_PATTERNS.zh });
+
 export function detectTaskType(message = '') {
   const text = String(message).toLowerCase();
 
@@ -32,29 +42,12 @@ export function detectTaskType(message = '') {
     return 'general';
   }
 
-  if (/(\bbug\b|\bfix\b|\bregression\b|오류|버그|고쳐|\bdiagnos\w*\b|\btroubleshoot\b|\brca\b|\bwhy\b)/.test(text)) {
-    return 'bugfix';
-  }
-
-  if (/(\brefactor\b|\bcleanup\b|정리|리팩토링|\bsimplify\b|\brename\b)/.test(text)) {
-    return 'refactor';
-  }
-
-  if (/(\breview\b|리뷰|코드리뷰|\bpr review\b|\bcode review\b)/.test(text)) {
-    return 'review';
-  }
-
-  if (/(\bquestion\b|\bexplain\b|\bwhat\b|어떻게|설명|질문|뭐야|왜)/.test(text)) {
-    return 'question';
-  }
-
-  if (/(\bfull\b|\ball phases\b|\bpipeline\b|\bentire\b|\bwhole system\b|\bcompany\b|\bworkflow\b|하네스|전체|워크플로우|\bphase\b|팀)/.test(text)) {
-    return 'pipeline';
-  }
-
-  if (/(\bfeature\b|\bimplement\b|\badd\b|\bbuild\b|\bcreate\b|\bpage\b|\bscreen\b|기능|추가|구현|만들)/.test(text)) {
-    return 'feature';
-  }
+  if (BUGFIX_RE.test(text)) return 'bugfix';
+  if (REFACTOR_RE.test(text)) return 'refactor';
+  if (REVIEW_RE.test(text)) return 'review';
+  if (QUESTION_RE.test(text)) return 'question';
+  if (PIPELINE_RE.test(text)) return 'pipeline';
+  if (FEATURE_RE.test(text)) return 'feature';
 
   return 'general';
 }
@@ -63,7 +56,7 @@ export function classifyTierFromMessage(message = '', state = null) {
   const text = String(message).toLowerCase();
   const taskType = detectTaskType(text);
 
-  if (/\bforge:ignite\b|\bset up forge\b|\bbuild a harness\b|전체|all phases|full pipeline|하네스/.test(text)) {
+  if (FULL_TIER_RE.test(text)) {
     return 'full';
   }
 

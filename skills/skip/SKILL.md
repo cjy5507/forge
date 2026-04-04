@@ -10,6 +10,7 @@ This is the primary escape hatch from the rigid phase-gate sequence.
 
 <Use_When>
 - User says "forge skip", "skip to [phase]", "skip phase"
+- KO: "건너뛰기", "스킵"  JA: "スキップ", "飛ばして"  ZH: "跳过", "跳到"
 - Current phase is clearly unnecessary for the task at hand
 - User has external artifacts (existing spec, existing design) that satisfy phase requirements
 </Use_When>

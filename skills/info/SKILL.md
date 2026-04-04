@@ -11,6 +11,7 @@ Prioritizes actionable information over completeness.
 
 <Use_When>
 - User asks "forge info", "where are we?", "show progress"
+- KO: "진행 상황", "어디까지 했어"  JA: "進捗", "どこまで進んだ"  ZH: "进度", "到哪了"
 - User asks for Forge metrics or harness overhead
 - Between phases to check overall state
 - When returning to a session

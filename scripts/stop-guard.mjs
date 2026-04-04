@@ -120,7 +120,7 @@ async function main() {
 To continue, invoke the skill:
 Skill: forge:${currentSkill}
 
-If you need to pause, the user can say "forge pause" or "forge cancel".`;
+To stop, the user can say "forge cancel".`;
 
     updateRuntimeState(cwd, current => ({
       ...current,
