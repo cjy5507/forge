@@ -14,6 +14,10 @@ import {
   tierAtLeast,
 } from './lib/forge-state.mjs';
 
+// Phase index at which "writing code" begins — tier-based artifact checks
+// (spec, design, contracts) only apply at or past this threshold.
+const CODE_WRITING_THRESHOLD = resolvePhase({ phase_id: 'develop' }).index;
+
 function isForgeStateFile(filePath) {
   if (!filePath) return false;
   const normalized = filePath.replace(/\\/g, '/');
@@ -65,14 +69,15 @@ async function main() {
         return;
       }
 
-      // Mode-phase mismatch warning (advisory, not blocking)
+      // Mode-phase mismatch — deny instead of advisory to prevent bypass
       if (phase.mismatch) {
         console.log(JSON.stringify({
           continue: true,
           suppressOutput: true,
           hookSpecificOutput: {
             hookEventName: 'PreToolUse',
-            additionalContext: `[Forge] warning: phase "${phase.id}" is not in the ${phase.mode} sequence — state may be inconsistent`,
+            permissionDecision: 'deny',
+            permissionDecisionReason: `Forge phase mismatch: "${phase.id}" is not in the ${phase.mode} sequence. Fix .forge/state.json before writing code.`,
           },
         }));
         return;
@@ -88,7 +93,7 @@ async function main() {
 
     const shouldSkipApprovalChecks = state.mode === 'repair' || state.mode === 'express';
 
-    if (!tierAtLeast(tier, 'medium') || phase.index < resolvePhase({ phase_id: 'develop' }).index) {
+    if (!tierAtLeast(tier, 'medium') || phase.index < CODE_WRITING_THRESHOLD) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
     }

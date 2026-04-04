@@ -489,6 +489,7 @@ describe('forge harness hooks', () => {
 import {
   PHASE_SEQUENCE,
   REPAIR_PHASE_SEQUENCE,
+  EXPRESS_PHASE_GATES,
   BUILD_PHASE_GATES,
   REPAIR_PHASE_GATES,
   TIER_SEQUENCE,
@@ -1477,6 +1478,117 @@ describe('getPhaseGates', () => {
   it('defaults to BUILD_PHASE_GATES', () => {
     expect(getPhaseGates()).toBe(BUILD_PHASE_GATES);
   });
+
+  it('returns EXPRESS_PHASE_GATES for express mode', () => {
+    expect(getPhaseGates('express')).toBe(EXPRESS_PHASE_GATES);
+  });
+});
+
+describe('checkPhaseGate express mode', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns canAdvance=true for express plan phase (no gate defined)', () => {
+    const result = checkPhaseGate(tmpDir, 'plan', 'express');
+    expect(result.canAdvance).toBe(true);
+    expect(result.mode).toBe('express');
+  });
+
+  it('returns canAdvance=true for express build phase (no requires)', () => {
+    const result = checkPhaseGate(tmpDir, 'build', 'express');
+    expect(result.canAdvance).toBe(true);
+  });
+
+  it('returns canAdvance=true for express ship phase (no requires)', () => {
+    const result = checkPhaseGate(tmpDir, 'ship', 'express');
+    expect(result.canAdvance).toBe(true);
+  });
+});
+
+describe('write-gate express mode', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('allows writes in express mode at light tier', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'express',
+      phase: 'build',
+      phase_id: 'build',
+      phase_name: 'build',
+      tier: 'light',
+      status: 'in_progress',
+    }));
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
+    }, { env: { FORGE_TIER: 'light' } });
+    expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
+  });
+});
+
+describe('write-gate mismatch denies', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('denies writes on mode-phase mismatch', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# rules');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'repair',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'light',
+      status: 'in_progress',
+    }));
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
+    }, { env: { FORGE_TIER: 'light' } });
+    expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/mismatch/i);
+  });
+});
+
+describe('compactForgeContext surfaces warnings', () => {
+  it('includes mismatch in action when phase does not match mode', () => {
+    const state = { mode: 'repair', phase_id: 'develop', spec_approved: true, design_approved: true };
+    const context = compactForgeContext(state);
+    expect(context).toMatch(/MISMATCH/);
+  });
+
+  it('includes gate warning when present in state', () => {
+    const state = {
+      mode: 'build', phase_id: 'develop', spec_approved: true, design_approved: true,
+      _phase_gate_warning: 'Phase develop requires missing artifacts: design',
+    };
+    const context = compactForgeContext(state);
+    expect(context).toMatch(/GATE/);
+  });
 });
 
 describe('resolvePhase mismatch detection', () => {
@@ -1627,7 +1739,7 @@ describe('write-gate phase gate enforcement', () => {
     expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
   });
 
-  it('warns on mode-phase mismatch', () => {
+  it('denies on mode-phase mismatch', () => {
     const forgeDir = join(tmpDir, '.forge');
     // Satisfy all build gates so we hit the mismatch check
     mkdirSync(join(forgeDir, 'design'), { recursive: true });
@@ -1645,6 +1757,7 @@ describe('write-gate phase gate enforcement', () => {
       tool_name: 'Write',
       tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
     }, { env: { FORGE_TIER: 'light' } });
-    expect(result.hookSpecificOutput?.additionalContext).toMatch(/mismatch|not in the/i);
+    expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/mismatch/i);
   });
 });

@@ -52,9 +52,16 @@ export const BUILD_PHASE_GATES = {
   delivery:  { requires: [], produces: ['delivery-report'] },
 };
 
+/** Map express phase IDs to required artifacts that must exist before advancing */
+export const EXPRESS_PHASE_GATES = {
+  build: { requires: [], produces: [] },
+  ship:  { requires: [], produces: [] },
+};
+
 /** Resolve the phase gate map for a given mode */
 export function getPhaseGates(mode = 'build') {
   if (mode === 'repair') return REPAIR_PHASE_GATES;
+  if (mode === 'express') return EXPRESS_PHASE_GATES;
   return BUILD_PHASE_GATES;
 }
 
@@ -1037,7 +1044,11 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   // Actionable one-liner: most important thing first
   const truncate = (s, max = 50) => s.length > max ? s.slice(0, max - 1) + '…' : s;
   let action = '';
-  if (customerBlockers.length) {
+  if (phase.mismatch) {
+    action = ` → MISMATCH: "${phase.id}" not in ${phase.mode} sequence`;
+  } else if (state._phase_gate_warning) {
+    action = ` → GATE: ${truncate(state._phase_gate_warning)}`;
+  } else if (customerBlockers.length) {
     action = ` → waiting on client: ${truncate(String(customerBlockers[0]?.summary || customerBlockers[0]))}`;
   } else if (internalBlockers.length) {
     action = ` → blocked: ${truncate(String(internalBlockers[0]?.summary || internalBlockers[0]))}`;
