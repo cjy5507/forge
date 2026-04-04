@@ -18,8 +18,11 @@ const MAX_COMPONENTS = 8;
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '.turbo', 'coverage']);
 
 // Task type detection patterns — i18n-aware (EN/KO/JA/ZH) via centralized registry
+// ⚠️ Evaluation order matters: first-match-wins. Most specific types first,
+// broadest ('optimization') last. 'fullstack-app' precedes 'feature' because
+// fullstack signals (dashboard, web app) are more specific than generic creation verbs.
 const TASK_PATTERNS = {
-  'fullstack-app': /\b(full.?stack|app|application|website|web app|SaaS|dashboard)\b/i,
+  'fullstack-app': mergeIntoRegex(/\b(full.?stack|app|application|website|web app|SaaS|dashboard)\b/i, TASK_PATTERNS_I18N['fullstack-app']),
   'feature': mergeIntoRegex(/\b(add|implement|create|build|new feature)\b/i, TASK_PATTERNS_I18N['feature']),
   'refactoring': mergeIntoRegex(/\b(refactor|restructure|reorganize|clean.?up)\b/i, TASK_PATTERNS_I18N['refactoring']),
   'bug-fix': mergeIntoRegex(/\b(fix|bug|error|broken|crash)\b/i, TASK_PATTERNS_I18N['bug-fix']),

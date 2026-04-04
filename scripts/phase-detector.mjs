@@ -20,7 +20,6 @@ import {
   FORGE_TRIGGERS,
   BUILD_TRIGGERS as BUILD_TRIGGERS_I18N,
   REPAIR_TRIGGERS as REPAIR_TRIGGERS_I18N,
-  detectLocale,
 } from './lib/i18n-patterns.mjs';
 
 const forgeTriggers = allTriggers(FORGE_TRIGGERS);

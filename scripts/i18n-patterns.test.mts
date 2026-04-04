@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   allTriggers,
   mergeIntoRegex,
-  detectLocale,
   FORGE_TRIGGERS,
   BUILD_TRIGGERS,
   REPAIR_TRIGGERS,
@@ -15,28 +14,6 @@ import {
 import { detectTaskType, classifyTierFromMessage } from './lib/forge-tiers.mjs';
 import { messageLooksInteractive } from './lib/forge-session.mjs';
 import { analyzeTask } from './lib/task-decomposer.mjs';
-
-describe('detectLocale', () => {
-  it('detects English', () => {
-    expect(detectLocale('build me a dashboard')).toBe('en');
-  });
-  it('detects Korean', () => {
-    expect(detectLocale('대시보드 만들어줘')).toBe('ko');
-  });
-  it('detects Japanese via Hiragana', () => {
-    expect(detectLocale('ダッシュボードを作って')).toBe('ja');
-  });
-  it('detects Japanese via Katakana', () => {
-    expect(detectLocale('バグを直して')).toBe('ja');
-  });
-  it('detects Chinese', () => {
-    expect(detectLocale('创建一个仪表板')).toBe('zh');
-  });
-  it('returns en for empty input', () => {
-    expect(detectLocale('')).toBe('en');
-    expect(detectLocale(null)).toBe('en');
-  });
-});
 
 describe('allTriggers', () => {
   it('flattens locale-keyed object into flat array', () => {

@@ -109,6 +109,7 @@ export const TASK_PATTERNS_I18N = {
   'documentation': { ko: /문서/, ja: /ドキュメント|文書/, zh: /文档/ },
   'migration':     { ko: /이전|마이그레이션/, ja: /移行|マイグレーション/, zh: /迁移/ },
   'optimization':  { ko: /빠르게|최적화/, ja: /高速化|最適化/, zh: /优化|加速/ },
+  'fullstack-app': { ko: /풀스택|웹\s*앱|어플리케이션|대시보드/, ja: /フルスタック|ウェブアプリ|ダッシュボード/, zh: /全栈|网页应用|仪表板/ },
 };
 
 // ── Helpers ──
@@ -125,15 +126,3 @@ export function mergeIntoRegex(englishRegex, i18nMap) {
   return new RegExp(combined, englishRegex.flags);
 }
 
-/** Detect locale from message text using Unicode character ranges.
- *  Checks Japanese-specific scripts (Hiragana/Katakana) first to distinguish from Chinese. */
-export function detectLocale(text) {
-  if (!text) return 'en';
-  // Japanese: Hiragana (3040-309F) or Katakana (30A0-30FF) present
-  if (/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) return 'ja';
-  // Korean: Hangul syllables (AC00-D7AF) or Jamo (1100-11FF)
-  if (/[\uAC00-\uD7AF\u1100-\u11FF]/.test(text)) return 'ko';
-  // Chinese: CJK Unified Ideographs without Japanese kana
-  if (/[\u4E00-\u9FFF]/.test(text)) return 'zh';
-  return 'en';
-}
