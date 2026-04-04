@@ -156,3 +156,10 @@ after internal readiness gates say the work is truly delivery-ready.
 - Forgetting to include environment variable documentation
 - Not providing handoff notes for future development
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When delivery completes (all docs written, CEO signs off):
+1. Update state.json: phase_id → "complete", status → "delivered"
+2. Present delivery report to the client
+This is the terminal phase — the pipeline ends here. Show the final summary to the user.
+</Auto_Chain>

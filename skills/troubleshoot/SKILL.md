@@ -110,3 +110,10 @@ No guessing — only evidence-backed conclusions.
 - Not specifying which tests must pass after the fix
 - Producing an RCA report without actionable fix recommendation
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When troubleshooting completes (root cause identified, RCA report written):
+1. Update state.json: phase_id → "fix"
+2. IMMEDIATELY invoke Skill: forge:fix
+Do NOT stop, summarize, or ask the user. The repair pipeline must continue to the fix phase.
+</Auto_Chain>

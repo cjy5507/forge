@@ -16,6 +16,7 @@ import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
   appendRecent,
+  isProjectActive,
   readActiveTier,
   readForgeState,
   resolveForgeBaseDir,
@@ -49,6 +50,12 @@ async function main() {
 
   try {
     if (!tierAtLeast(tier, 'medium')) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+
+    // Only write to runtime.json if there's an active Forge project
+    if (!state || !isProjectActive(state)) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
     }

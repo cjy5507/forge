@@ -152,3 +152,11 @@ design review, prototyping, or QA.
 - Not generating pre-handoff questions for CTO/Designer
 - Passing spec to Design team without "Design Team Pre-Brief" section
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When discovery completes (spec.md written, CEO approves readiness):
+1. Update state.json: phase_id → "design", spec_approved → true
+2. IMMEDIATELY invoke Skill: forge:design
+Do NOT stop, summarize, or ask the user. The pipeline must continue autonomously.
+Exception: if PM identified critical customer-owned questions, pause and ask those ONLY.
+</Auto_Chain>

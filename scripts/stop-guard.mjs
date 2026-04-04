@@ -95,8 +95,8 @@ async function main() {
           last_message: lastMessage,
         },
         stats: {
-          ...current.stats,
-          stop_block_count: (current.stats.stop_block_count || 0) + 1,
+          ...(current.stats || {}),
+          stop_block_count: ((current.stats || {}).stop_block_count || 0) + 1,
         },
         last_event: {
           name: 'StopWarned',
@@ -112,7 +112,15 @@ async function main() {
       return;
     }
 
-    const reason = `[Forge Stop Guard] Project "${state.project || 'unnamed'}" is still active in phase ${phase.id}. Pending: ${pending.join(', ')}.`;
+    const currentSkill = phase.id === 'complete' ? 'info' : phase.id;
+    const reason = `[Forge Stop Guard] Project "${state.project || 'unnamed'}" is still active in phase ${phase.id}. Pending: ${pending.join(', ')}.
+
+[MAGIC KEYWORD: FORGE:${currentSkill.toUpperCase()}]
+
+You MUST continue working. Invoke the skill using the Skill tool:
+Skill: forge:${currentSkill}
+
+The Forge pipeline is not complete. Do not stop — resume the current phase immediately.`;
 
     updateRuntimeState(cwd, current => ({
       ...current,
@@ -122,8 +130,8 @@ async function main() {
         last_message: lastMessage,
       },
       stats: {
-        ...current.stats,
-        stop_block_count: (current.stats.stop_block_count || 0) + 1,
+        ...(current.stats || {}),
+        stop_block_count: ((current.stats || {}).stop_block_count || 0) + 1,
       },
       last_event: {
         name: 'StopBlocked',

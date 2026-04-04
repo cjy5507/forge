@@ -135,6 +135,20 @@ Max 3 iterations before escalating to the client with alternatives.
 - Removes: fix worktrees after merge
 </State_Changes>
 
+<Tool_Usage>
+- Agent tool: dispatch forge:troubleshooter (layer2_subagent) for root cause analysis on complex issues
+- Agent tool: dispatch forge:analyst (layer2_subagent) for dependency tracing and impact analysis
+- Agent tool: dispatch forge:developer (layer2_subagent, isolation="worktree") for fix implementation
+- Agent tool: dispatch forge:fact-checker for verifying root causes before fixes
+- Agent tool: dispatch forge:qa-engineer for re-verification after each fix merge
+- Agent tool: dispatch forge:cto for Tier 3 reviews on complex multi-module fixes
+- Bash tool: git worktree add/remove, git rebase, git tag
+- CLI helper: `node scripts/forge-worktree.mjs` for worktree create/list/remove/prune
+- CLI helper: `node scripts/forge-lane-runtime.mjs` for lane graph, owner, status, handoff, and company gate updates
+- Read tool: load .forge/holes/*.md, .forge/evidence/rca-*.md
+- Edit tool: update .forge/state.json, .forge/holes/{issue-id}.md (attempt tracking)
+</Tool_Usage>
+
 <Failure_Modes_To_Avoid>
 - Attempting to fix a complex issue without root cause analysis
 - Fixing symptoms instead of root causes
@@ -149,3 +163,11 @@ Max 3 iterations before escalating to the client with alternatives.
 - Marking an issue as resolved without QA re-verification
 - Not presenting alternatives when max iterations are exceeded
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When all fixes are merged and QA re-verified:
+- Return to the phase that triggered the fix loop:
+  - If came from QA: update state.json phase_id → "qa", invoke Skill: forge:qa (re-run full QA)
+  - If came from Security: update state.json phase_id → "security", invoke Skill: forge:security (re-verify)
+Do NOT stop, summarize, or ask the user. The fix loop continues until no blockers remain.
+</Auto_Chain>

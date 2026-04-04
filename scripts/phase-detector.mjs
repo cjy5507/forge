@@ -19,6 +19,35 @@ import {
 const ENGLISH_TRIGGERS = [/\bforge\b/i, /\/forge\b/i, /\bforge:/i];
 const KOREAN_TRIGGERS = ['포지', '포지:', '/포지'];
 
+// Natural-language triggers that imply "build me something" — route to forge:ignite
+const BUILD_TRIGGERS = [
+  /만들어\s*줘/i, /구축해\s*줘/i, /개발해\s*줘/i, /빌드해\s*줘/i,
+  /build\s+(me\s+)?a\b/i, /create\s+(me\s+)?a\b/i, /make\s+(me\s+)?a\b/i,
+  /develop\s+(me\s+)?a\b/i,
+];
+// Natural-language triggers for fix/analyze — route to forge:ignite in repair mode
+const REPAIR_TRIGGERS = [
+  /고쳐\s*줘/i, /수정해\s*줘/i, /분석해\s*줘/i, /왜\s*안\s*돼/i, /오류/i,
+  /fix\s+(this|the|my)\b/i, /debug\s/i, /what'?s\s+wrong/i, /analyze\s/i,
+];
+
+function isNaturalForgeRequest(message) {
+  if (BUILD_TRIGGERS.some(re => re.test(message))) return 'build';
+  if (REPAIR_TRIGGERS.some(re => re.test(message))) return 'repair';
+  return null;
+}
+
+function createSkillInvocation(skillName, context) {
+  return `${context}
+
+[MAGIC KEYWORD: FORGE:${skillName.toUpperCase()}]
+
+You MUST invoke the skill using the Skill tool:
+Skill: forge:${skillName}
+
+IMPORTANT: Invoke the skill IMMEDIATELY. Do not summarize, do not ask for confirmation. The Forge pipeline requires autonomous execution.`;
+}
+
 async function main() {
   let input;
   try {
@@ -32,9 +61,11 @@ async function main() {
   const lowered = message.toLowerCase();
   const state = readForgeState(cwd);
 
-  const isForgeRequest =
+  const isExplicitForge =
     ENGLISH_TRIGGERS.some(re => re.test(message)) ||
     KOREAN_TRIGGERS.some(t => lowered.includes(t));
+  const naturalMode = !isExplicitForge ? isNaturalForgeRequest(message) : null;
+  const isForgeRequest = isExplicitForge || naturalMode !== null;
 
   if (!isForgeRequest) {
     if (state && existsSync(getRuntimePath(cwd))) {
@@ -50,23 +81,25 @@ async function main() {
   }
 
   let context = `[Forge] full intake 0/${PHASE_SEQUENCE.length - 1} ×spec ×design`;
+  let targetSkill = 'ignite';
 
   if (state) {
     try {
       const adaptive = updateAdaptiveTier(cwd, { state, message });
       const phase = resolvePhase(state);
       const runtime = readRuntimeState(cwd);
-      let currentSkill = phase.id === 'complete' ? 'status' : phase.id;
+      let currentSkill = phase.id === 'complete' ? 'info' : phase.id;
       const nextOwner = typeof runtime.next_session_owner === 'string' ? runtime.next_session_owner.trim() : '';
 
       if ((runtime.customer_blockers?.length || 0) > 0 && nextOwner === 'pm') {
         currentSkill = 'continue';
       } else if (typeof runtime.active_gate === 'string' && runtime.active_gate.trim()) {
         if (runtime.active_gate === 'delivery_readiness' || runtime.active_gate === 'customer_review') {
-          currentSkill = 'status';
+          currentSkill = 'info';
         }
       }
 
+      targetSkill = currentSkill;
       const compactOnly = compactForgeContext(state, adaptive.runtime);
       context = `${compactOnly} → forge:${currentSkill} [${adaptive.recommendedAgents.join(', ')}]`;
       const updatedRuntime = updateRuntimeState(cwd, current => ({
@@ -80,14 +113,21 @@ async function main() {
     }
   } else {
     updateAdaptiveTier(cwd, { state: null, message });
+    // No active project — natural language triggers ignite directly
+    if (naturalMode) {
+      targetSkill = 'ignite';
+    }
   }
+
+  // Emit skill invocation directive — LLM must invoke the target skill
+  const output = createSkillInvocation(targetSkill, context);
 
   console.log(JSON.stringify({
     continue: true,
     suppressOutput: true,
     hookSpecificOutput: {
       hookEventName: 'UserPromptSubmit',
-      additionalContext: context,
+      additionalContext: output,
     },
   }));
 }

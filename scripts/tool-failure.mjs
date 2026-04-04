@@ -5,6 +5,7 @@ import { readStdin } from './lib/stdin.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
   appendRecent,
+  isProjectActive,
   readActiveTier,
   readForgeState,
   resolveForgeBaseDir,
@@ -85,6 +86,20 @@ async function main() {
     const commandText = String(input?.tool_input?.command || input?.error || '');
     const testLike = /(test|vitest|jest|playwright)/i.test(commandText);
     const guidance = classifyFailure(input);
+
+    // Only write to runtime.json if there's an active Forge project
+    if (!state || !isProjectActive(state)) {
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: true,
+        hookSpecificOutput: {
+          hookEventName: 'PostToolUseFailure',
+          additionalContext: `[Forge] ${guidance}`,
+        },
+      }));
+      return;
+    }
+
     const laneFailureReason = summarizeLaneFailure(input);
     const toolInput = input?.tool_input || {};
     const truncatedInput = JSON.stringify(toolInput).length > 500

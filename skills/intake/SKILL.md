@@ -69,3 +69,11 @@ operator for the company, not as a messenger waiting for customer approval at ev
 - Asking the client to manage internal phase transitions
 - Not creating the full .forge/ directory structure
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When intake completes (CEO approves and .forge/ is initialized):
+- BUILD mode: update state.json phase_id to "discovery", then IMMEDIATELY invoke Skill: forge:discovery
+- REPAIR mode: update state.json phase_id to "reproduce", then IMMEDIATELY invoke Skill: forge:troubleshoot
+- EXPRESS mode: update state.json phase_id to "plan", then IMMEDIATELY invoke Skill: forge:express
+Do NOT stop, summarize, or ask the user. The pipeline must continue autonomously.
+</Auto_Chain>

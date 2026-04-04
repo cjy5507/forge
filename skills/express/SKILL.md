@@ -58,6 +58,17 @@ Keep the process compressed: Analyst snapshot is optional, worktree isolation is
 recommended but not enforced.
 </Layer_Classification>
 
+<Tool_Usage>
+- Agent tool: dispatch forge:pm for compact spec generation (PLAN phase)
+- Agent tool: dispatch forge:cto for code-rules and interface definition (PLAN phase)
+- Agent tool: dispatch forge:developer (layer2_subagent, isolation="worktree") for implementation (BUILD phase)
+- Agent tool: dispatch forge:fact-checker for claim validation (BUILD phase)
+- Agent tool: dispatch forge:analyst (optional) for architecture snapshot on multi-module tasks
+- Bash tool: run tests inline during BUILD, git operations
+- Read tool: load .forge/spec.md, .forge/code-rules.md
+- Edit tool: update .forge/state.json
+</Tool_Usage>
+
 <State_Management>
 Express mode uses the same .forge/ directory but with mode='express'.
 Phase mapping: plan=discovery, build=develop, ship=delivery

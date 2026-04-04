@@ -880,8 +880,10 @@ describe('normalizeStateShape', () => {
 describe('compactForgeContext', () => {
   it('shows correct max phase count', () => {
     const context = compactForgeContext({ phase: 'complete' });
-    expect(context).toContain(`/${PHASE_SEQUENCE.length - 1}`);
-    expect(context).not.toContain('/7 ');
+    const expectedMax = PHASE_SEQUENCE.length - 1;
+    expect(context).toContain(`/${expectedMax}`);
+    // Verify the phase index/total pattern matches the expected max
+    expect(context).toMatch(new RegExp(`\\d+/${expectedMax}\\b`));
   });
 
   it('includes lane summary and resume hint when lanes exist', () => {
@@ -1058,14 +1060,16 @@ describe('state persistence round-trip', () => {
   it('write then read preserves all phases without corruption', () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'forge-roundtrip-'));
 
-    for (const phase of PHASE_SEQUENCE) {
-      const written = writeForgeState(tmpDir, { phase, mode: 'build', status: 'active' });
-      const read = readForgeState(tmpDir);
-      expect(read.phase_id).toBe(phase);
-      // Critical: phase should not shift on round-trip
+    try {
+      for (const phase of PHASE_SEQUENCE) {
+        const written = writeForgeState(tmpDir, { phase, mode: 'build', status: 'active' });
+        const read = readForgeState(tmpDir);
+        expect(read.phase_id).toBe(phase);
+        // Critical: phase should not shift on round-trip
+      }
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
     }
-
-    rmSync(tmpDir, { recursive: true, force: true });
   });
 });
 

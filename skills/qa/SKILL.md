@@ -133,6 +133,16 @@ multi-module codebases.
 - Creates: git tag forge/v1-qa
 </State_Changes>
 
+<Tool_Usage>
+- Agent tool: dispatch forge:qa-engineer (layer2_subagent) for independent test execution
+- Agent tool: dispatch forge:bug-tracker to create .forge/holes/HOLE-{NNN}-{slug}.md for each issue
+- Agent tool: dispatch forge:analyst (optional) for dead code detection and complexity hotspots on multi-module codebases
+- Read tool: load .forge/spec.md, .forge/design/components.md, .forge/contracts/*.ts, .forge/code-rules.md
+- Bash tool: run test suites (vitest, jest, playwright)
+- Edit tool: update .forge/state.json (phase transition)
+- CLI helper: `node scripts/forge-lane-runtime.mjs` for company gate and session handoff updates
+</Tool_Usage>
+
 <Failure_Modes_To_Avoid>
 - Testing only the happy path and skipping error/edge cases
 - Not referencing the spec when determining expected behavior
@@ -143,3 +153,10 @@ multi-module codebases.
 - Not creating reproducible steps for discovered issues
 - Testing against assumed behavior instead of spec-defined behavior
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When QA completes:
+- If blockers found: update state.json phase_id → "fix", IMMEDIATELY invoke Skill: forge:fix
+- If no blockers: update state.json phase_id → "security", IMMEDIATELY invoke Skill: forge:security
+Do NOT stop, summarize, or ask the user. The pipeline continues autonomously.
+</Auto_Chain>

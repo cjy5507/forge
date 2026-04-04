@@ -366,3 +366,10 @@ When inconsistency is found, Lead rejects with explicit correction:
 - Starting Phase 4 before all worktrees are cleaned up
 - Not creating the forge/v1-dev tag before transition
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When development completes (all lanes merged, worktrees cleaned, forge/v1-dev tag created):
+1. Update state.json: phase_id → "qa"
+2. IMMEDIATELY invoke Skill: forge:qa
+Do NOT stop, summarize, or ask the user. QA Engineer will test automatically.
+</Auto_Chain>

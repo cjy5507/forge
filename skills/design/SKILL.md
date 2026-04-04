@@ -288,3 +288,10 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Not generating pre-handoff questions for Lead Dev
 - Routing more than 2 questions to client when internal resolution is possible
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When design completes (architecture.md, code-rules.md, contracts/ all produced, CTO+Designer confirm):
+1. Update state.json: phase_id → "develop", design_approved → true
+2. IMMEDIATELY invoke Skill: forge:develop
+Do NOT stop, summarize, or ask the user. Lead Dev will split tasks and dispatch developers automatically.
+</Auto_Chain>

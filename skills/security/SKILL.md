@@ -142,3 +142,10 @@ security is part of the internal delivery-readiness gate, not a passive phase ho
 - Treating security as informational instead of a delivery gate
 - Moving to delivery with unresolved security issues
 </Failure_Modes_To_Avoid>
+
+<Auto_Chain>
+When security review completes:
+- If security issues found: update state.json phase_id → "fix", IMMEDIATELY invoke Skill: forge:fix
+- If no issues: update state.json phase_id → "delivery", IMMEDIATELY invoke Skill: forge:deliver
+Do NOT stop, summarize, or ask the user. The pipeline continues autonomously.
+</Auto_Chain>

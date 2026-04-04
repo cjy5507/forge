@@ -1326,10 +1326,10 @@ function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null } = {})
   return normalized;
 }
 
-export function writeRuntimeState(cwd = '.', runtime) {
+export function writeRuntimeState(cwd = '.', runtime, { state = undefined } = {}) {
   ensureForgeDir(cwd);
   const next = {
-    ...normalizeRuntimeState(runtime, { state: readForgeState(cwd) }),
+    ...normalizeRuntimeState(runtime, { state: state !== undefined ? state : readForgeState(cwd) }),
     updated_at: new Date().toISOString(),
   };
 
@@ -1584,9 +1584,13 @@ export function updateRuntimeState(cwd = '.', updater) {
     try {
       writeFileSync(lockPath, `${process.pid}`, { flag: 'wx' });
       try {
-        const current = readRuntimeState(cwd);
+        const state = readForgeState(cwd);
+        const current = normalizeRuntimeState(
+          readJsonFile(runtimePath, DEFAULT_RUNTIME),
+          { state },
+        );
         const next = updater(current);
-        return writeRuntimeState(cwd, next);
+        return writeRuntimeState(cwd, next, { state });
       } finally {
         try { unlinkSync(lockPath); } catch {}
       }
@@ -1609,9 +1613,13 @@ export function updateRuntimeState(cwd = '.', updater) {
     }
   }
   // Fallback: proceed without lock after exhausting retries
-  const current = readRuntimeState(cwd);
+  const state = readForgeState(cwd);
+  const current = normalizeRuntimeState(
+    readJsonFile(runtimePath, DEFAULT_RUNTIME),
+    { state },
+  );
   const next = updater(current);
-  return writeRuntimeState(cwd, next);
+  return writeRuntimeState(cwd, next, { state });
 }
 
 export function appendRecent(list, entry, limit = 20) {
@@ -1761,7 +1769,7 @@ export function updateHudLine(state, runtime, staleTier = 'fresh') {
     config.display = config.display || {};
     if (config.display.customLine === nextLine) return;
     config.display.customLine = nextLine;
-    writeFileSync(hudConfigPath, JSON.stringify(config, null, 2) + '\n');
+    writeJsonFile(hudConfigPath, config);
     return;
   }
 
