@@ -111,57 +111,71 @@ Layer 2 — Isolated Subagent (parallel execution):
    - Lead uses this to make informed lane splitting decisions
    - Skip if project is greenfield (no existing codebase to analyze)
 
-3. Lead defines the lane graph in `.forge/runtime.json`:
-   - One lane per isolated module/feature
-   - Record upstream dependencies before dispatch
-   - Keep owner, reviewer, worktree, status, handoff notes, and next lane current with the runtime helper
-   - Convert the PM session brief into an implementation session brief for this session and the next
+3. Lead runs **auto-decompose** to generate the lane graph:
+   ```
+   node scripts/forge-lane-runtime.mjs auto-decompose --description "<task summary from spec/architecture>"
+   ```
+   This automatically:
+   - Analyzes the task (type, areas, complexity)
+   - Identifies parallelizable components with file ownership (scope)
+   - Creates lanes in runtime.json with dependencies and model_hint
+   - Calculates execution order (batches)
 
-4. Lead splits work into independent tasks (one per module/feature):
-   - Identify module boundaries from architecture
-   - Map each task to its interface contracts
-   - Define test criteria each module must pass
-   - Ensure tasks have minimal cross-dependencies
+   Lead reviews the output and adjusts if needed:
+   - Override lanes: `node scripts/forge-lane-runtime.mjs init-lane --lane {id} --title "{title}" --depends-on {deps}`
+   - For manual splitting (complex cases): skip auto-decompose and define lanes manually as before
 
-5. For each task, Lead creates:
-   a. Worktree Isolation (choose one):
-      - Native (recommended): Use Agent tool with isolation: "worktree" parameter.
-        The worktree is auto-created and cleaned up. Record the path in runtime:
-        node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --worktree {returned-path}
-      - Manual: node scripts/forge-worktree.mjs create --lane {module} --branch forge/{module}
-        Then dispatch agent with working directory set to the worktree.
-   b. Task definition from `templates/task.md`: .forge/tasks/{module}.md containing:
-      - Scope: which files to create/modify
-      - Contracts: which interfaces to implement
-      - Tests: what must pass before PR
-      - Dependencies: what other modules this relies on (if any)
-      - Owner / reviewer / worktree / review / handoff sections
-   c. Runtime lane record with the standardized helper:
-      node scripts/forge-lane-runtime.mjs init-lane --lane {module} --title "{title}" --task-file .forge/tasks/{module}.md --worktree .forge/worktrees/{module} [--depends-on ...]
-      - This step should create the lane record immediately so the worktree/task pair never exists outside runtime.
+4. For each lane, Lead creates a task definition:
+   `.forge/tasks/{lane-id}.md` containing:
+   - Scope: file patterns from lane.scope (auto-populated by decomposer)
+   - Contracts: relevant .forge/contracts/ files for this lane
+   - Tests: what must pass before PR
+   - Dependencies: upstream lanes (auto-populated)
 
-6. Dispatch agents by layer with context budget
-   (see `references/context-budget.md` for full protocol):
+   Update lane with task file:
+   ```
+   node scripts/forge-lane-runtime.mjs init-lane --lane {id} --task-file .forge/tasks/{id}.md
+   ```
 
-   Layer dispatch:
-   - Layer 0 (lead-dev): Continue in main conversation. Load agents/lead-dev.md context.
-   - Layer 2 (developers): Agent tool with subagent_type="forge:developer", isolation="worktree"
-   - Layer 2 (publishers): Agent tool with subagent_type="forge:publisher", isolation="worktree"
-   - Layer 2 (fact-checker): Agent tool with subagent_type="forge:fact-checker" (no worktree needed)
+5. Lead dispatches agents per **execution batch**:
+   Auto-decompose provides `executionOrder` — batches of lanes that can run in parallel.
 
-   **Developer context budget:**
+   **For each batch**, dispatch all lanes simultaneously:
+   ```
+   Agent(
+     subagent_type="forge:developer",  // or "forge:publisher" for UI lanes
+     isolation="worktree",
+     run_in_background=true,
+     prompt="Implement lane {id}: {title}. Follow .forge/code-rules.md and .forge/contracts/."
+   )
+   ```
+   The subagent-start hook automatically injects lane-scoped context:
+   - Lane scope (file patterns to work on)
+   - Lane dependencies (what this depends on)
+   - Model hint (sonnet for implementation, opus for review)
+   - Task file content (up to 2000 chars)
+
+   **Wait for each batch to complete before starting the next batch.**
+   Batches with dependencies must run sequentially; lanes within a batch run in parallel.
+
+   Lane owner assigned via:
+   ```
+   node scripts/forge-lane-runtime.mjs assign-owner --lane {module} --owner {agent}
+   ```
+
+6. Lead monitors completion:
+   ```
+   node scripts/forge-lane-runtime.mjs summarize-lanes --json
+   ```
+   - When all lanes in a batch are merged/done → start next batch
+   - If a lane is blocked for 3+ iterations → escalate to CEO
+   - When ALL lanes are merged → transition to Phase 4 (QA)
+
+   **Context budget** (see `references/context-budget.md`):
    - T0 (mandatory): tasks/{module}.md, contracts/{relevant}.ts, code-rules.md
    - T1 (relevant):  living standard reference (patterns from first merged PR)
    - T2 (on-demand): architecture.md (module boundaries section only)
    - EXCLUDED: full spec, other modules' tasks, design docs, other worktrees
-
-   **Publisher context budget:**
-   - T0 (mandatory): tasks/{module}.md, contracts/{relevant}.ts, code-rules.md, components.md (assigned only), tokens.json
-   - T1 (relevant):  living standard reference
-   - T2 (on-demand): architecture.md (frontend section only)
-   - EXCLUDED: backend contracts, other modules, full spec
-   - Lane owner assigned via:
-     node scripts/forge-lane-runtime.mjs assign-owner --lane {module} --owner {agent}
 
 7. Each developer implements their module:
    a. Read assigned task definition (.forge/tasks/{module}.md)
