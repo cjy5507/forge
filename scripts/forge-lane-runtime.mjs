@@ -23,6 +23,7 @@ import {
   writeSessionHandoff,
   writeRuntimeState,
 } from './lib/forge-state.mjs';
+import { decomposeTask } from './lib/task-decomposer.mjs';
 
 function printUsage() {
   console.log(`Forge lane runtime helper
@@ -37,6 +38,7 @@ Usage:
   node scripts/forge-lane-runtime.mjs set-session-brief --goal <text> [--exit-criteria <item1,item2>] [--next-goal <text>] [--next-owner <owner>] [--handoff <text>]
   node scripts/forge-lane-runtime.mjs write-session-handoff --summary <text> [--next-goal <text>] [--next-owner <owner>]
   node scripts/forge-lane-runtime.mjs set-company-gate --gate <gate> [--gate-owner <owner>] [--delivery-state <state>] [--customer-blockers <a,b>] [--internal-blockers <a,b>]
+  node scripts/forge-lane-runtime.mjs auto-decompose --description <text> [--dry-run] [--json]
   node scripts/forge-lane-runtime.mjs summarize-lanes [--json]
   node scripts/forge-lane-runtime.mjs --help
 
@@ -126,6 +128,11 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--dry-run') {
+      options['dry-run'] = true;
+      continue;
+    }
+
     if ([
       '--lane',
       '--title',
@@ -148,6 +155,7 @@ function parseArgs(argv) {
       '--internal-blockers',
       '--owner',
       '--note',
+      '--description',
     ].includes(arg)) {
       const value = rest[index + 1];
       if (!value) {
@@ -197,6 +205,8 @@ function parseArgs(argv) {
         options.owner = value.trim();
       } else if (arg === '--note') {
         options.note = value.trim();
+      } else if (arg === '--description') {
+        options.description = value.trim();
       }
       continue;
     }
@@ -602,6 +612,58 @@ function summarizeLanes(options) {
   }
 }
 
+function autoDecompose(options) {
+  const description = options.description || options.task;
+  if (!description) fail('auto-decompose requires --description <text>');
+
+  const cwd = options.cwd || '.';
+  const specPath = `${cwd}/.forge/spec.md`;
+  const spec = existsSync(specPath) ? '' : ''; // spec content loaded by caller if needed
+
+  const result = decomposeTask(description, { cwd });
+
+  if (options.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
+  // Print summary
+  console.log(result.summary);
+
+  if (!options['dry-run'] && result.analysis.parallelizable) {
+    // Auto-create lanes from components
+    console.log('\nCreating lanes...');
+    for (const comp of result.components) {
+      const runtime = readRuntimeState(cwd);
+      const updated = initLaneRecord(runtime, {
+        laneId: comp.id,
+        title: comp.title,
+        dependencies: comp.dependencies,
+      });
+      writeRuntimeState(cwd, updated);
+      console.log(`  Lane: ${comp.id} (${comp.title}) deps=[${comp.dependencies.join(',')}] model=${comp.modelHint}`);
+    }
+
+    // Store decomposition metadata in runtime for subagent-start to read
+    const runtime = readRuntimeState(cwd);
+    const lanesWithMeta = { ...runtime };
+    for (const comp of result.components) {
+      const lane = lanesWithMeta.lanes?.[comp.id];
+      if (lane) {
+        lane.scope = comp.filePatterns;
+        lane.model_hint = comp.modelHint;
+        lane.areas = comp.areas;
+      }
+    }
+    writeRuntimeState(cwd, lanesWithMeta);
+
+    console.log(`\n${result.components.length} lanes created. Execution order:`);
+    for (let i = 0; i < result.executionOrder.length; i++) {
+      console.log(`  Batch ${i + 1}: ${result.executionOrder[i].join(' | ')}`);
+    }
+  }
+}
+
 function main() {
   const { command, options } = parseArgs(process.argv.slice(2));
 
@@ -657,6 +719,11 @@ function main() {
 
   if (command === 'summarize-lanes') {
     summarizeLanes(options);
+    return;
+  }
+
+  if (command === 'auto-decompose') {
+    autoDecompose(options);
     return;
   }
 

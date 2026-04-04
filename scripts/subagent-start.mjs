@@ -145,12 +145,33 @@ async function main() {
       layerHint = ` | team: [${recommended.layer1_team.join(', ')}]`;
     }
 
+    // Build lane-scoped context injection
+    let laneContext = '';
+    if (laneId && lane) {
+      const scope = Array.isArray(lane.scope) ? lane.scope : [];
+      const deps = Array.isArray(lane.dependencies) ? lane.dependencies : [];
+      const modelHint = lane.model_hint || '';
+      const parts = [`[Lane:${laneId}]`];
+      if (scope.length) parts.push(`scope:[${scope.join(',')}]`);
+      if (deps.length) parts.push(`deps:[${deps.join(',')}]`);
+      if (modelHint) parts.push(`model:${modelHint}`);
+      // Include task file content if available (max 2000 chars)
+      if (lane.task_file) {
+        try {
+          const { readFileSync } = await import('fs');
+          const content = readFileSync(lane.task_file, 'utf8').slice(0, 2000);
+          if (content) parts.push(`task:\n${content}`);
+        } catch { /* task file not found */ }
+      }
+      laneContext = ` | ${parts.join(' ')}`;
+    }
+
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'SubagentStart',
-        additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}`,
+        additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}${laneContext}`,
       },
     }));
   } catch (error) {
