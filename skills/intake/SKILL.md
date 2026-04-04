@@ -15,21 +15,49 @@ operator for the company, not as a messenger waiting for customer approval at ev
 - Client submits a new project request
 </Use_When>
 
+<Fast_Path_Check>
+Before full internal deliberation, CEO does a quick scope assessment:
+
+**If ALL of these are true**:
+- Task is clearly bounded (user specified what to build/fix)
+- No multi-system integration needed
+- No security/compliance concerns
+- User wants speed ("빠르게", "quick", "express", "간단")
+
+**Then**: Skip internal deliberation (CEO+CTO+PM meeting). Instead:
+1. CEO acknowledges the request
+2. Initialize .forge/ with mode appropriate to request (build/repair/express)
+3. Set tier to "medium"
+4. Route directly to next phase (express → forge:express, repair → troubleshooter)
+
+**Otherwise**: Proceed with full internal deliberation below.
+</Fast_Path_Check>
+
+<Express_Interview>
+When express fast-path is active, collapse the PM interview:
+- Instead of 5 rounds of questions, do 1-2 rounds max
+- Round 1: "무엇을 만들거나 고치려는 건가요? 특별한 제약이 있나요?" / "What are you building? Any specific constraints?"
+- Round 2 (if needed): "시작 전에 추가할 내용이 있나요?" / "Anything else before we start?"
+- Then generate minimal spec and proceed
+</Express_Interview>
+
 <Steps>
 1. Read the client's request
 
-2. Dispatch CEO agent to evaluate:
+2. **Fast-path gate**: Apply <Fast_Path_Check> — if all conditions met, skip to step 5 with express routing
+
+3. Dispatch CEO agent to evaluate (full deliberation):
    a. Technical feasibility — Can this be built with available tools/frameworks?
    b. Scope assessment — Is this one project or should it be split into V1/V2?
    c. Information completeness — Do we have enough critical information to start safe discovery?
 
-3. CEO Decision:
+4. CEO Decision:
    - GO → Initialize .forge/ directory, set state.json phase=1, hand off to PM
    - HOLD → CEO asks the client only for missing business-critical information
    - NO-GO → CEO explains why and suggests alternatives
    Note: For REPAIR mode, after CEO evaluation, dispatch the Troubleshooter for diagnosis (aligned with ignite/SKILL.md repair routing).
 
-4. Initialize project state:
+5. Initialize project state:
    a. Create .forge/ directory structure:
       .forge/state.json, .forge/runtime.json, .forge/design/, .forge/contracts/, .forge/evidence/,
       .forge/holes/, .forge/tasks/, .forge/worktrees/, .forge/checkpoints/,
@@ -45,7 +73,7 @@ operator for the company, not as a messenger waiting for customer approval at ev
    d. Fill in project name, client name, created_at
    e. Set phase=1, phase_id="discovery", phase_name="discovery", status="active"
 
-5. Transition to Phase 1 (forge:discovery)
+6. Transition to Phase 1 (forge:discovery)
 </Steps>
 
 <State_Changes>
