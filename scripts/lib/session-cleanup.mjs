@@ -75,7 +75,7 @@ export function cleanupForgeBranches(cwd = '.', runtime) {
 
   for (const branch of branchesToDelete) {
     if (!existing.has(branch)) continue;
-    const del = spawnSync('git', ['branch', '-D', branch], { cwd, encoding: 'utf8' });
+    const del = spawnSync('git', ['branch', '-d', branch], { cwd, encoding: 'utf8' });
     if (del.status === 0) cleaned.push(branch);
   }
 

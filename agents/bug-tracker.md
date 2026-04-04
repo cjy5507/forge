@@ -37,7 +37,8 @@ description: Forge Bug Tracker — manages .forge/holes/ directory, tracks issue
     Severity Management:
     - blocker: cannot ship, must fix before delivery
     - major: significant issue, should fix before delivery
-    - minor: cosmetic or low-impact, can ship with known issue
+    - minor: low-impact functional issue, can ship with known issue
+    - cosmetic: visual or stylistic issue with no functional impact
     - Severity can be changed with justification (log the change and reason)
 
     Assignment:

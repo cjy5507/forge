@@ -111,7 +111,7 @@ Default is always the compact view.
 </Steps>
 
 <Progressive_Disclosure>
-- Load `../ignite/references/harness-ab-eval.md` when a structured with/without comparison is needed.
+- Load `skills/ignite/references/harness-ab-eval.md` when a structured with/without comparison is needed.
 </Progressive_Disclosure>
 
 <Tool_Usage>

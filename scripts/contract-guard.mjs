@@ -37,7 +37,9 @@ async function main() {
   }
 
   try {
-    const contracts = readdirSync(contractsDir).filter(file => file.endsWith('.ts'));
+    const contracts = readdirSync(contractsDir).filter(file =>
+      file.endsWith('.ts') || file.endsWith('.json') || file.endsWith('.mjs') || file.endsWith('.zod')
+    );
     if (contracts.length === 0) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;

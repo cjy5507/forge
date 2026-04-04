@@ -203,7 +203,7 @@ Client can request rollback:
 
 <Tool_Usage>
 - Use Agent tool to dispatch team members (CEO, PM, CTO, etc.)
-- Use TaskCreate/TaskUpdate for work tracking
+- Use Write for .forge/tasks/ and .forge/state.json tracking
 - Use Bash for git operations (worktree, branch, tag, merge)
 - Use Write for .forge/ state files
 - Use Read for loading specs, contracts, code-rules

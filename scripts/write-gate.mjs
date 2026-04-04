@@ -21,7 +21,7 @@ const CODE_WRITING_THRESHOLD = resolvePhase({ phase_id: 'develop' }).index;
 function isForgeStateFile(filePath) {
   if (!filePath) return false;
   const normalized = filePath.replace(/\\/g, '/');
-  return /\/.forge\//.test(normalized);
+  return /(?:^|\/)\.forge\//.test(normalized);
 }
 
 async function main() {
@@ -52,9 +52,24 @@ async function main() {
       '',
     );
 
-    // ── Phase gate check (TIER-INDEPENDENT) ──
+    // ── Phase checks (TIER-INDEPENDENT) ──
     // Runs at ALL tiers including light. Skips only for .forge/ state files.
     if (!isForgeStateFile(filePath)) {
+      // Mode-phase mismatch — check first since it's more fundamental
+      if (phase.mismatch) {
+        console.log(JSON.stringify({
+          continue: true,
+          suppressOutput: true,
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason: `Forge phase mismatch: "${phase.id}" is not in the ${phase.mode} sequence. Fix .forge/state.json before writing code.`,
+          },
+        }));
+        return;
+      }
+
+      // Phase gate check
       const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
       if (!gateResult.canAdvance) {
         console.log(JSON.stringify({
@@ -68,24 +83,10 @@ async function main() {
         }));
         return;
       }
-
-      // Mode-phase mismatch — deny instead of advisory to prevent bypass
-      if (phase.mismatch) {
-        console.log(JSON.stringify({
-          continue: true,
-          suppressOutput: true,
-          hookSpecificOutput: {
-            hookEventName: 'PreToolUse',
-            permissionDecision: 'deny',
-            permissionDecisionReason: `Forge phase mismatch: "${phase.id}" is not in the ${phase.mode} sequence. Fix .forge/state.json before writing code.`,
-          },
-        }));
-        return;
-      }
     }
 
     // ── Tier-based checks (existing behavior) ──
-    const envTier = process.env.FORGE_TIER;
+    const envTier = (process.env.FORGE_TIER || '').toLowerCase();
     if (envTier === 'off' || envTier === 'light') {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;

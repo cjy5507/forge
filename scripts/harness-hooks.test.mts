@@ -1318,9 +1318,8 @@ describe('contract-guard hook', () => {
     writeFileSync(join(tmpDir, '.forge', 'runtime.json'), JSON.stringify({ active_tier: 'full', version: 2 }));
 
     const output = runHook('contract-guard.mjs', tmpDir, { file_path: 'src/app.ts', content: 'important code' }, { env: { FORGE_TIER: 'full' } });
-    if (output.hookSpecificOutput?.additionalContext) {
-      expect(output.hookSpecificOutput.additionalContext).toContain('api.ts');
-    }
+    expect(output.hookSpecificOutput?.additionalContext).toBeTruthy();
+    expect(output.hookSpecificOutput.additionalContext).toContain('api.ts');
   });
 });
 
@@ -1776,5 +1775,24 @@ describe('write-gate phase gate enforcement', () => {
     }, { env: { FORGE_TIER: 'light' } });
     expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
     expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/mismatch/i);
+  });
+
+  it('gates Edit tool the same as Write tool', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'light',
+      status: 'in_progress',
+    }));
+    // No design/, code-rules.md, or contracts/ → gate should deny
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Edit',
+      tool_input: { file_path: 'src/app.ts', old_string: 'old code', new_string: 'new code' },
+    }, { env: { FORGE_TIER: 'light' } });
+    expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/phase gate/i);
   });
 });

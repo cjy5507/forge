@@ -58,7 +58,7 @@ async function main() {
     const runtime = readRuntimeState(rootCwd);
     const { laneId, lane } = resolveRuntimeLaneContext(runtime, rootCwd, cwd);
     const taskType = runtime.last_task_type || 'feature';
-    const recommended = recommendedAgentsFor({ tier, taskType, phaseId });
+    const recommended = recommendedAgentsFor({ tier, taskType, phaseId, runtime });
     const agentId = input?.agent_id || `unknown-${Date.now()}`;
     const agentType = input?.agent_type || 'unknown';
 

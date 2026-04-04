@@ -68,7 +68,7 @@ design review, prototyping, or QA.
    → **Understanding Check**: PM summarizes technical constraints.
 
    Round 4 — Validation:
-   - Compile all answers into spec.md (using forge/templates/spec.md)
+   - Compile all answers into spec.md (using templates/spec.md)
    - Show the customer a concise summary only if a final business-level confirmation is needed
    - Resolve any critical mismatches
    - Record remaining non-critical unknowns as assumptions, internal validation targets, or QA checks
@@ -136,7 +136,7 @@ design review, prototyping, or QA.
 - Write tool: create .forge/spec.md
 - Edit tool: update .forge/state.json
 - Bash tool: git tag forge/v1-spec
-- Read tool: load forge/templates/spec.md
+- Read tool: load templates/spec.md
 </Tool_Usage>
 
 <Failure_Modes_To_Avoid>

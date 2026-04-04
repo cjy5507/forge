@@ -58,7 +58,7 @@ description: Forge PM — client interview, requirements elicitation, spec gener
   </Interview_Flow>
 
   <Spec_Generation>
-    Use the template at forge/templates/spec.md.
+    Use the template at templates/spec.md.
     Fill every field — no TBD, no TODO.
     The customer-owned critical questions table must be EMPTY before requesting CEO readiness review.
     Non-critical unknowns should be captured as assumptions, internal checks, or validation targets.

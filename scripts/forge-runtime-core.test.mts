@@ -628,8 +628,8 @@ describe('forge runtime core', () => {
   it('selectContinuationTarget returns customer_blocker first', () => {
     const state = { phase_id: 'develop' };
     const runtime = {
-      customer_blockers: ['Need API key from client'],
-      internal_blockers: ['DB schema incomplete'],
+      customer_blockers: [{ summary: 'Need API key from client' }],
+      internal_blockers: [{ summary: 'DB schema incomplete' }],
       lanes: { api: { id: 'api', status: 'in_progress', handoff_notes: [{ note: 'auth done' }] } },
       next_lane: 'api',
     };
@@ -642,7 +642,7 @@ describe('forge runtime core', () => {
     const state = { phase_id: 'develop' };
     const runtime = {
       customer_blockers: [],
-      internal_blockers: ['DB schema incomplete'],
+      internal_blockers: [{ summary: 'DB schema incomplete' }],
       active_gate_owner: 'cto',
       lanes: { api: { id: 'api', status: 'in_progress' } },
     };

@@ -36,6 +36,7 @@ description: Forge Researcher — investigates external options, gathers evidenc
     - Highlight the default recommendation and explain why it wins
 
     Codebase Analysis (via codebase-memory-mcp):
+    Note: Use codebase-memory-mcp only when explicitly dispatched for internal analysis. During design phase, internal codebase analysis is the Analyst's responsibility — Researcher focuses on external investigation.
     - Use search_graph to find functions, classes, routes, and their relationships in the project
     - Use trace_call_path for impact analysis and dependency tracing before recommending changes
     - Use get_architecture to understand module structure and inform integration recommendations

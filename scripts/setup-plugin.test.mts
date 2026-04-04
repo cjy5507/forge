@@ -1,9 +1,9 @@
-import { existsSync, lstatSync, readFileSync } from 'fs';
+import { existsSync, lstatSync, readFileSync, rmSync } from 'fs';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -18,8 +18,18 @@ function runSetup(args = [], options = {}) {
 }
 
 describe('forge setup installer', () => {
+  const tmpDirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of tmpDirs) {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    tmpDirs.length = 0;
+  });
+
   it('creates a project-local symlink install by default', () => {
     const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-'));
+    tmpDirs.push(projectRoot);
     const target = join(projectRoot, '.forge', 'plugins', 'forge');
 
     const result = runSetup(['--scope', 'project', '--project-root', projectRoot]);
@@ -33,6 +43,7 @@ describe('forge setup installer', () => {
 
   it('can copy the plugin into a project-local target', () => {
     const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-copy-'));
+    tmpDirs.push(projectRoot);
     const target = join(projectRoot, '.forge', 'plugins', 'forge');
 
     const result = runSetup([
@@ -56,6 +67,7 @@ describe('forge setup installer', () => {
 
   it('requires --force when the target already exists', () => {
     const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-force-'));
+    tmpDirs.push(projectRoot);
     const target = join(projectRoot, '.forge', 'plugins', 'forge');
 
     const first = runSetup(['--scope', 'project', '--project-root', projectRoot]);

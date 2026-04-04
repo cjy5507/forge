@@ -27,13 +27,14 @@ operator for the company, not as a messenger waiting for customer approval at ev
    - GO → Initialize .forge/ directory, set state.json phase=1, hand off to PM
    - HOLD → CEO asks the client only for missing business-critical information
    - NO-GO → CEO explains why and suggests alternatives
+   Note: For REPAIR mode, after CEO evaluation, dispatch the Troubleshooter for diagnosis (aligned with ignite/SKILL.md repair routing).
 
 4. Initialize project state:
    a. Create .forge/ directory structure:
       .forge/state.json, .forge/runtime.json, .forge/design/, .forge/contracts/, .forge/evidence/,
       .forge/holes/, .forge/tasks/, .forge/worktrees/, .forge/checkpoints/,
       .forge/knowledge/, .forge/delivery-report/
-   b. Copy forge/templates/state.json → .forge/state.json
+   b. Copy templates/state.json → .forge/state.json
    c. Initialize `.forge/runtime.json` for helper-backed company coordination:
       - lanes / lane graph
       - active_worktrees

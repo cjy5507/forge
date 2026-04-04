@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'fs';
 import { dirname, join, resolve, sep } from 'path';
 
 export const PHASE_SEQUENCE = [
@@ -749,20 +749,24 @@ export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME) 
 
   // Priority 1: Customer blocker — needs user input
   if (Array.isArray(customerBlockers) && customerBlockers.length > 0) {
+    const blocker = customerBlockers[0];
+    const text = typeof blocker === 'string' ? blocker : (blocker?.summary || String(blocker));
     return {
       kind: 'customer_blocker',
       target: phase.id,
-      detail: customerBlockers[0],
+      detail: text,
     };
   }
 
   // Priority 2: Internal blocker — route to owning team
   if (Array.isArray(internalBlockers) && internalBlockers.length > 0) {
+    const blocker = internalBlockers[0];
+    const text = typeof blocker === 'string' ? blocker : (blocker?.summary || String(blocker));
     const gateOwner = runtime?.active_gate_owner || '';
     return {
       kind: 'internal_blocker',
       target: phase.id,
-      detail: `${internalBlockers[0]}${gateOwner ? ` (owner: ${gateOwner})` : ''}`,
+      detail: `${text}${gateOwner ? ` (owner: ${gateOwner})` : ''}`,
     };
   }
 
@@ -1127,7 +1131,7 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
     .filter(Boolean)
     .join(' ');
   const laneSuffix = laneCounts.total ? ` ${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${nextLane ? ` ↺${nextLane}${focusHint}` : ''}` : '';
-  const mode = state.mode === 'repair' ? 'repair' : 'build';
+  const mode = state.mode || 'build';
   const seq = phase.sequence || PHASE_SEQUENCE;
   const total = seq.length - 1; // exclude 'complete'
 
@@ -1159,11 +1163,11 @@ export function summarizePendingWork(state, runtime = null) {
   const phase = resolvePhase(state);
   const pending = [];
 
-  if (!state.spec_approved && phase.index >= PHASE_SEQUENCE.indexOf('design')) {
+  if (state.mode !== 'repair' && !state.spec_approved && phase.index >= PHASE_SEQUENCE.indexOf('design')) {
     pending.push('spec');
   }
 
-  if (!state.design_approved && phase.index >= PHASE_SEQUENCE.indexOf('develop')) {
+  if (state.mode !== 'repair' && !state.design_approved && phase.index >= PHASE_SEQUENCE.indexOf('develop')) {
     pending.push('design');
   }
 
@@ -1571,6 +1575,40 @@ export function setCompanyGate(runtime = DEFAULT_RUNTIME, {
 }
 
 export function updateRuntimeState(cwd = '.', updater) {
+  const runtimePath = getRuntimePath(cwd);
+  const lockPath = `${runtimePath}.lock`;
+  const maxRetries = 5;
+  const retryDelay = 50;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      writeFileSync(lockPath, `${process.pid}`, { flag: 'wx' });
+      try {
+        const current = readRuntimeState(cwd);
+        const next = updater(current);
+        return writeRuntimeState(cwd, next);
+      } finally {
+        try { unlinkSync(lockPath); } catch {}
+      }
+    } catch (err) {
+      if (err.code === 'EEXIST') {
+        // Lock held — check staleness (>5s = stale)
+        try {
+          const lockStat = readFileSync(lockPath, 'utf8');
+          const lockAge = Date.now() - parseInt(lockStat.split('.')[1] || '0', 10);
+          if (lockAge > 5000 || isNaN(lockAge)) {
+            try { unlinkSync(lockPath); } catch {}
+          }
+        } catch {}
+        const jitter = Math.random() * retryDelay;
+        const start = Date.now();
+        while (Date.now() - start < retryDelay + jitter) { /* spin wait */ }
+        continue;
+      }
+      throw err;
+    }
+  }
+  // Fallback: proceed without lock after exhausting retries
   const current = readRuntimeState(cwd);
   const next = updater(current);
   return writeRuntimeState(cwd, next);

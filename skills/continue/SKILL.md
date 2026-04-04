@@ -103,8 +103,8 @@ Standard mode (build, N/8):
 
 Repair mode (N/7):
 - 0 → forge:intake
-- 1 → forge:troubleshoot (reproduce)
-- 2 → forge:troubleshoot (isolate)
+- 1 → forge:troubleshoot  # focus on reproduction (guidance hint, not a sub-mode parameter)
+- 2 → forge:troubleshoot  # focus on isolation and root cause (guidance hint, not a sub-mode parameter)
 - 3 → forge:fix
 - 4 → forge:qa (regress)
 - 5 → forge:security (verify)
