@@ -58,6 +58,7 @@ Phase 0 — INTAKE / 접수 (CEO):
   1b. **Lessons Check**: CEO loads global lessons from ~/.claude/forge-lessons/ (if exists)
       - Match project type against lesson `applies_when` conditions
       - Relevant lessons → record in state.json as `lessons_brief`
+      - If no global lessons exist → log "No global lessons found, skipping" and set lessons_brief=[]
       - Pattern lessons feed into CTO's code-rules, QA's test plan
       - Estimation lessons calibrate scope assessment
   2. CEO agent evaluates and ROUTES / CEO가 평가 후 라우팅:
@@ -78,8 +79,10 @@ Phase 0 — INTAKE / 접수 (CEO):
       → Diagnosis → Fix → QA → Deliver (skip full Phase 1-3)
 
   3. If unclear which mode or critical customer intent is missing → ask the client
-  4. BUILD: initialize .forge/ directory with state.json, hand off to PM
-  5. REPAIR: initialize .forge/ with mode="repair", hand off to Troubleshooter
+  4. BUILD: initialize .forge/ directory with state.json (from templates/state.json), hand off to PM
+     - state.json MUST include: artifact_versions={}, staleness={}, lessons_brief=[]
+     - These fields are required for constraint propagation and harness learning
+  5. REPAIR: initialize .forge/ with mode="repair" (same template fields), hand off to Troubleshooter
 
 Phase 1 — DISCOVERY / 발견 (PM):
   1. Invoke forge:discovery skill / 디스커버리 스킬 실행
