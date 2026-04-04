@@ -398,14 +398,12 @@ function callLLM(prompt) {
 
     // Try direct parse first
     try {
-      const parsed = JSON.parse(output);
-      return unwrapEnvelope(parsed);
+      return JSON.parse(output);
     } catch {
       // Try extracting from markdown code fences
       const fenceMatch = output.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
       if (fenceMatch) {
-        const parsed = JSON.parse(fenceMatch[1].trim());
-        return unwrapEnvelope(parsed);
+        return JSON.parse(fenceMatch[1].trim());
       }
       throw new Error('Could not parse LLM output as JSON');
     }
@@ -413,17 +411,6 @@ function callLLM(prompt) {
     console.error(`[task-decomposer] llm: ${err.message}`);
     return null;
   }
-}
-
-// Handle possible JSON envelope from claude CLI (--output-format json wraps in {type, result})
-function unwrapEnvelope(parsed) {
-  if (parsed && typeof parsed === 'object' && parsed.result && typeof parsed.result === 'string') {
-    try { return JSON.parse(parsed.result); } catch { /* not an envelope */ }
-  }
-  if (parsed && typeof parsed === 'object' && parsed.result && typeof parsed.result === 'object') {
-    return parsed.result;
-  }
-  return parsed;
 }
 
 function validateLLMResponse(response) {

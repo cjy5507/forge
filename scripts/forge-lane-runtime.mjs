@@ -617,9 +617,6 @@ function autoDecompose(options) {
   if (!description) fail('auto-decompose requires --description <text>');
 
   const cwd = options.cwd || '.';
-  const specPath = `${cwd}/.forge/spec.md`;
-  const spec = existsSync(specPath) ? '' : ''; // spec content loaded by caller if needed
-
   const result = decomposeTask(description, { cwd });
 
   if (options.json) {
