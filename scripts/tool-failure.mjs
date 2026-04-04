@@ -8,6 +8,7 @@ import {
   readActiveTier,
   readForgeState,
   resolveForgeBaseDir,
+  resolvePhase,
   resolveRuntimeLaneContext,
   updateRuntimeState,
 } from './lib/forge-state.mjs';
@@ -97,10 +98,14 @@ async function main() {
       guidance,
     };
 
+    // Phase mismatch check — skip lane modifications to prevent orphaned records
+    const phase = state ? resolvePhase(state) : null;
+    const phaseMismatch = phase?.mismatch ?? false;
+
     updateRuntimeState(rootCwd, current => {
       const { laneId, lane } = resolveRuntimeLaneContext(current, rootCwd, cwd);
       const laneEntry = laneId ? { ...entry, lane_id: laneId } : entry;
-      const nextLanes = laneId && laneFailureReason
+      const nextLanes = !phaseMismatch && laneId && laneFailureReason
         ? {
             ...current.lanes,
             [laneId]: {
@@ -140,12 +145,15 @@ async function main() {
       };
     });
 
+    const mismatchWarning = phaseMismatch
+      ? ` [Warning: phase "${phase.id}" is not in the ${phase.mode} sequence — lane updates skipped]`
+      : '';
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'PostToolUseFailure',
-        additionalContext: tier === 'light' ? '[Forge] failure logged' : `[Forge Failure Loop] ${guidance}`,
+        additionalContext: (tier === 'light' ? '[Forge] failure logged' : `[Forge Failure Loop] ${guidance}`) + mismatchWarning,
       },
     }));
   } catch (error) {

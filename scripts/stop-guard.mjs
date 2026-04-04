@@ -90,7 +90,7 @@ async function main() {
       updateRuntimeState(cwd, current => ({
         ...current,
         stop_guard: {
-          block_count: (runtime.stop_guard?.block_count || 0) + 1,
+          block_count: (current.stop_guard?.block_count || 0) + 1,
           last_reason: warning,
           last_message: lastMessage,
         },
@@ -117,7 +117,7 @@ async function main() {
     updateRuntimeState(cwd, current => ({
       ...current,
       stop_guard: {
-        block_count: (runtime.stop_guard?.block_count || 0) + 1,
+        block_count: (current.stop_guard?.block_count || 0) + 1,
         last_reason: reason,
         last_message: lastMessage,
       },

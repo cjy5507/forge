@@ -133,13 +133,17 @@ async function main() {
 
     if (missing.length > 0) {
       if (tier === 'full' || risk.level === 'high') {
+        let reason = `Forge ${tier} guard blocked ${risk.level}-risk write during ${phase.id}. Missing: ${missing.join(', ')}.`;
+        if (contracts.length > 0) {
+          reason += ` Check .forge/contracts/ for interface definitions before implementing (${contracts.join(', ')}).`;
+        }
         console.log(JSON.stringify({
           continue: true,
           suppressOutput: true,
           hookSpecificOutput: {
             hookEventName: 'PreToolUse',
             permissionDecision: 'deny',
-            permissionDecisionReason: `Forge ${tier} guard blocked ${risk.level}-risk write during ${phase.id}. Missing: ${missing.join(', ')}.`,
+            permissionDecisionReason: reason,
           },
         }));
         return;

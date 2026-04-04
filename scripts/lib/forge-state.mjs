@@ -712,11 +712,21 @@ export function selectNextLane(runtime = DEFAULT_RUNTIME) {
     lane => lane.status === 'in_review',
     lane => lane.status === 'blocked',
     lane => lane.status === 'pending',
+  ];
+
+  // Deprioritize done/merged — only select if no actionable lanes exist
+  const terminalFallbacks = [
     lane => lane.status === 'merged',
     lane => lane.status === 'done',
   ];
 
   for (const matches of priorityChecks) {
+    const lane = lanes.find(matches);
+    if (lane) {
+      return lane.id;
+    }
+  }
+  for (const matches of terminalFallbacks) {
     const lane = lanes.find(matches);
     if (lane) {
       return lane.id;
@@ -903,10 +913,86 @@ function uniqueAgents(agents = []) {
   return [...new Set(agents.filter(Boolean))];
 }
 
+// --- Hybrid agent architecture ---
+// Agents that can run as prompt switches in the main conversation (no isolation needed).
+const LAYER0_PROMPT_AGENTS = new Set(['ceo', 'pm', 'cto', 'designer', 'lead-dev', 'tech-writer']);
+// Agents that benefit from peer collaboration via Team pattern.
+const LAYER1_TEAM_GROUPS = {
+  design: ['cto', 'designer'],
+  review: ['lead-dev', 'qa'],
+  delivery: ['ceo', 'tech-writer'],
+};
+// Agents that require process isolation (subagent pattern).
+const LAYER2_SUBAGENT_AGENTS = new Set(['developer', 'qa', 'fact-checker', 'security-reviewer', 'troubleshooter']);
+
+/**
+ * Structured agent recommendation that extends Array for backward compatibility.
+ * Existing code using .length, .join(), iteration, and Array.isArray() continues to work.
+ * New code can access .layer0_prompt, .layer1_team, .layer2_subagent, and .tools.
+ */
+class AgentRecommendation extends Array {
+  // Prevent Array methods (.slice, .filter, .map) from calling this constructor
+  // with a single number argument (length), which would fail the spread.
+  static get [Symbol.species]() {
+    return Array;
+  }
+
+  constructor(agents, { layer0_prompt = [], layer1_team = [], layer2_subagent = [], tools = [] } = {}) {
+    super(...(Array.isArray(agents) ? agents : []));
+    Object.defineProperty(this, 'layer0_prompt', { value: layer0_prompt, enumerable: false });
+    Object.defineProperty(this, 'layer1_team', { value: layer1_team, enumerable: false });
+    Object.defineProperty(this, 'layer2_subagent', { value: layer2_subagent, enumerable: false });
+    Object.defineProperty(this, 'tools', { value: tools, enumerable: false });
+  }
+
+  /** Serialize to plain array for JSON persistence (runtime state). */
+  toJSON() {
+    return [...this];
+  }
+}
+
+function classifyAgents(agents) {
+  const layer0 = [];
+  const layer1 = [];
+  const layer2 = [];
+  const tools = [];
+
+  for (const agent of agents) {
+    if (LAYER2_SUBAGENT_AGENTS.has(agent)) {
+      layer2.push(agent);
+    } else if (LAYER0_PROMPT_AGENTS.has(agent)) {
+      layer0.push(agent);
+    } else {
+      layer2.push(agent); // unknown agents default to isolated subagent
+    }
+  }
+
+  // Detect team collaboration opportunities
+  for (const [, group] of Object.entries(LAYER1_TEAM_GROUPS)) {
+    if (group.every(a => layer0.includes(a))) {
+      for (const a of group) {
+        if (!layer1.includes(a)) layer1.push(a);
+      }
+    }
+  }
+
+  // Add codebase-memory-mcp tools when researcher is present
+  if (agents.includes('researcher')) {
+    tools.push('codebase-memory-mcp');
+  }
+
+  return new AgentRecommendation(agents, {
+    layer0_prompt: layer0,
+    layer1_team: layer1,
+    layer2_subagent: layer2,
+    tools,
+  });
+}
+
 function recommendedAgentsForCompanyRuntime(runtime = {}, fallback = []) {
   const companyMode = normalizeCompanyMode(runtime?.company_mode);
   if (companyMode !== 'autonomous_company') {
-    return fallback;
+    return classifyAgents(fallback);
   }
 
   const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
@@ -917,56 +1003,56 @@ function recommendedAgentsForCompanyRuntime(runtime = {}, fallback = []) {
   const nextSessionOwner = requireString(runtime?.next_session_owner);
 
   if (nextSessionOwner) {
-    return uniqueAgents([nextSessionOwner, activeGateOwner, ...fallback]);
+    return classifyAgents(uniqueAgents([nextSessionOwner, activeGateOwner, ...fallback]));
   }
 
   if (customerBlockers.length > 0) {
-    return uniqueAgents(['ceo', 'pm', activeGateOwner, ...fallback]);
+    return classifyAgents(uniqueAgents(['ceo', 'pm', activeGateOwner, ...fallback]));
   }
 
   if (activeGate === 'design_readiness') {
-    return uniqueAgents(['cto', 'designer', 'researcher', activeGateOwner, ...fallback]);
+    return classifyAgents(uniqueAgents(['cto', 'designer', 'researcher', activeGateOwner, ...fallback]));
   }
 
   if (activeGate === 'implementation_readiness') {
-    return uniqueAgents(['lead-dev', 'developer', 'qa', activeGateOwner, ...fallback]);
+    return classifyAgents(uniqueAgents(['lead-dev', 'developer', 'qa', activeGateOwner, ...fallback]));
   }
 
   if (activeGate === 'qa') {
-    return uniqueAgents(['qa', 'developer', 'lead-dev', activeGateOwner, ...fallback]);
+    return classifyAgents(uniqueAgents(['qa', 'developer', 'lead-dev', activeGateOwner, ...fallback]));
   }
 
   if (activeGate === 'security') {
-    return uniqueAgents(['security-reviewer', 'developer', 'lead-dev', activeGateOwner, ...fallback]);
+    return classifyAgents(uniqueAgents(['security-reviewer', 'developer', 'lead-dev', activeGateOwner, ...fallback]));
   }
 
   if (activeGate === 'delivery_readiness') {
     if (readiness === 'blocked' || internalBlockers.length > 0) {
-      return uniqueAgents(['qa', 'security-reviewer', 'ceo', activeGateOwner, ...fallback]);
+      return classifyAgents(uniqueAgents(['qa', 'security-reviewer', 'ceo', activeGateOwner, ...fallback]));
     }
-    return uniqueAgents(['ceo', 'tech-writer', 'qa', activeGateOwner, ...fallback]);
+    return classifyAgents(uniqueAgents(['ceo', 'tech-writer', 'qa', activeGateOwner, ...fallback]));
   }
 
   if (activeGate === 'customer_review') {
-    return uniqueAgents(['ceo', 'tech-writer', activeGateOwner, ...fallback]);
+    return classifyAgents(uniqueAgents(['ceo', 'tech-writer', activeGateOwner, ...fallback]));
   }
 
-  return activeGateOwner ? uniqueAgents([activeGateOwner, ...fallback]) : fallback;
+  return activeGateOwner ? classifyAgents(uniqueAgents([activeGateOwner, ...fallback])) : classifyAgents(fallback);
 }
 
 export function recommendedAgentsFor({ tier = 'light', taskType = 'general', phaseId = 'develop', runtime = null } = {}) {
   const normalizedTier = normalizeTier(tier);
 
   if (normalizedTier === 'off') {
-    return [];
+    return classifyAgents([]);
   }
 
   if (normalizedTier === 'light') {
     if (taskType === 'bugfix') {
-      return ['developer', 'troubleshooter'];
+      return classifyAgents(['developer', 'troubleshooter']);
     }
     if (taskType === 'refactor') {
-      return ['developer', 'lead-dev'];
+      return classifyAgents(['developer', 'lead-dev']);
     }
     return recommendedAgentsForCompanyRuntime(runtime, ['developer']);
   }
@@ -1609,7 +1695,7 @@ export function recordStateStats(cwd = '.', updater) {
  * Shows phase, active agents, lanes, and blockers dynamically.
  * Safe to call from any hook — silently no-ops if HUD is not installed.
  */
-export function updateHudLine(state, runtime) {
+export function updateHudLine(state, runtime, staleTier = 'fresh') {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
   if (!homeDir) return;
   const hudConfigDir = join(homeDir, '.claude', 'plugins', 'claude-hud');
@@ -1627,6 +1713,16 @@ export function updateHudLine(state, runtime) {
   const phaseIdx = resolved.index;
   const maxPhase = resolved.sequence.length - 1; // exclude 'complete'
 
+  // For stale projects, show minimal HUD
+  if (staleTier === 'stale') {
+    const nextLine = 'forge:stale';
+    config.display = config.display || {};
+    if (config.display.customLine === nextLine) return;
+    config.display.customLine = nextLine;
+    writeFileSync(hudConfigPath, JSON.stringify(config, null, 2) + '\n');
+    return;
+  }
+
   // Active agents
   const activeAgents = runtime?.active_agents || {};
   const agentEntries = Object.values(activeAgents).filter(a => a.status === 'running');
@@ -1641,7 +1737,7 @@ export function updateHudLine(state, runtime) {
     ? activeLanes.map(l => `${l.id}(${l.status})`).join(' ')
     : '';
 
-  const blockers = (runtime?.customer_blockers?.length || 0) + (runtime?.internal_blockers?.length || 0);
+  const blockers = normalizeBlockers(runtime?.customer_blockers).length + normalizeBlockers(runtime?.internal_blockers).length;
 
   // Build dynamic line: phase | agents | lanes | blockers
   const parts = [`forge:${phase} ${phaseIdx}/${maxPhase}`];

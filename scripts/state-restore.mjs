@@ -16,10 +16,37 @@ import {
   compactForgeContext,
   readForgeState,
   readRuntimeState,
+  resolvePhase,
   updateHudLine,
   updateRuntimeState,
   writeForgeState,
 } from './lib/forge-state.mjs';
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * ONE_HOUR_MS;
+
+function getStalenessMs(runtime) {
+  const timestamp = runtime?.stats?.last_finished_at || runtime?.updated_at;
+  if (!timestamp) return Infinity;
+  const elapsed = Date.now() - new Date(timestamp).getTime();
+  return Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : Infinity;
+}
+
+function getStaleTier(elapsedMs) {
+  const threshold = Number(process.env.FORGE_STALE_THRESHOLD_MS);
+  const staleMs = Number.isFinite(threshold) && threshold > 0 ? threshold : TWENTY_FOUR_HOURS_MS;
+  if (elapsedMs < ONE_HOUR_MS) return 'fresh';
+  if (elapsedMs < staleMs) return 'warm';
+  return 'stale';
+}
+
+function abbreviatedContext(state, runtime) {
+  const phase = resolvePhase(state);
+  const lanes = Object.values(runtime?.lanes || {});
+  const activeLanes = lanes.filter(l => l.status !== 'done' && l.status !== 'merged');
+  const laneHint = activeLanes.length ? ` ${activeLanes.length} active lane(s)` : '';
+  return `[Forge] ${phase.id} ${phase.index}/${phase.sequence.length - 1}${laneHint} — use 'forge continue' to resume`;
+}
 
 // HUD update is now handled by the shared updateHudLine() from forge-state.mjs
 
@@ -51,13 +78,24 @@ async function main() {
       },
     }));
 
-    const context = compactForgeContext(normalized, nextRuntime);
+    const elapsedMs = getStalenessMs(nextRuntime);
+    const staleTier = getStaleTier(elapsedMs);
+
+    let context;
+    if (staleTier === 'stale') {
+      context = "[Forge] Inactive project detected. Run 'forge continue' or 'forge cancel'.";
+    } else if (staleTier === 'warm') {
+      context = abbreviatedContext(normalized, nextRuntime);
+    } else {
+      context = compactForgeContext(normalized, nextRuntime);
+    }
+
     updateRuntimeState(cwd, current => ({
       ...current,
       last_compact_context: context,
     }));
 
-    try { updateHudLine(normalized, nextRuntime); } catch { /* HUD not installed */ }
+    try { updateHudLine(normalized, nextRuntime, staleTier); } catch { /* HUD not installed */ }
 
     console.log(JSON.stringify({
       continue: true,

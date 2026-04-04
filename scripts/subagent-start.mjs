@@ -125,12 +125,24 @@ async function main() {
       return;
     }
 
+    // Build analysis context for design/isolate phases when codebase-memory is available
+    let analysisHint = '';
+    if ((phaseId === 'design' || phaseId === 'isolate') && recommended.tools?.length) {
+      analysisHint = ` | analysis: use ${recommended.tools.join(', ')} (search_graph, trace_call_path, get_architecture) for codebase context`;
+    }
+
+    // Surface layer info when structured recommendation is available
+    let layerHint = '';
+    if (recommended.layer1_team?.length) {
+      layerHint = ` | team: [${recommended.layer1_team.join(', ')}]`;
+    }
+
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'SubagentStart',
-        additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]`,
+        additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}`,
       },
     }));
   } catch (error) {
