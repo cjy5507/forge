@@ -660,6 +660,8 @@ export function normalizeLane(lane = {}, fallbackId = '') {
     review_state: normalizeLaneReviewState(source.review_state),
     merge_state: normalizeLaneMergeState(source.merge_state),
     scope: Array.isArray(source.scope) ? source.scope.map(String) : [],
+    areas: Array.isArray(source.areas) ? source.areas.map(String) : [],
+    model_hint: typeof source.model_hint === 'string' ? source.model_hint : '',
     acceptance_criteria: Array.isArray(source.acceptance_criteria) ? source.acceptance_criteria.map(String) : [],
     last_event_at: typeof source.last_event_at === 'string' ? source.last_event_at : '',
     blocked_reason: typeof source.blocked_reason === 'string' ? source.blocked_reason : '',
@@ -1118,6 +1120,9 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   } else if (nextLaneRecord?.status === 'in_review') {
     focusHint = ' review';
   }
+  if (nextLaneRecord?.model_hint) {
+    focusHint += `[${nextLaneRecord.model_hint}]`;
+  }
   const companySuffix = [
     companyMode === 'autonomous_company' ? 'auto' : '',
     activeGate ? `gate:${activeGate}` : '',
@@ -1130,7 +1135,7 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   ]
     .filter(Boolean)
     .join(' ');
-  const laneSuffix = laneCounts.total ? ` ${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${nextLane ? ` ↺${nextLane}${focusHint}` : ''}` : '';
+  const laneSuffix = laneCounts.total ? ` ${laneCounts.merged + laneCounts.done}/${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${nextLane ? ` ↺${nextLane}${focusHint}` : ''}` : '';
   const mode = state.mode || 'build';
   const seq = phase.sequence || PHASE_SEQUENCE;
   const total = seq.length - 1; // exclude 'complete'
@@ -1803,9 +1808,12 @@ export function updateHudLine(state, runtime, staleTier = 'fresh') {
 
   // Active lanes
   const lanes = runtime?.lanes || {};
-  const activeLanes = Object.values(lanes).filter(l => l.status !== 'done' && l.status !== 'merged');
-  const laneInfo = activeLanes.length > 0
-    ? activeLanes.map(l => `${l.id}(${l.status})`).join(' ')
+  const allLanes = Object.values(lanes);
+  const activeLanes = allLanes.filter(l => l.status !== 'done' && l.status !== 'merged');
+  const mergedCount = allLanes.length - activeLanes.length;
+  const activeDetail = activeLanes.map(l => `${l.id}(${l.status})`).join(' ');
+  const laneInfo = allLanes.length > 0
+    ? `${mergedCount}/${allLanes.length}l${activeDetail ? ` ${activeDetail}` : ''}`
     : '';
 
   const blockers = normalizeBlockers(runtime?.customer_blockers).length + normalizeBlockers(runtime?.internal_blockers).length;
