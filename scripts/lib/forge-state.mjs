@@ -923,7 +923,7 @@ const LAYER1_TEAM_GROUPS = {
   delivery: ['ceo', 'tech-writer'],
 };
 // Agents that require process isolation (subagent pattern).
-const LAYER2_SUBAGENT_AGENTS = new Set(['developer', 'qa', 'fact-checker', 'security-reviewer', 'troubleshooter']);
+const LAYER2_SUBAGENT_AGENTS = new Set(['developer', 'qa', 'fact-checker', 'security-reviewer', 'troubleshooter', 'analyst']);
 
 /**
  * Structured agent recommendation that extends Array for backward compatibility.
@@ -976,8 +976,8 @@ function classifyAgents(agents) {
     }
   }
 
-  // Add codebase-memory-mcp tools when researcher is present
-  if (agents.includes('researcher')) {
+  // Add codebase-memory-mcp tools when researcher or analyst is present
+  if (agents.includes('researcher') || agents.includes('analyst')) {
     tools.push('codebase-memory-mcp');
   }
 
@@ -1072,7 +1072,11 @@ export function recommendedAgentsFor({ tier = 'light', taskType = 'general', pha
   }
 
   if (phaseId === 'design') {
-    return recommendedAgentsForCompanyRuntime(runtime, ['ceo', 'cto', 'designer', 'researcher']);
+    return recommendedAgentsForCompanyRuntime(runtime, ['ceo', 'cto', 'designer', 'researcher', 'analyst']);
+  }
+
+  if (phaseId === 'isolate' || phaseId === 'reproduce') {
+    return recommendedAgentsForCompanyRuntime(runtime, ['troubleshooter', 'analyst', 'developer']);
   }
 
   if (phaseId === 'delivery') {

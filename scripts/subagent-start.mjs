@@ -125,9 +125,10 @@ async function main() {
       return;
     }
 
-    // Build analysis context for design/isolate phases when codebase-memory is available
+    // Build analysis context when codebase-memory tools are available
     let analysisHint = '';
-    if ((phaseId === 'design' || phaseId === 'isolate') && recommended.tools?.length) {
+    const analysisPhases = ['design', 'isolate', 'reproduce', 'develop'];
+    if (analysisPhases.includes(phaseId) && recommended.tools?.length) {
       analysisHint = ` | analysis: use ${recommended.tools.join(', ')} (search_graph, trace_call_path, get_architecture) for codebase context`;
     }
 
