@@ -9,13 +9,18 @@ import { spawnSync } from 'child_process';
 
 const MAX_FILES = 50;
 const SCAN_TIMEOUT_MS = 3000;
-const LLM_TIMEOUT_MS = 12000;
+const LLM_TIMEOUT_MS = 3000;
 const MAX_LINES_PER_FILE = 200;
 const MAX_SPEC_EXCERPT = 2000;
 const MAX_COMPONENTS = 8;
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.cache', '.turbo', 'coverage']);
 
+// Task type detection patterns — Korean alternatives enable multilingual input matching:
+// 기능 = "feature", 만들어 = "make/create", 추가 = "add", 리팩토링 = "refactoring",
+// 정리 = "clean up", 안 돼 = "doesn't work", 고쳐 = "fix", 오류/에러 = "error",
+// 테스트 = "test", 문서 = "document", 이전 = "migration", 마이그레이션 = "migration",
+// 빠르게 = "quickly", 최적화 = "optimization"
 const TASK_PATTERNS = {
   'fullstack-app': /\b(full.?stack|app|application|website|web app|SaaS|dashboard)\b/i,
   'feature': /\b(add|implement|create|build|new feature|기능|만들어|추가)\b/i,
@@ -29,6 +34,10 @@ const TASK_PATTERNS = {
 
 const VALID_TASK_TYPES = new Set(Object.keys(TASK_PATTERNS));
 
+// Area detection patterns — Korean alternatives for multilingual input matching:
+// 프론트 = "frontend", 백엔드 = "backend", 서버 = "server", 디비 = "DB",
+// 데이터베이스 = "database", 인증 = "auth", 로그인 = "login",
+// 테스트 = "test", 인프라 = "infra", 배포 = "deploy"
 const AREA_PATTERNS = {
   frontend: /(\bui\b|\bux\b|component|page|layout|style|css|react|vue|svelte|next|frontend|프론트)/i,
   backend: /(api|server|route|controller|endpoint|express|fastapi|backend|백엔드|서버)/i,
@@ -413,7 +422,7 @@ function callLLM(prompt) {
   }
 }
 
-function validateLLMResponse(response) {
+export function validateLLMResponse(response) {
   const errors = [];
 
   if (!response || typeof response !== 'object') {

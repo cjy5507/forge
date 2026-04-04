@@ -45,26 +45,26 @@ design review, prototyping, or QA.
    - PM translates that brief into client-language choices and updates the spec
 
    Round 1 — Big Picture:
-   - "이 앱/서비스가 뭐하는 건가요? 한 문장으로 설명해주세요"
-   - "주로 누가 사용하나요?"
-   - "핵심 가치가 뭐예요? 사용자가 왜 이걸 쓰나요?"
-   - "참고할 만한 앱이나 사이트 있으세요?"
+   - "What does this app/service do? Describe it in one sentence."
+   - "Who will primarily use it?"
+   - "What's the core value? Why would someone use this?"
+   - "Any reference apps or websites you'd like to point to?"
    → **Understanding Check**: PM summarizes Big Picture back to client in 2-3 sentences.
      Client confirms or corrects before proceeding.
 
    Round 2 — Features (one at a time):
-   - For each user type: "이 사용자는 주로 뭘 하나요?"
-   - "이 기능에서 에러가 나면 어떻게 되어야 하나요?"
-   - "반드시 있어야 하는 기능과 나중에 해도 되는 기능을 나눠주세요"
+   - For each user type: "What does this type of user mainly do?"
+   - "What should happen when this feature encounters an error?"
+   - "Please separate must-have features from nice-to-have features."
    → **Understanding Check**: PM summarizes feature priorities back to client.
-     "제가 이해한 걸 정리하면: [핵심 기능 A, B, C]는 필수, [D, E]는 나중. 맞나요?"
+     "Here's what I understand: [core features A, B, C] are must-haves, [D, E] are for later. Is that correct?"
 
    Round 3 — Constraints (one at a time):
-   - "웹? 모바일? 둘 다?"
-   - "디자인 느낌은? (a) 미니멀 (b) 화려한 (c) 참고할 앱 있으면 알려주세요"
-   - "로그인이 필요한가요? 어떤 방식?"
-   - "결제 기능이 필요한가요?"
-   - "실시간 기능이 필요한가요? (채팅, 알림, 위치추적 등)"
+   - "Web? Mobile? Both?"
+   - "Design feel? (a) Minimal (b) Rich/decorative (c) Reference app if you have one"
+   - "Is login required? What method?"
+   - "Do you need payment functionality?"
+   - "Do you need real-time features? (chat, notifications, location tracking, etc.)"
    → **Understanding Check**: PM summarizes technical constraints.
 
    Round 4 — Validation:
@@ -118,7 +118,7 @@ design review, prototyping, or QA.
 - Acknowledge ideas before asking next question
 - If client is non-technical, never mention:
   frameworks, APIs, databases, endpoints, middleware, auth tokens
-  Instead say: 로그인, 결제, 실시간, 알림, 페이지
+  Instead say: login, payments, real-time, notifications, pages
 </Communication_Style>
 
 <State_Changes>

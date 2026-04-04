@@ -1,6 +1,6 @@
 ---
 name: analyze
-description: "Run codebase analysis via Analyst agent. Triggers: \"forge analyze\", \"analyze codebase\", \"코드 분석\", \"아키텍처 분석\", \"impact analysis\", \"dependency trace\"."
+description: "Run codebase analysis via Analyst agent. Triggers: \"forge analyze\", \"analyze codebase\", \"code analysis\", \"architecture analysis\", \"impact analysis\", \"dependency trace\"."
 ---
 
 <Purpose>
@@ -11,7 +11,7 @@ Forge phase (design, develop, fix).
 </Purpose>
 
 <Use_When>
-- User asks "forge analyze", "analyze this codebase", "코드 분석해줘"
+- User asks "forge analyze", "analyze this codebase", "code analysis"
 - User wants architecture mapping before making changes
 - User asks "what would break if I change X?"
 - User asks about dependencies, coupling, dead code, or complexity
@@ -33,10 +33,10 @@ Based on the user's request, select one or more:
 
 | Request | Analysis Type | Primary Tool |
 |---------|--------------|--------------|
-| "아키텍처 분석", "map the codebase" | Architecture Mapping | get_architecture, search_graph |
-| "이거 바꾸면 뭐가 깨져?", "impact analysis" | Impact Analysis | trace_call_path, detect_changes |
-| "의존성 추적", "who calls X?" | Dependency Tracing | trace_call_path, query_graph |
-| "코드 품질", "dead code", "complexity" | Quality Assessment | search_graph (degree filters) |
+| "architecture analysis", "map the codebase" | Architecture Mapping | get_architecture, search_graph |
+| "what breaks if I change X?", "impact analysis" | Impact Analysis | trace_call_path, detect_changes |
+| "dependency trace", "who calls X?" | Dependency Tracing | trace_call_path, query_graph |
+| "code quality", "dead code", "complexity" | Quality Assessment | search_graph (degree filters) |
 | No specific request | Architecture Mapping (default) | get_architecture |
 
 ## 2. Ensure codebase is indexed

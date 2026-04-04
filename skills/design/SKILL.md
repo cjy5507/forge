@@ -180,9 +180,9 @@ Researcher is for EXTERNAL investigation only:
 
 4. Cross-Review via Team:
    - CTO sends architecture proposal to Designer: SendMessage(to="designer", ...)
-     "이 아키텍처로 모든 컴포넌트 구현 가능한지 확인해주세요"
+     "Please verify all components can be implemented with this architecture"
    - Designer sends UX proposal to CTO: SendMessage(to="cto", ...)
-     "이 인터랙션 플로우를 지원하려면 이런 API가 필요합니다"
+     "Supporting this interaction flow requires these APIs"
    - They negotiate directly until convergence
    - Conflict resolution: CTO decides technical feasibility, Designer decides UX quality
    - If deadlocked: escalate to CEO (rare)

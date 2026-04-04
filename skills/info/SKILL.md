@@ -96,7 +96,7 @@ Only show lane detail for non-done lanes. Keep it to one line per lane.
 
 ### Verbose view
 
-When the user asks "forge info --verbose", "detail", or "자세히":
+When the user asks "forge info --verbose", "detail", or "detailed":
 
 - Full lane list with status, owner, and worktree path per lane
 - All hole summaries with severity and attempt count

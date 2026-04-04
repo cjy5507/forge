@@ -9,7 +9,7 @@ but preserves any code already merged to main branch.
 </Purpose>
 
 <Use_When>
-- User says "forge cancel", "포지 취소", "프로젝트 취소"
+- User says "forge cancel", "cancel project"
 - Need to abort mid-project
 - Need to clean up after a completed project
 </Use_When>
@@ -18,19 +18,19 @@ but preserves any code already merged to main branch.
 1. Read .forge/state.json to understand current state
 2. If not found → "No active Forge project to cancel."
 3. Confirm with user:
-   "현재 Phase {{N}} ({{phase_name}}) 진행 중입니다.
-    취소하면:
-    - .forge/ 디렉토리 삭제
-    - 활성 worktree 정리
-    - main에 이미 머지된 코드는 유지
-    계속할까요? (y/n)"
+   "Currently at Phase {{N}} ({{phase_name}}).
+    Canceling will:
+    - Delete .forge/ directory
+    - Clean up active worktrees
+    - Preserve code already merged to main
+    Continue? (y/n)"
 4. If confirmed:
    a. List and remove active worktrees:
       `git worktree list` → filter forge worktrees → `git worktree remove`
    b. Remove forge branches not merged to main:
       `git branch --list "forge/*" --no-merged main` → delete each
    c. Remove .forge/ directory
-   d. Show summary: "Forge 프로젝트가 취소되었습니다. main 브랜치의 코드는 유지됩니다."
+   d. Show summary: "Forge project canceled. Code on the main branch is preserved."
 </Steps>
 
 <Safety>

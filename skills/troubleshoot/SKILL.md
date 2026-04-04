@@ -1,6 +1,6 @@
 ---
 name: troubleshoot
-description: "Use when Forge needs deep bug diagnosis instead of a quick patch. Trigger on intermittent bugs, unclear root cause, multi-module breakage, repeated failed fixes, or requests like \"분석해줘\", \"root cause\", \"why is this failing?\", and \"investigate this regression\". This skill must be used before broad changes on complex failures."
+description: "Use when Forge needs deep bug diagnosis instead of a quick patch. Trigger on intermittent bugs, unclear root cause, multi-module breakage, repeated failed fixes, or requests like \"analyze this\", \"root cause\", \"why is this failing?\", and \"investigate this regression\". This skill must be used before broad changes on complex failures."
 ---
 
 <Purpose>

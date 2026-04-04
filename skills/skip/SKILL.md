@@ -1,6 +1,6 @@
 ---
 name: skip
-description: "Skip to a specific Forge phase. Use when the user says \"forge skip\", \"skip to develop\", \"phase 건너뛰기\", or wants to bypass non-essential phases for their current task."
+description: "Skip to a specific Forge phase. Use when the user says \"forge skip\", \"skip to develop\", \"skip phase\", or wants to bypass non-essential phases for their current task."
 ---
 
 <Purpose>
@@ -9,7 +9,7 @@ This is the primary escape hatch from the rigid phase-gate sequence.
 </Purpose>
 
 <Use_When>
-- User says "forge skip", "skip to [phase]", "건너뛰기"
+- User says "forge skip", "skip to [phase]", "skip phase"
 - Current phase is clearly unnecessary for the task at hand
 - User has external artifacts (existing spec, existing design) that satisfy phase requirements
 </Use_When>

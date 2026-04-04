@@ -197,8 +197,8 @@ Layer 2 — Isolated Subagent (parallel execution):
    - Create a review team: TeamCreate(team_name="forge-review-{module}")
    - Add Developer and Lead as team members
    - Tier 2 review via SendMessage:
-     Lead -> Developer: "fetchUser()로 맞춰주세요" (specific correction)
-     Developer -> Lead: "수정했습니다, 재검토 부탁드립니다"
+     Lead -> Developer: "Please align to fetchUser()" (specific correction)
+     Developer -> Lead: "Fixed, please re-review"
      Lead -> Developer: "LGTM" -> merge
    - Benefits: context preserved across review rounds, no re-dispatch needed
    - Handoff notes still required in forge-lane-runtime.mjs (audit trail)
@@ -218,7 +218,7 @@ Layer 2 — Isolated Subagent (parallel execution):
    - Contract implementation correctness
    - No scope creep (only touches files in task definition)
    -> Violate = reject with specific instructions:
-     "개발자 B는 fetchUser()인데 당신은 getUser(). fetchUser()로 맞춰주세요"
+     "Developer B uses fetchUser() but you used getUser(). Please align to fetchUser()"
 
    Tier 3 — CTO Review (architecture):
    - Module fits the overall architecture
@@ -328,7 +328,7 @@ All subsequent PRs must match:
 - Types: if PR #1 exports interfaces from /types, everyone does the same
 
 When inconsistency is found, Lead rejects with explicit correction:
-  "이미 머지된 코드에서는 {pattern}을 사용합니다. 이에 맞춰주세요:
+  "The already-merged code uses {pattern}. Please align to this standard:
    - Before: {developer's code}
    - After: {corrected code}"
 </Code_Consistency_Rule>

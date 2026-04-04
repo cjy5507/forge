@@ -17,15 +17,19 @@ import {
 } from './lib/forge-state.mjs';
 
 const ENGLISH_TRIGGERS = [/\bforge\b/i, /\/forge\b/i, /\bforge:/i];
+// Korean input triggers: "포지" = "forge" in Korean
 const KOREAN_TRIGGERS = ['포지', '포지:', '/포지'];
 
 // Natural-language triggers that imply "build me something" — route to forge:ignite
+// Korean patterns: 만들어줘 = "make it", 구축해줘 = "build it", 개발해줘 = "develop it", 빌드해줘 = "build it"
 const BUILD_TRIGGERS = [
   /만들어\s*줘/i, /구축해\s*줘/i, /개발해\s*줘/i, /빌드해\s*줘/i,
   /build\s+(me\s+)?a\b/i, /create\s+(me\s+)?a\b/i, /make\s+(me\s+)?a\b/i,
   /develop\s+(me\s+)?a\b/i,
 ];
 // Natural-language triggers for fix/analyze — route to forge:ignite in repair mode
+// Korean patterns: 고쳐줘 = "fix it", 수정해줘 = "correct it", 분석해줘 = "analyze it",
+//   왜 안 돼 = "why doesn't it work", 오류 = "error"
 const REPAIR_TRIGGERS = [
   /고쳐\s*줘/i, /수정해\s*줘/i, /분석해\s*줘/i, /왜\s*안\s*돼/i, /오류/i,
   /fix\s+(this|the|my)\b/i, /debug\s/i, /what'?s\s+wrong/i, /analyze\s/i,

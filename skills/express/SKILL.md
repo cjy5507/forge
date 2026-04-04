@@ -1,6 +1,6 @@
 ---
 name: express
-description: "Collapsed Forge pipeline for medium-complexity tasks. Use when the user says \"forge express\", \"빠르게\", \"quick build\", or when a task is too complex for a single prompt but doesn't warrant the full 8-phase pipeline."
+description: "Collapsed Forge pipeline for medium-complexity tasks. Use when the user says \"forge express\", \"quick build\", or when a task is too complex for a single prompt but doesn't warrant the full 8-phase pipeline."
 ---
 
 <Purpose>

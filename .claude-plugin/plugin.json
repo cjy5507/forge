@@ -1,6 +1,6 @@
 {
   "name": "forge",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Structure, ownership, and continuable state for long-running coding agent work.",
   "author": {
     "name": "Forge Contributors",

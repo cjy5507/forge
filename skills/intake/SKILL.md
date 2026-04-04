@@ -22,7 +22,7 @@ Before full internal deliberation, CEO does a quick scope assessment:
 - Task is clearly bounded (user specified what to build/fix)
 - No multi-system integration needed
 - No security/compliance concerns
-- User wants speed ("빠르게", "quick", "express", "간단")
+- User wants speed ("quick", "express", "simple")
 
 **Then**: Skip internal deliberation (CEO+CTO+PM meeting). Instead:
 1. CEO acknowledges the request
@@ -36,8 +36,8 @@ Before full internal deliberation, CEO does a quick scope assessment:
 <Express_Interview>
 When express fast-path is active, collapse the PM interview:
 - Instead of 5 rounds of questions, do 1-2 rounds max
-- Round 1: "무엇을 만들거나 고치려는 건가요? 특별한 제약이 있나요?" / "What are you building? Any specific constraints?"
-- Round 2 (if needed): "시작 전에 추가할 내용이 있나요?" / "Anything else before we start?"
+- Round 1: "What are you building or fixing? Any specific constraints?"
+- Round 2 (if needed): "Anything else before we start?"
 - Then generate minimal spec and proceed
 </Express_Interview>
 

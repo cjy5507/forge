@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
 
@@ -23,7 +23,11 @@ export function cleanupSessionArtifacts(cwd = '.') {
 
   const forgeErrorLog = join(cwd, '.forge', 'errors.log');
   if (existsSync(forgeErrorLog)) {
-    rmSync(forgeErrorLog, { force: true });
+    const forgeErrorLogPrev = join(cwd, '.forge', 'errors.log.prev');
+    if (existsSync(forgeErrorLogPrev)) {
+      rmSync(forgeErrorLogPrev, { force: true });
+    }
+    renameSync(forgeErrorLog, forgeErrorLogPrev);
     removed.push(forgeErrorLog);
   }
 

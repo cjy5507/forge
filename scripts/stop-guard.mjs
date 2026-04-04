@@ -113,14 +113,14 @@ async function main() {
 
     const PHASE_TO_SKILL = { delivery: 'deliver', complete: 'info' };
     const currentSkill = PHASE_TO_SKILL[phase.id] || phase.id;
-    const reason = `[Forge Stop Guard] Project "${state.project || 'unnamed'}" is still active in phase ${phase.id}. Pending: ${pending.join(', ')}.
+    const reason = `[Forge Stop Guard] The Forge pipeline for "${state.project || 'unnamed'}" is still in progress (phase: ${phase.id}). Pending: ${pending.join(', ')}.
 
 [MAGIC KEYWORD: FORGE:${currentSkill.toUpperCase()}]
 
-You MUST continue working. Invoke the skill using the Skill tool:
+To continue, invoke the skill:
 Skill: forge:${currentSkill}
 
-The Forge pipeline is not complete. Do not stop — resume the current phase immediately.`;
+If you need to pause, the user can say "forge pause" or "forge cancel".`;
 
     updateRuntimeState(cwd, current => ({
       ...current,

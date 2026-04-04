@@ -1,15 +1,15 @@
 ---
 name: rollback
-description: "Use when the user wants to undo Forge progress and return to an earlier checkpoint or phase. Triggers include \"rollback\", \"되돌려줘\", \"아까가 더 나았어\", \"go back to design\", and any request to restore a previous Forge tag safely."
+description: "Use when the user wants to undo Forge progress and return to an earlier checkpoint or phase. Triggers include \"rollback\", \"go back\", \"the earlier version was better\", \"go back to design\", and any request to restore a previous Forge tag safely."
 ---
 
 <Purpose>
 Rolls the project back to a previous phase using git tags created at each phase completion.
-The client can say "아까 디자인이 더 나았어요" and Forge rolls back to that point.
+The client can say "The earlier design was better" and Forge rolls back to that point.
 </Purpose>
 
 <Use_When>
-- Client wants to undo recent work: "되돌려줘", "아까가 더 나았어", "rollback"
+- Client wants to undo recent work: "rollback", "go back", "the earlier version was better"
 - A phase produced unsatisfactory results
 - Need to restart from a specific phase
 </Use_When>
@@ -18,21 +18,21 @@ The client can say "아까 디자인이 더 나았어요" and Forge rolls back t
 1. List available rollback points:
    `git tag -l "forge/v*" --sort=-version:refname`
    Show to user:
-   "사용 가능한 복원 지점:
-    - forge/v1-spec (Phase 1 완료 — 스펙)
-    - forge/v1-design (Phase 2 완료 — 설계)
-    - forge/v1-dev (Phase 3 완료 — 개발)
-    - forge/v1-qa (Phase 4 완료 — QA)
-    어디로 돌아갈까요?"
+   "Available restore points:
+    - forge/v1-spec (Phase 1 complete — Spec)
+    - forge/v1-design (Phase 2 complete — Design)
+    - forge/v1-dev (Phase 3 complete — Development)
+    - forge/v1-qa (Phase 4 complete — QA)
+    Which point would you like to return to?"
 
 2. User selects a tag
 
 3. Confirm with user:
-   "forge/v1-design 으로 롤백하면:
-    - Phase 3 이후 작업이 되돌아갑니다
-    - 코드 변경사항이 롤백됩니다
-    - Phase 2 (설계) 이후부터 다시 시작합니다
-    계속할까요? (y/n)"
+   "Rolling back to forge/v1-design means:
+    - Work after Phase 3 will be reverted
+    - Code changes will be rolled back
+    - We'll restart from after Phase 2 (Design)
+    Continue? (y/n)"
 
 4. If confirmed:
    a. Save current state as backup tag: `git tag forge/backup-{timestamp}`
@@ -42,7 +42,7 @@ The client can say "아까 디자인이 더 나았어요" and Forge rolls back t
       - Set status to "active"
       - Clear tasks/holes that came after this phase
    d. Clean up worktrees from later phases
-   e. Show: "Phase {{N}} ({{phase_name}})으로 롤백 완료. 이 시점부터 다시 진행합니다."
+   e. Show: "Rollback to Phase {{N}} ({{phase_name}}) complete. Continuing from this point."
 
 5. Invoke forge:continue to continue from the rolled-back phase
 </Steps>

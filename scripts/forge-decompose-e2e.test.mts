@@ -10,6 +10,7 @@ import {
   identifyComponents,
   calculateExecutionOrder,
   detectCycles,
+  validateLLMResponse,
 } from './lib/task-decomposer.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -207,5 +208,80 @@ describe('task decomposition pipeline', () => {
     const analysis = analyzeTask('API 서버랑 데이터베이스 만들어줘');
     expect(analysis.areas).toContain('backend');
     expect(analysis.areas).toContain('database');
+  });
+
+  it('validateLLMResponse accepts well-formed LLM output', () => {
+    const mockLLMResponse = {
+      taskType: 'fullstack-app',
+      complexity: 0.7,
+      parallelizable: true,
+      components: [
+        {
+          id: 'shared',
+          title: 'Shared types and config',
+          areas: ['config'],
+          filePatterns: ['src/shared/**'],
+          dependencies: [],
+          modelHint: 'sonnet',
+        },
+        {
+          id: 'api',
+          title: 'API server',
+          areas: ['backend'],
+          filePatterns: ['src/api/**'],
+          dependencies: ['shared'],
+          modelHint: 'sonnet',
+        },
+        {
+          id: 'frontend',
+          title: 'React dashboard',
+          areas: ['frontend'],
+          filePatterns: ['src/ui/**'],
+          dependencies: ['shared'],
+          modelHint: 'sonnet',
+        },
+      ],
+    };
+
+    const result = validateLLMResponse(mockLLMResponse);
+    expect(result.valid).toBe(true);
+    expect(result.errors || []).toHaveLength(0);
+    expect(result.data.components).toHaveLength(3);
+  });
+
+  it('validateLLMResponse rejects malformed LLM output', () => {
+    const badResponse = {
+      taskType: 'invalid-type',
+      complexity: 2.0,
+      parallelizable: 'yes',
+      components: [],
+    };
+
+    const result = validateLLMResponse(badResponse);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it('validateLLMResponse strips invalid dependency references', () => {
+    const response = {
+      taskType: 'fullstack-app',
+      complexity: 0.5,
+      parallelizable: true,
+      components: [
+        {
+          id: 'a',
+          title: 'Component A',
+          areas: ['backend'],
+          filePatterns: ['src/a/**'],
+          dependencies: ['nonexistent'],
+          modelHint: 'sonnet',
+        },
+      ],
+    };
+
+    const result = validateLLMResponse(response);
+    expect(result.valid).toBe(true);
+    // Referential integrity: invalid dep should be stripped
+    expect(result.data.components[0].dependencies).not.toContain('nonexistent');
   });
 });

@@ -1,6 +1,6 @@
 ---
 name: continue
-description: "Continue an existing Forge project after a pause, restart, or interruption. Triggers: \"forge continue\", \"이어서 해줘\", \"pick up where we left off\"."
+description: "Continue an existing Forge project after a pause, restart, or interruption. Triggers: \"forge continue\", \"pick up where we left off\", \"resume\"."
 ---
 
 <Purpose>
@@ -11,7 +11,7 @@ the user should be able to type "forge continue" and immediately be back in cont
 <Use_When>
 - User returns after a session break
 - SessionStart detects existing .forge/state.json
-- User says "forge continue", "이어서", "pick up where we left off"
+- User says "forge continue", "resume", "pick up where we left off"
 </Use_When>
 
 <Steps>

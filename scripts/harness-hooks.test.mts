@@ -344,7 +344,7 @@ describe('forge harness hooks', () => {
     });
 
     expect(output.decision).toBe('block');
-    expect(output.reason).toContain('still active');
+    expect(output.reason).toContain('still in progress');
   });
 
   it('injects recovery guidance on tool failure', () => {
@@ -1521,12 +1521,24 @@ describe('checkPhaseGate express mode', () => {
     expect(result.mode).toBe('express');
   });
 
-  it('returns canAdvance=true for express build phase (no requires)', () => {
+  it('returns canAdvance=true for express build phase (state.json exists)', () => {
+    // state.json must exceed MIN_ARTIFACT_BYTES (100) to pass the gate
+    const state = { mode: 'express', phase: 'build', project: 'test', version: '0.2.0', status: 'active', created_at: new Date().toISOString() };
+    writeFileSync(join(tmpDir, '.forge', 'state.json'), JSON.stringify(state, null, 2));
     const result = checkPhaseGate(tmpDir, 'build', 'express');
     expect(result.canAdvance).toBe(true);
   });
 
-  it('returns canAdvance=true for express ship phase (no requires)', () => {
+  it('returns canAdvance=false for express build phase (state.json missing)', () => {
+    const result = checkPhaseGate(tmpDir, 'build', 'express');
+    expect(result.canAdvance).toBe(false);
+    expect(result.missing).toContain('state.json');
+  });
+
+  it('returns canAdvance=true for express ship phase (state.json + delivery-report exist)', () => {
+    const state = { mode: 'express', phase: 'ship', project: 'test', version: '0.2.0', status: 'active', created_at: new Date().toISOString() };
+    writeFileSync(join(tmpDir, '.forge', 'state.json'), JSON.stringify(state, null, 2));
+    mkdirSync(join(tmpDir, '.forge', 'delivery-report'), { recursive: true });
     const result = checkPhaseGate(tmpDir, 'ship', 'express');
     expect(result.canAdvance).toBe(true);
   });
