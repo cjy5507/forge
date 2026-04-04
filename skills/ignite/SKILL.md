@@ -67,6 +67,31 @@ Phase 0 — INTAKE / 접수 (CEO):
      - CTO + PM 의견 수렴 후 CEO가 종합 판단
      - 고객에게는 "가능합니다 + 방법은 이겁니다"로 제시 (내부 논의 과정은 비노출)
 
+  2b. **Express Qualification Check** — 익스프레스 자격 판단:
+      Before routing to full BUILD or REPAIR pipeline, CEO evaluates if the task qualifies for express mode.
+
+      [Express-qualified tasks / 익스프레스 대상] (route to forge:express):
+      - Single feature with bounded scope (1-3 files expected) / 단일 기능, 범위 명확 (1-3개 파일)
+      - Clear requirements, no ambiguity / 요구사항 명확, 모호함 없음
+      - No architecture decisions needed / 아키텍처 결정 불필요
+      - Bug fix with known location / 위치가 알려진 버그 수정
+      - Documentation or config changes / 문서 또는 설정 변경
+      - User explicitly says "빠르게", "quick", "simple", "간단"
+
+      [Full pipeline tasks / 전체 파이프라인 대상] (route to forge:discovery or troubleshooter):
+      - Multi-system changes / 다중 시스템 변경
+      - Architecture decisions needed / 아키텍처 결정 필요
+      - Unclear requirements requiring PM interview / PM 인터뷰가 필요한 불명확한 요구사항
+      - Security-sensitive changes / 보안 민감 변경
+      - User explicitly requests full process / 사용자가 전체 프로세스 요청
+
+      **CEO Decision / CEO 판단**: If express-qualified AND user hasn't requested full pipeline:
+        → Initialize .forge/ with mode="express", tier="medium"
+        → Route directly to forge:express (skips discovery + design)
+
+      **Default / 기본값**: When unclear, prefer full pipeline. It's better to over-process than under-process.
+        모호할 때는 전체 파이프라인 선호. 과잉 처리가 부족 처리보다 낫다.
+
   3. CEO agent evaluates and ROUTES / CEO가 평가 후 라우팅:
 
      [BUILD mode] — new product request
