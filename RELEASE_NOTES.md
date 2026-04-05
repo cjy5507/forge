@@ -1,5 +1,24 @@
 # Forge Release Notes Draft
 
+## v0.3.3
+
+State machine validation and consistency checks.
+
+### Highlights
+
+- Added `validatePhaseTransition()` — blocks invalid backward phase transitions (fix-loop and rollback still allowed)
+- Added `validateStateConsistency()` — detects and auto-corrects contradictions between state.json and runtime.json (e.g. phase=plan + delivery_readiness=delivered)
+- Added `completeForgeProject()` / `cancelForgeProject()` — explicitly marks projects as terminal so `forge continue` can detect stale projects
+- Added `isProjectTerminal()` — used by continue to distinguish active vs completed/cancelled projects
+- Extended `normalizeDeliveryReadiness` to accept `completed` and `cancelled` values
+- 21 new tests, 279 total tests passing
+- Inspired by claw-code-main's explicit state machine pattern
+
+### Notes
+
+- All validation uses degraded mode: contradictions log warnings and auto-correct rather than throwing errors
+- Backward compatibility preserved — no existing API signatures changed
+
 ## v0.1.5
 
 Maintenance and consistency release.
