@@ -86,22 +86,55 @@ export function normalizeLane(lane = {}, fallbackId = '') {
   };
 }
 
+const TERMINAL_STATUSES = new Set(['done', 'merged']);
+
+/** Evict lanes when count exceeds MAX_RUNTIME_LANES.
+ *  Terminal (done/merged) lanes are evicted first (oldest first).
+ *  If still over cap, oldest active lanes are evicted as a hard safety limit. */
+function evictExcessLanes(entries) {
+  if (entries.length <= MAX_RUNTIME_LANES) return entries;
+
+  // Partition into active and terminal
+  const active = [];
+  const terminal = [];
+  for (const entry of entries) {
+    const status = String(entry[1]?.status || '').toLowerCase();
+    if (TERMINAL_STATUSES.has(status)) {
+      terminal.push(entry);
+    } else {
+      active.push(entry);
+    }
+  }
+
+  // Phase 1: evict terminal lanes first (oldest first)
+  const terminalBudget = Math.max(0, MAX_RUNTIME_LANES - active.length);
+  const kept = [...active, ...terminal.slice(-terminalBudget)];
+
+  // Phase 2: if active lanes alone exceed cap, hard-trim oldest active
+  if (kept.length > MAX_RUNTIME_LANES) {
+    return kept.slice(-MAX_RUNTIME_LANES);
+  }
+  return kept;
+}
+
 export function normalizeRuntimeLanes(lanes = {}) {
   if (Array.isArray(lanes)) {
-    return Object.fromEntries(lanes.slice(-MAX_RUNTIME_LANES).map((lane, index) => {
+    const entries = lanes.map((lane, index) => {
       const normalized = normalizeLane(lane, lane?.id || `lane-${index + 1}`);
       return [normalized.id, normalized];
-    }));
+    });
+    return Object.fromEntries(evictExcessLanes(entries));
   }
 
   if (!lanes || typeof lanes !== 'object') {
     return {};
   }
 
-  return Object.fromEntries(Object.entries(lanes).slice(-MAX_RUNTIME_LANES).map(([id, lane]) => {
+  const entries = Object.entries(lanes).map(([id, lane]) => {
     const normalized = normalizeLane(lane, id);
     return [normalized.id, normalized];
-  }));
+  });
+  return Object.fromEntries(evictExcessLanes(entries));
 }
 
 export function summarizeLaneCounts(runtime = DEFAULT_RUNTIME) {

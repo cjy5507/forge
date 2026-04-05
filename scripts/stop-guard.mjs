@@ -136,4 +136,4 @@ To stop, the user can say "forge cancel".`;
     decision: 'block',
     reason,
   }));
-}, { name: 'stop-guard' });
+}, { name: 'stop-guard', failClosed: true });

@@ -2,9 +2,11 @@ import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { resolveForgeBaseDir } from './forge-io.mjs';
 
+// Section markers use regex to match both numbered (## 4. Constraints) and plain (## Constraints) headings.
+// This ensures compatibility with Forge's own templates which use numbered sections.
 const REQUIRED_SECTIONS = {
-  'spec.md': ['## Scope', '## Constraints'],
-  'code-rules.md': ['## Rules'],
+  'spec.md': [/##\s+(?:\d+\.\s+)?(?:Scope|Overview)/i, /##\s+(?:\d+\.\s+)?Constraints/i],
+  'code-rules.md': [/##\s+(?:\d+\.\s+)?(?:Rules|Naming Conventions)/i],
 };
 
 export const PHASE_SEQUENCE = [
@@ -184,13 +186,13 @@ export function checkPhaseGate(cwd, phaseId, mode = 'build') {
         if (stat.isFile() && stat.size < MIN_ARTIFACT_BYTES) {
           missing.push(req);
         }
-        // For artifacts with required sections, verify they exist
+        // For artifacts with required sections, verify they exist (regex for numbered/plain headings)
         if (stat.isFile() && REQUIRED_SECTIONS[req]) {
           try {
             const content = readFileSync(artifactPath, 'utf8');
-            for (const section of REQUIRED_SECTIONS[req]) {
-              if (!content.includes(section)) {
-                missing.push(`${req} (missing section: ${section})`);
+            for (const pattern of REQUIRED_SECTIONS[req]) {
+              if (!pattern.test(content)) {
+                missing.push(`${req} (missing section matching: ${pattern.source})`);
               }
             }
           } catch {}

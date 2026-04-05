@@ -927,7 +927,7 @@ describe('checkPhaseGate artifact section verification', () => {
       '# Spec\n\n## Constraints\nMust run in <2s.\n\nLorem ipsum dolor sit amet, enough content to pass size check easily here.',
     );
     const result = checkPhaseGate(cwd, 'design', 'build');
-    const scopeMissing = result.missing.filter((m: string) => m.includes('missing section: ## Scope'));
+    const scopeMissing = result.missing.filter((m: string) => m.includes('missing section matching:') && m.includes('Scope'));
     expect(scopeMissing.length).toBeGreaterThan(0);
     expect(result.canAdvance).toBe(false);
   });
@@ -943,7 +943,7 @@ describe('checkPhaseGate artifact section verification', () => {
     mkdirSync(join(cwd, '.forge', 'design'), { recursive: true });
     mkdirSync(join(cwd, '.forge', 'contracts'), { recursive: true });
     const result = checkPhaseGate(cwd, 'develop', 'build');
-    const rulesMissing = result.missing.filter((m: string) => m.includes('missing section: ## Rules'));
+    const rulesMissing = result.missing.filter((m: string) => m.includes('missing section matching:') && m.includes('Naming Conventions'));
     expect(rulesMissing.length).toBeGreaterThan(0);
     expect(result.canAdvance).toBe(false);
   });
