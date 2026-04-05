@@ -116,12 +116,17 @@ describe('forge harness hooks', () => {
     const claudeManifest = JSON.parse(
       readFileSync(join(FORGE_ROOT, '.claude-plugin', 'plugin.json'), 'utf8'),
     );
+    const claudeMarketplace = JSON.parse(
+      readFileSync(join(FORGE_ROOT, '.claude-plugin', 'marketplace.json'), 'utf8'),
+    );
     const codexManifest = JSON.parse(
       readFileSync(join(FORGE_ROOT, '.codex-plugin', 'plugin.json'), 'utf8'),
     );
 
     expect(claudeManifest.version).toBe(pkg.version);
     expect(codexManifest.version).toBe(pkg.version);
+    expect(claudeMarketplace.metadata.version).toBe(pkg.version);
+    expect(claudeMarketplace.plugins[0].version).toBe(pkg.version);
   });
 
   it('publishes a richer codex plugin manifest', () => {
