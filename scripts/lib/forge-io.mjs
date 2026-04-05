@@ -137,7 +137,7 @@ export function normalizeDeliveryReadiness(value) {
   }
 
   const lowered = value.trim().toLowerCase();
-  return ['unknown', 'blocked', 'in_progress', 'ready_for_review', 'delivered'].includes(lowered)
+  return ['unknown', 'blocked', 'in_progress', 'ready_for_review', 'delivered', 'completed', 'cancelled'].includes(lowered)
     ? lowered
     : 'unknown';
 }

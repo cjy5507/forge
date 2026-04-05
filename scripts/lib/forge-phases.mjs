@@ -211,3 +211,45 @@ export function getPhaseSequence(mode = 'build') {
   if (mode === 'express') return EXPRESS_PHASE_SEQUENCE;
   return PHASE_SEQUENCE;
 }
+
+/**
+ * Validate that a phase transition is allowed.
+ * Forward transitions follow the sequence. Backward transitions are blocked
+ * unless `allowRollback` is true.
+ * Returns { valid, reason } — never throws.
+ */
+export function validatePhaseTransition(currentPhase, nextPhase, mode = 'build', { allowRollback = false } = {}) {
+  if (currentPhase === nextPhase) {
+    return { valid: true, reason: 'same phase' };
+  }
+
+  const sequence = getPhaseSequence(mode);
+  const currentIndex = sequence.indexOf(currentPhase);
+  const nextIndex = sequence.indexOf(nextPhase);
+
+  // Unknown phases — allow but warn
+  if (currentIndex === -1 || nextIndex === -1) {
+    return { valid: true, reason: `unknown phase(s): ${currentIndex === -1 ? currentPhase : nextPhase}` };
+  }
+
+  // Forward transition — always allowed
+  if (nextIndex > currentIndex) {
+    return { valid: true, reason: 'forward' };
+  }
+
+  // Fix loop: phases that legitimately go backward (QA/security finds issues → fix)
+  const FIX_LOOP_TARGETS = new Set(['fix', 'security', 'qa', 'regress']);
+  if (FIX_LOOP_TARGETS.has(nextPhase)) {
+    return { valid: true, reason: 'fix-loop' };
+  }
+
+  // Backward transition — only with rollback flag
+  if (allowRollback) {
+    return { valid: true, reason: 'rollback' };
+  }
+
+  return {
+    valid: false,
+    reason: `backward transition ${currentPhase} → ${nextPhase} not allowed without rollback`,
+  };
+}

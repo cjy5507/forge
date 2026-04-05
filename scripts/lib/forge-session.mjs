@@ -20,6 +20,8 @@ import {
   PHASE_SEQUENCE,
   resolvePhase,
   checkPhaseGate,
+  validatePhaseTransition,
+  getPhaseSequence,
 } from './forge-phases.mjs';
 import {
   normalizeTier,
@@ -145,12 +147,29 @@ export function readForgeState(cwd = '.') {
   return normalizeStateShape(raw);
 }
 
-export function writeForgeState(cwd = '.', state) {
+export function writeForgeState(cwd = '.', state, { allowRollback = false } = {}) {
   ensureForgeDir(cwd);
   const normalized = normalizeStateShape(state);
   normalized.updated_at = new Date().toISOString();
 
-  // Phase transition validation: check if the new phase's gate requirements are met
+  // Phase transition validation: check forward/backward
+  const previousState = readJsonFile(getStatePath(cwd));
+  if (previousState) {
+    const prevPhase = resolvePhase(previousState);
+    const nextPhase = resolvePhase(normalized);
+    const transition = validatePhaseTransition(prevPhase.id, nextPhase.id, nextPhase.mode, { allowRollback });
+    if (!transition.valid) {
+      normalized._phase_transition_warning = transition.reason;
+      process.stderr.write(`[Forge] warning: ${transition.reason}\n`);
+      // Auto-correct: keep previous phase (degraded mode — don't block, just warn)
+      normalized.phase = prevPhase.id;
+      normalized.phase_id = prevPhase.id;
+      normalized.phase_index = prevPhase.index;
+      normalized.phase_name = prevPhase.label;
+    }
+  }
+
+  // Phase gate validation: check if the new phase's gate requirements are met
   const phase = resolvePhase(normalized);
   const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
   if (!gateResult.canAdvance) {
@@ -160,8 +179,17 @@ export function writeForgeState(cwd = '.', state) {
     normalized._phase_mismatch_warning = `Phase "${phase.id}" does not belong to ${phase.mode} sequence — using fallback`;
   }
 
-  writeJsonFile(getStatePath(cwd), normalized);
+  // Cross-consistency validation
   const existingRuntime = readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME);
+  const consistency = validateStateConsistency(normalized, existingRuntime);
+  if (consistency.corrections.length > 0) {
+    for (const c of consistency.corrections) {
+      process.stderr.write(`[Forge] auto-correct: ${c}\n`);
+    }
+    Object.assign(existingRuntime, consistency.runtimeFixes);
+  }
+
+  writeJsonFile(getStatePath(cwd), normalized);
   writeRuntimeState(cwd, existingRuntime);
   return normalized;
 }
@@ -646,4 +674,134 @@ export function updateAdaptiveTier(cwd = '.', { state = null, message = '' } = {
     recommendedAgents,
     runtime,
   };
+}
+
+// ─── Cross-consistency validation ─────────────────────────────────────
+
+/**
+ * Validate that state.json and runtime.json are not contradictory.
+ * Returns { valid, corrections[], runtimeFixes }.
+ * Never throws — logs warnings and returns auto-corrections (degraded mode).
+ */
+export function validateStateConsistency(state, runtime) {
+  const corrections = [];
+  const runtimeFixes = {};
+
+  if (!state || !runtime) {
+    return { valid: true, corrections, runtimeFixes };
+  }
+
+  const phase = resolvePhase(state);
+  const sequence = getPhaseSequence(phase.mode);
+  const phaseIndex = sequence.indexOf(phase.id);
+  const deliveryIndex = sequence.indexOf('delivery');
+  const delivery = runtime.delivery_readiness;
+
+  // Rule 1: early phase + delivered = contradiction
+  // Express uses 'ship' instead of 'delivery'; check both
+  const latePhaseIndex = deliveryIndex !== -1 ? deliveryIndex : sequence.indexOf('ship');
+  if (delivery === 'delivered' && latePhaseIndex !== -1 && phaseIndex < latePhaseIndex) {
+    corrections.push(`phase=${phase.id} but delivery_readiness=delivered — resetting to in_progress`);
+    runtimeFixes.delivery_readiness = 'in_progress';
+  }
+
+  // Rule 2: phase=complete but status=active = contradiction
+  if (phase.id === 'complete' && state.status === 'active') {
+    corrections.push(`phase=complete but status=active — should be completed`);
+    // This is a state fix, but we only fix runtime here; caller handles state
+  }
+
+  // Rule 3: status=completed/cancelled but phase not complete
+  if ((state.status === 'completed' || state.status === 'cancelled') && phase.id !== 'complete') {
+    corrections.push(`status=${state.status} but phase=${phase.id} — setting delivery_readiness`);
+    runtimeFixes.delivery_readiness = state.status === 'completed' ? 'completed' : 'cancelled';
+  }
+
+  return {
+    valid: corrections.length === 0,
+    corrections,
+    runtimeFixes,
+  };
+}
+
+// ─── Project completion/cancellation ──────────────────────────────────
+
+/**
+ * Mark a Forge project as completed.
+ * Sets status='completed', phase='complete', delivery_readiness='completed'.
+ */
+export function completeForgeProject(cwd = '.') {
+  const state = readForgeState(cwd);
+  if (!state) {
+    return null;
+  }
+
+  const updated = writeForgeState(cwd, {
+    ...state,
+    status: 'completed',
+    phase: 'complete',
+    phase_id: 'complete',
+    phase_name: 'complete',
+  });
+
+  updateRuntimeState(cwd, (runtime) => ({
+    ...runtime,
+    delivery_readiness: 'completed',
+    active_gate: '',
+    active_gate_owner: '',
+    current_session_goal: '',
+    next_session_goal: '',
+  }));
+
+  return updated;
+}
+
+/**
+ * Mark a Forge project as cancelled.
+ * Sets status='cancelled', preserves current phase for history.
+ */
+export function cancelForgeProject(cwd = '.') {
+  const state = readForgeState(cwd);
+  if (!state) {
+    return null;
+  }
+
+  const updated = writeForgeState(cwd, {
+    ...state,
+    status: 'cancelled',
+  });
+
+  updateRuntimeState(cwd, (runtime) => ({
+    ...runtime,
+    delivery_readiness: 'cancelled',
+    active_gate: '',
+    active_gate_owner: '',
+    current_session_goal: '',
+    next_session_goal: '',
+  }));
+
+  return updated;
+}
+
+/**
+ * Check if a project is in a terminal state (completed or cancelled).
+ * Used by forge:continue to detect stale projects.
+ */
+export function isProjectTerminal(cwd = '.') {
+  const state = readForgeState(cwd);
+  if (!state) {
+    return { terminal: false, reason: 'no project' };
+  }
+
+  if (state.status === 'completed') {
+    return { terminal: true, reason: 'completed', project: state.project };
+  }
+  if (state.status === 'cancelled') {
+    return { terminal: true, reason: 'cancelled', project: state.project };
+  }
+  if (state.phase === 'complete' || state.phase_id === 'complete') {
+    return { terminal: true, reason: 'phase complete', project: state.project };
+  }
+
+  return { terminal: false, reason: 'active', project: state.project };
 }
