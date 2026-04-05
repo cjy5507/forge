@@ -78,6 +78,8 @@ Max 3 iterations before escalating to the client with alternatives.
       - Did the fix introduce any regressions? (run full test suite)
       - Are related features still working?
       - Does runtime still show the lane as merged/rebased/done accurately?
+      - Update the linked hole status to `verified` or `closed` when confirmed
+      - Run `node scripts/forge-sync-traceability.mjs` after status updates
    b. If re-verification fails:
       - Issue goes back to step 2 with additional context
       - Increment iteration counter for this issue
@@ -161,6 +163,7 @@ Max 3 iterations before escalating to the client with alternatives.
 - Letting review, merge, or rebase state drift away from runtime
 - Leaving orphan fix worktrees after Phase 6 completes
 - Marking an issue as resolved without QA re-verification
+- Resolving a hole without syncing requirement status back into traceability
 - Not presenting alternatives when max iterations are exceeded
 </Failure_Modes_To_Avoid>
 

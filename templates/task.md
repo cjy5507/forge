@@ -27,6 +27,10 @@
 ## Inputs
 - Spec references:
   - {{spec_ref}}
+- Requirement references:
+  - {{requirement_ref_1}}
+- Acceptance references:
+  - {{acceptance_ref_1}}
 - Contract references:
   - {{contract_ref}}
 - Code rules:
@@ -41,6 +45,8 @@
   - {{verification_command_1}}
 - Evidence location:
   - {{evidence_path}}
+- Evidence references:
+  - {{evidence_ref_1}}
 
 ## Review
 - Review owner: {{reviewer}}

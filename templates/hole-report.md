@@ -28,9 +28,14 @@
 
 {{What actually happened}}
 
-## Related Spec Section
+## Related Requirements
 
-{{Which spec requirement is related — file path or section reference}}
+- Requirement IDs:
+  - {{requirement_ref_1}}
+- Acceptance IDs:
+  - {{acceptance_ref_1}}
+- Spec location:
+  - {{spec_section_ref}}
 
 ## Related Contract
 

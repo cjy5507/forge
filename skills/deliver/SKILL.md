@@ -54,8 +54,10 @@ after internal readiness gates say the work is truly delivery-ready.
 2. CEO compiles Delivery Report (.forge/delivery-report/report.md):
 
    a. Spec Coverage Analysis:
-      - Map every feature in spec.md to implementation status
-      - Calculate coverage percentage: (implemented / total) * 100
+      - Prefer `.forge/traceability.json` as the source of truth when present
+      - Run `node scripts/forge-traceability-report.mjs` to compute coverage and verified coverage
+      - Run `node scripts/forge-generate-delivery-report.mjs` to generate a report scaffold from traceability + holes
+      - Fall back to manual spec mapping only when traceability artifact is missing
       - List any descoped features with reason and V2 plan
 
    b. Test Results Summary:

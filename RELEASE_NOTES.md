@@ -1,5 +1,24 @@
 # Forge Release Notes Draft
 
+## v0.3.4
+
+Intent traceability hardening release.
+
+### Highlights
+
+- Added requirement-aware templates for spec, task, hole, and delivery artifacts
+- Added `traceability.json` template and contracts for requirement-level state
+- Added write-gate intent warnings and high-risk denial when active lanes lack requirement linkage
+- Added traceability coverage reporting and delivery report generation CLIs
+- Added traceability sync so lane progress and linked holes update requirement status
+- Added auto-decompose requirement inference from `traceability.json`
+- 294 automated tests passing
+
+### Notes
+
+- Forge now tracks user intent more directly across develop, QA, fix, and delivery
+- Delivery coverage can be computed from requirement state instead of manual report writing
+
 ## v0.3.3
 
 State machine validation and consistency checks.

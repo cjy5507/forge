@@ -24,6 +24,8 @@ import {
   writeRuntimeState,
 } from './lib/forge-state.mjs';
 import { decomposeTask } from './lib/task-decomposer.mjs';
+import { inferRequirementRefsForComponents } from './lib/forge-requirement-mapper.mjs';
+import { syncTraceabilitySnapshot } from './lib/forge-traceability-sync.mjs';
 
 function printUsage() {
   console.log(`Forge lane runtime helper
@@ -49,6 +51,9 @@ Options:
   --worktree    worktree path for the lane
   --reviewer    designated reviewer for the lane
   --depends-on  comma-separated upstream lane ids
+  --requirement-refs comma-separated requirement ids
+  --acceptance-refs comma-separated acceptance ids
+  --evidence-refs comma-separated evidence refs
   --status      ${LANE_STATUS_SEQUENCE.join(' | ')}
   --state       explicit review/merge state
   --goal        current session goal
@@ -140,6 +145,9 @@ function parseArgs(argv) {
       '--worktree',
       '--reviewer',
       '--depends-on',
+      '--requirement-refs',
+      '--acceptance-refs',
+      '--evidence-refs',
       '--status',
       '--state',
       '--goal',
@@ -175,6 +183,12 @@ function parseArgs(argv) {
         options.reviewer = value.trim();
       } else if (arg === '--depends-on') {
         options.dependsOn = parseDepends(value);
+      } else if (arg === '--requirement-refs') {
+        options.requirementRefs = parseList(value);
+      } else if (arg === '--acceptance-refs') {
+        options.acceptanceRefs = parseList(value);
+      } else if (arg === '--evidence-refs') {
+        options.evidenceRefs = parseList(value);
       } else if (arg === '--status') {
         options.status = value.trim();
       } else if (arg === '--state') {
@@ -306,10 +320,14 @@ function initLane(options) {
       taskFile: options.taskFile || '',
       reviewer: options.reviewer || '',
       dependencies: options.dependsOn || [],
+      requirementRefs: options.requirementRefs || [],
+      acceptanceRefs: options.acceptanceRefs || [],
+      evidenceRefs: options.evidenceRefs || [],
     }),
     'init-lane',
     options.lane,
   );
+  syncTraceabilitySnapshot(process.cwd());
   console.log(`initialized: ${options.lane}`);
   console.log(`title: ${nextRuntime.lanes[options.lane].title}`);
   console.log(`status: ${nextRuntime.lanes[options.lane].status}`);
@@ -384,6 +402,7 @@ function updateLaneStatus(options) {
     'update-lane-status',
     options.lane,
   );
+  syncTraceabilitySnapshot(process.cwd());
   console.log(`lane: ${options.lane}`);
   console.log(`status: ${options.status}`);
   if (cleanup.removed) {
@@ -454,6 +473,7 @@ function markReview(options) {
     'mark-review-state',
     options.lane,
   );
+  syncTraceabilitySnapshot(process.cwd());
   console.log(`lane: ${options.lane}`);
   console.log(`review_state: ${options.state}`);
 }
@@ -475,6 +495,7 @@ function markMerge(options) {
     'mark-merge-state',
     options.lane,
   );
+  syncTraceabilitySnapshot(process.cwd());
   console.log(`lane: ${options.lane}`);
   console.log(`merge_state: ${options.state}`);
 }
@@ -628,17 +649,21 @@ function autoDecompose(options) {
   console.log(result.summary);
 
   if (!options['dry-run'] && result.analysis.parallelizable) {
+    const inferredRefs = inferRequirementRefsForComponents(cwd, description, result.components);
     // Auto-create lanes from components
     console.log('\nCreating lanes...');
     for (const comp of result.components) {
+      const refs = inferredRefs.find(entry => entry.laneId === comp.id) || { requirementRefs: [], acceptanceRefs: [] };
       const runtime = readRuntimeState(cwd);
       const updated = initLaneRecord(runtime, {
         laneId: comp.id,
         title: comp.title,
         dependencies: comp.dependencies,
+        requirementRefs: refs.requirementRefs,
+        acceptanceRefs: refs.acceptanceRefs,
       });
       writeRuntimeState(cwd, updated);
-      console.log(`  Lane: ${comp.id} (${comp.title}) deps=[${comp.dependencies.join(',')}] model=${comp.modelHint}`);
+      console.log(`  Lane: ${comp.id} (${comp.title}) deps=[${comp.dependencies.join(',')}] model=${comp.modelHint}${refs.requirementRefs.length ? ` reqs=[${refs.requirementRefs.join(',')}]` : ''}`);
     }
 
     // Store decomposition metadata in runtime for subagent-start to read
@@ -653,6 +678,7 @@ function autoDecompose(options) {
       }
     }
     writeRuntimeState(cwd, lanesWithMeta);
+    syncTraceabilitySnapshot(cwd);
 
     console.log(`\n${result.components.length} lanes created. Execution order:`);
     for (let i = 0; i < result.executionOrder.length; i++) {

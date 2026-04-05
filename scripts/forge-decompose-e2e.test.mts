@@ -173,6 +173,60 @@ describe('task decomposition pipeline', () => {
     }
   });
 
+  it('auto-decompose attaches requirement refs from traceability', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd);
+    writeFileSync(join(cwd, '.forge', 'traceability.json'), JSON.stringify({
+      version: 1,
+      generatedAt: '2026-04-05T00:00:00.000Z',
+      requirements: [
+        {
+          id: 'FR-1',
+          title: 'Authentication flow',
+          summary: 'Users can sign in and keep a valid session',
+          rationale: '',
+          type: 'functional',
+          phaseOwner: 'develop',
+          status: 'planned',
+          acceptanceCriteria: [{ id: 'FR-1-AC-1', text: 'Login succeeds', status: 'pending', evidenceRefs: [] }],
+          designRefs: [],
+          contractRefs: [],
+          taskRefs: [],
+          holeRefs: [],
+          deliveryRefs: [],
+        },
+        {
+          id: 'FR-2',
+          title: 'API backend',
+          summary: 'Expose backend API routes for dashboard data',
+          rationale: '',
+          type: 'functional',
+          phaseOwner: 'develop',
+          status: 'planned',
+          acceptanceCriteria: [{ id: 'FR-2-AC-1', text: 'API returns data', status: 'pending', evidenceRefs: [] }],
+          designRefs: [],
+          contractRefs: [],
+          taskRefs: [],
+          holeRefs: [],
+          deliveryRefs: [],
+        },
+      ],
+    }, null, 2));
+
+    const result = runLaneRuntime(
+      ['auto-decompose', '--description', 'fullstack app with database and API backend plus auth'],
+      cwd,
+    );
+
+    expect(result.status).toBe(0);
+
+    const runtime = readRuntime(cwd);
+    expect(runtime.lanes.auth.requirement_refs).toContain('FR-1');
+    expect(runtime.lanes.auth.acceptance_refs).toContain('FR-1-AC-1');
+    expect(runtime.lanes.backend.requirement_refs).toContain('FR-2');
+    expect(runtime.lanes.backend.acceptance_refs).toContain('FR-2-AC-1');
+  });
+
   it('dry-run mode does not create lanes', () => {
     const cwd = makeWorkspace();
     writeState(cwd);

@@ -10,8 +10,10 @@ import {
   detectWriteRisk,
   readActiveTier,
   readForgeState,
+  readRuntimeState,
   resolveForgeBaseDir,
   resolvePhase,
+  resolveRuntimeLaneContext,
   tierAtLeast,
 } from './lib/forge-state.mjs';
 
@@ -24,6 +26,40 @@ function isForgeStateFile(filePath, cwd = '.') {
   const forgeDir = resolve(resolveForgeBaseDir(cwd), '.forge');
   const resolved = resolve(cwd, filePath);
   return resolved.startsWith(forgeDir + '/') || resolved === forgeDir;
+}
+
+function normalizeRefs(values) {
+  return Array.isArray(values) ? values.map(String).filter(Boolean) : [];
+}
+
+function laneRequirementLinkage(lane) {
+  if (!lane || typeof lane !== 'object') {
+    return { count: 0, refs: [] };
+  }
+
+  const refs = [
+    ...normalizeRefs(lane.requirement_refs),
+    ...normalizeRefs(lane.acceptance_refs),
+  ];
+
+  return {
+    count: refs.length,
+    refs,
+  };
+}
+
+function resolveIntentLane(runtime, cwd) {
+  const current = resolveRuntimeLaneContext(runtime, cwd, cwd);
+  if (current.lane) {
+    return current.lane;
+  }
+
+  const nextLaneId = typeof runtime?.next_lane === 'string' ? runtime.next_lane : '';
+  if (nextLaneId && runtime?.lanes?.[nextLaneId]) {
+    return runtime.lanes[nextLaneId];
+  }
+
+  return null;
 }
 
 runHook(async (input) => {
@@ -45,6 +81,7 @@ runHook(async (input) => {
     input?.tool_input?.file ||
     '',
   );
+  const runtime = readRuntimeState(cwd);
 
   // ── Phase checks (TIER-INDEPENDENT) ──
   // Runs at ALL tiers including light. Skips only for .forge/ state files.
@@ -155,6 +192,37 @@ runHook(async (input) => {
       },
     }));
     return;
+  }
+
+  if (!isForgeStateFile(filePath, cwd)) {
+    const activeLane = resolveIntentLane(runtime, cwd);
+    const linkage = laneRequirementLinkage(activeLane);
+
+    if (activeLane && linkage.count === 0) {
+      const reason = `Forge intent guard: lane "${activeLane.id}" has no requirement linkage. Add requirement_refs or acceptance_refs before continuing implementation.`;
+      if (risk.level === 'high') {
+        console.log(JSON.stringify({
+          continue: true,
+          suppressOutput: true,
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason: reason,
+          },
+        }));
+        return;
+      }
+
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: true,
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          additionalContext: `[Forge] intent warning: ${reason}`,
+        },
+      }));
+      return;
+    }
   }
 
   console.log(JSON.stringify({

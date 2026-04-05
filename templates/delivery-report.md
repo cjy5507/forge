@@ -11,11 +11,18 @@
 
 ## Spec Coverage
 
-| # | Requirement | Status | Notes |
-|---|------------|--------|-------|
-| 1 | | ✅/❌ | |
+| ID | Requirement | Status | Evidence | Notes |
+|----|-------------|--------|----------|-------|
+| FR-1 | | ✅/❌ | | |
 
 **Coverage: {{X}}%**
+**Verified coverage: {{Y}}%**
+
+## Deferred / Blocked Requirements
+
+| ID | Status | Reason | Next Step |
+|----|--------|--------|-----------|
+| | deferred/blocked | | |
 
 ## Known Issues
 

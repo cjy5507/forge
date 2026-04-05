@@ -89,8 +89,11 @@ multi-module codebases.
      - Expected behavior (from spec/design)
      - Actual behavior
      - Affected spec section
+     - Requirement IDs and acceptance IDs whenever known
    - The bug-tracker agent writes .forge/holes/HOLE-{NNN}-{slug}.md with the next
      available sequence number and a kebab-case slug derived from the issue summary
+   - After hole creation, run:
+     `node scripts/forge-sync-traceability.mjs`
 
 7b. **Lesson Check + Extraction (harness learning)**:
     a. Before testing, load relevant pattern lessons from ~/.claude/forge-lessons/ and .forge/lessons/
@@ -151,6 +154,7 @@ multi-module codebases.
 - Not verifying interface contracts match actual implementation
 - Moving to security review when blockers exist
 - Not creating reproducible steps for discovered issues
+- Creating holes without requirement linkage when the affected requirement is known
 - Testing against assumed behavior instead of spec-defined behavior
 </Failure_Modes_To_Avoid>
 

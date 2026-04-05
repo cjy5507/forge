@@ -19,24 +19,26 @@
 
 ### 2.1 Must Have (V1)
 
-| # | Feature | Description | Acceptance Criteria |
-|---|---------|-------------|---------------------|
-| 1 | | | |
+| ID | Feature | Description | Acceptance Criteria |
+|----|---------|-------------|---------------------|
+| FR-1 | | | |
 
 ### 2.2 Nice to Have (V2+)
 
-| # | Feature | Description | Priority |
-|---|---------|-------------|----------|
-| 1 | | | |
+| ID | Feature | Description | Priority |
+|----|---------|-------------|----------|
+| FR-2 | | | |
 
 ---
 
 ## 3. Non-Functional Requirements
 
-- **Platform:**
-- **Performance:**
-- **Security:**
-- **Accessibility:**
+| ID | Requirement | Target / Rule | Acceptance Criteria |
+|----|-------------|---------------|---------------------|
+| NFR-1 | Platform | | |
+| NFR-2 | Performance | | |
+| NFR-3 | Security | | |
+| NFR-4 | Accessibility | | |
 
 ---
 
@@ -48,7 +50,17 @@
 
 ---
 
-## 5. Open Questions (must be 0 before approval)
+## 5. Requirement Notes
+
+For every requirement above, capture:
+
+- rationale: why this requirement matters to the user
+- owner phase: discovery, design, develop, qa, security, fix, or delivery
+- evidence target: what proof should exist before delivery
+
+---
+
+## 6. Open Questions (must be 0 before approval)
 
 | # | Question | Status | Answer |
 |---|----------|--------|--------|
@@ -56,7 +68,7 @@
 
 ---
 
-## 6. Client Sign-off
+## 7. Client Sign-off
 
 - [ ] All open questions resolved
 - [ ] Client reviewed and approved

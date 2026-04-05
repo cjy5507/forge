@@ -1828,4 +1828,118 @@ describe('write-gate phase gate enforcement', () => {
     expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
     expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/phase gate/i);
   });
+
+  it('warns when the active lane has no requirement linkage', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    mkdirSync(join(forgeDir, 'evidence'), { recursive: true });
+    writeFileSync(join(forgeDir, 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# Code Rules\n\nAll code must follow these conventions for consistency and quality across the project.\n\n## Rules\n\n- Use TypeScript strict mode\n');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'full',
+      status: 'in_progress',
+      spec_approved: true,
+      design_approved: true,
+    }));
+    writeRuntimeState(tmpDir, {
+      next_lane: 'shared',
+      lanes: {
+        shared: {
+          id: 'shared',
+          title: 'Shared utilities',
+          status: 'in_progress',
+        },
+      },
+    });
+
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
+    }, { env: { FORGE_TIER: 'full' } });
+
+    expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
+    expect(result.hookSpecificOutput?.additionalContext).toMatch(/intent warning/i);
+    expect(result.hookSpecificOutput?.additionalContext).toMatch(/requirement linkage/i);
+  });
+
+  it('denies high-risk writes when the active lane has no requirement linkage', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    mkdirSync(join(forgeDir, 'evidence'), { recursive: true });
+    writeFileSync(join(forgeDir, 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# Code Rules\n\nAll code must follow these conventions for consistency and quality across the project.\n\n## Rules\n\n- Use TypeScript strict mode\n');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'full',
+      status: 'in_progress',
+      spec_approved: true,
+      design_approved: true,
+    }));
+    writeRuntimeState(tmpDir, {
+      next_lane: 'shared',
+      lanes: {
+        shared: {
+          id: 'shared',
+          title: 'Shared utilities',
+          status: 'in_progress',
+        },
+      },
+    });
+
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: 'package.json', content: '{"dependencies":{"new-lib":"1.0.0"}}' },
+    }, { env: { FORGE_TIER: 'full' } });
+
+    expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/intent guard/i);
+  });
+
+  it('allows writes when the active lane has requirement linkage', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    mkdirSync(join(forgeDir, 'evidence'), { recursive: true });
+    writeFileSync(join(forgeDir, 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# Code Rules\n\nAll code must follow these conventions for consistency and quality across the project.\n\n## Rules\n\n- Use TypeScript strict mode\n');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'full',
+      status: 'in_progress',
+      spec_approved: true,
+      design_approved: true,
+    }));
+    writeRuntimeState(tmpDir, {
+      next_lane: 'shared',
+      lanes: {
+        shared: {
+          id: 'shared',
+          title: 'Shared utilities',
+          status: 'in_progress',
+          requirement_refs: ['FR-1'],
+          acceptance_refs: ['FR-1-AC-1'],
+        },
+      },
+    });
+
+    const result = runHook('write-gate.mjs', tmpDir, {
+      tool_name: 'Write',
+      tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
+    }, { env: { FORGE_TIER: 'full' } });
+
+    expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
+    expect(result.hookSpecificOutput?.additionalContext || '').not.toMatch(/intent warning/i);
+  });
 });
