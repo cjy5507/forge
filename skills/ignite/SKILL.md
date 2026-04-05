@@ -191,7 +191,6 @@ On first invocation, create .forge/ directory:
 ├── holes/          ← discovered issues
 ├── tasks/          ← work unit definitions
 ├── worktrees/      ← git worktree directories
-├── checkpoints/    ← context checkpoints
 ├── knowledge/      ← project knowledge base
 ├── lessons/        ← harness learning: lessons from QA, fixes, and delivery
 └── delivery-report/← final delivery docs

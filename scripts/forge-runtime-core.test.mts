@@ -14,9 +14,13 @@ import {
   selectNextLane,
   setLaneOwner,
   setLaneStatus,
+  updateRuntimeState,
   readForgeState,
   writeForgeState,
   writeRuntimeState,
+  inferTierFromState,
+  suggestTierDeescalation,
+  checkPhaseGate,
 } from './lib/forge-state.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -73,6 +77,16 @@ describe('forge runtime core', () => {
     const runtime = readRuntimeState(worktreeCwd);
     expect(runtime.lanes.api.title).toBe('API lane');
     expect(runtime.active_worktrees.api).toBe(worktreeCwd);
+  });
+
+  it('throws instead of writing without a lock after repeated lock contention', () => {
+    const cwd = makeWorkspace();
+    writeFileSync(join(cwd, '.forge', 'runtime.json.lock'), `${process.pid}.${Date.now()}`);
+
+    expect(() => updateRuntimeState(cwd, current => ({
+      ...current,
+      next_session_goal: 'should not write without lock',
+    }))).toThrow(/lock acquisition failed/i);
   });
 
   it('provides transition helpers that keep lane state and control-tower hints in sync', () => {
@@ -333,6 +347,34 @@ describe('forge runtime core', () => {
     runtime = readRuntimeState(cwd);
     expect(runtime.current_session_goal.toLowerCase()).toContain('design');
     expect(runtime.next_session_owner).toBe('cto');
+  });
+
+  it('caps persisted lanes and handoff notes to prevent unbounded runtime growth', () => {
+    const cwd = makeWorkspace();
+    const lanes = Object.fromEntries(
+      Array.from({ length: 55 }, (_, index) => {
+        const laneId = `lane-${index + 1}`;
+        return [laneId, {
+          id: laneId,
+          title: `Lane ${index + 1}`,
+          status: 'ready',
+          handoff_notes: Array.from({ length: 105 }, (_, noteIndex) => ({
+            at: `2026-04-05T00:00:${String(noteIndex).padStart(2, '0')}Z`,
+            kind: 'handoff',
+            note: `${laneId} note ${noteIndex + 1}`,
+          })),
+        }];
+      }),
+    );
+
+    const runtime = writeRuntimeState(cwd, { lanes });
+
+    expect(Object.keys(runtime.lanes)).toHaveLength(50);
+    expect(Object.keys(runtime.lanes)).not.toContain('lane-1');
+    expect(Object.keys(runtime.lanes)).toContain('lane-55');
+    expect(runtime.lanes['lane-55'].handoff_notes).toHaveLength(100);
+    expect(runtime.lanes['lane-55'].handoff_notes[0].note).toBe('lane-55 note 6');
+    expect(runtime.lanes['lane-55'].handoff_notes.at(-1)?.note).toBe('lane-55 note 105');
   });
 
   it('updates company gate state through the runtime cli and refreshes session ownership', () => {
@@ -717,5 +759,346 @@ describe('forge runtime core', () => {
     // Should pick 'ui' via next_lane fallback
     expect(result.kind).toBe('next_lane');
     expect(result.target).toBe('ui');
+  });
+});
+
+// ─── Fix 1: Tier de-escalation ───────────────────────────────────────────
+
+describe('inferTierFromState de-escalation', () => {
+  it('returns light for delivery phase with no holes and all lanes done', () => {
+    const state = {
+      phase_id: 'delivery',
+      holes: [],
+      lanes: {
+        api: { status: 'done' },
+        ui: { status: 'merged' },
+      },
+    };
+    expect(inferTierFromState(state)).toBe('light');
+  });
+
+  it('returns light for complete phase with no holes and all lanes done', () => {
+    const state = {
+      phase_id: 'complete',
+      holes: [],
+      lanes: {
+        api: { status: 'merged' },
+      },
+    };
+    expect(inferTierFromState(state)).toBe('light');
+  });
+
+  it('returns full for delivery phase when holes remain', () => {
+    const state = {
+      phase_id: 'delivery',
+      holes: [{ id: 'h1', summary: 'auth bypass' }],
+      lanes: {
+        api: { status: 'done' },
+      },
+    };
+    expect(inferTierFromState(state)).toBe('full');
+  });
+
+  it('returns full for delivery phase when some lanes are not done', () => {
+    const state = {
+      phase_id: 'delivery',
+      holes: [],
+      lanes: {
+        api: { status: 'done' },
+        ui: { status: 'in_progress' },
+      },
+    };
+    expect(inferTierFromState(state)).toBe('full');
+  });
+
+  it('returns light for fix phase with no holes', () => {
+    const state = {
+      phase_id: 'fix',
+      holes: [],
+    };
+    expect(inferTierFromState(state)).toBe('light');
+  });
+
+  it('returns light for fix phase with holes count <= 2 (original behavior preserved)', () => {
+    const state = {
+      phase_id: 'fix',
+      holes: [{ id: 'h1' }, { id: 'h2' }],
+    };
+    expect(inferTierFromState(state)).toBe('light');
+  });
+});
+
+describe('suggestTierDeescalation', () => {
+  it('returns null for null state', () => {
+    expect(suggestTierDeescalation(null)).toBeNull();
+  });
+
+  it('returns light when full tier at delivery with no holes and all lanes done', () => {
+    const state = {
+      tier: 'full',
+      phase_id: 'delivery',
+      holes: [],
+      lanes: {
+        api: { status: 'done' },
+        ui: { status: 'merged' },
+      },
+    };
+    expect(suggestTierDeescalation(state)).toBe('light');
+  });
+
+  it('returns light when full tier at complete phase', () => {
+    const state = {
+      tier: 'full',
+      phase_id: 'complete',
+      holes: [],
+    };
+    expect(suggestTierDeescalation(state)).toBe('light');
+  });
+
+  it('returns medium when full tier is over-provisioned (low task/hole count)', () => {
+    const state = {
+      tier: 'full',
+      phase_id: 'develop',
+      tasks: [{ id: 't1' }, { id: 't2' }],
+      holes: [],
+    };
+    expect(suggestTierDeescalation(state)).toBe('medium');
+  });
+
+  it('returns full when full tier is justified (many tasks)', () => {
+    const state = {
+      tier: 'full',
+      phase_id: 'develop',
+      tasks: Array.from({ length: 5 }, (_, i) => ({ id: `t${i}` })),
+      holes: [{ id: 'h1' }],
+    };
+    expect(suggestTierDeescalation(state)).toBe('full');
+  });
+
+  it('returns light when medium tier at delivery with no holes', () => {
+    const state = {
+      tier: 'medium',
+      phase_id: 'delivery',
+      holes: [],
+    };
+    expect(suggestTierDeescalation(state)).toBe('light');
+  });
+
+  it('returns light when medium tier at complete with no holes', () => {
+    const state = {
+      tier: 'medium',
+      phase_id: 'complete',
+      holes: [],
+    };
+    expect(suggestTierDeescalation(state)).toBe('light');
+  });
+
+  it('returns medium when medium tier is still warranted', () => {
+    const state = {
+      tier: 'medium',
+      phase_id: 'develop',
+      holes: [{ id: 'h1' }],
+    };
+    expect(suggestTierDeescalation(state)).toBe('medium');
+  });
+});
+
+// ─── Fix 2: Artifact quality gate (phase gate section checks) ────────────
+
+describe('checkPhaseGate artifact section verification', () => {
+  it('passes when spec.md has all required sections', () => {
+    const cwd = makeWorkspace();
+    mkdirSync(join(cwd, '.forge'), { recursive: true });
+    writeFileSync(
+      join(cwd, '.forge', 'spec.md'),
+      '# Spec\n\n## Scope\nThe project covers X.\n\n## Constraints\nMust run in <2s.\n\nLorem ipsum dolor sit amet, enough content here.',
+    );
+    const result = checkPhaseGate(cwd, 'design', 'build');
+    // spec.md is a requirement for design phase
+    const specMissing = result.missing.filter((m: string) => m.startsWith('spec.md'));
+    expect(specMissing).toHaveLength(0);
+  });
+
+  it('fails when spec.md is missing ## Scope section', () => {
+    const cwd = makeWorkspace();
+    mkdirSync(join(cwd, '.forge'), { recursive: true });
+    writeFileSync(
+      join(cwd, '.forge', 'spec.md'),
+      '# Spec\n\n## Constraints\nMust run in <2s.\n\nLorem ipsum dolor sit amet, enough content to pass size check easily here.',
+    );
+    const result = checkPhaseGate(cwd, 'design', 'build');
+    const scopeMissing = result.missing.filter((m: string) => m.includes('missing section: ## Scope'));
+    expect(scopeMissing.length).toBeGreaterThan(0);
+    expect(result.canAdvance).toBe(false);
+  });
+
+  it('fails when code-rules.md is missing ## Rules section', () => {
+    const cwd = makeWorkspace();
+    mkdirSync(join(cwd, '.forge'), { recursive: true });
+    writeFileSync(
+      join(cwd, '.forge', 'code-rules.md'),
+      '# Code Rules\n\nSome guidelines here but no Rules heading. Lorem ipsum enough content to pass the size check.',
+    );
+    // Also create the other required artifacts for develop
+    mkdirSync(join(cwd, '.forge', 'design'), { recursive: true });
+    mkdirSync(join(cwd, '.forge', 'contracts'), { recursive: true });
+    const result = checkPhaseGate(cwd, 'develop', 'build');
+    const rulesMissing = result.missing.filter((m: string) => m.includes('missing section: ## Rules'));
+    expect(rulesMissing.length).toBeGreaterThan(0);
+    expect(result.canAdvance).toBe(false);
+  });
+});
+
+// ─── Fix 3: Lock contention and session function tests ───────────────────
+
+describe('lock contention', () => {
+  it('throws ELOCKED when lock file is fresh (not stale)', () => {
+    const cwd = makeWorkspace();
+    const lockPath = join(cwd, '.forge', 'runtime.json.lock');
+    // Write a lock with the current timestamp (< 5 seconds ago = not stale)
+    writeFileSync(lockPath, `99999.${Date.now()}`);
+
+    try {
+      updateRuntimeState(cwd, (current: Record<string, unknown>) => ({
+        ...current,
+        next_session_goal: 'should not succeed',
+      }));
+      expect.unreachable('should have thrown');
+    } catch (err: any) {
+      expect(err.code).toBe('ELOCKED');
+      expect(err.message).toMatch(/lock acquisition failed/i);
+    } finally {
+      rmSync(lockPath, { force: true });
+    }
+  });
+
+  it('recovers from a stale lock (>5 seconds old) and completes successfully', () => {
+    const cwd = makeWorkspace();
+    const lockPath = join(cwd, '.forge', 'runtime.json.lock');
+    // Write a lock with a timestamp older than 5 seconds
+    const staleTimestamp = Date.now() - 10000;
+    writeFileSync(lockPath, `99999.${staleTimestamp}`);
+
+    // Should succeed because the stale lock gets cleaned up
+    // Use active_tier since session fields are auto-derived by normalizeRuntimeState
+    const result = updateRuntimeState(cwd, (current: Record<string, unknown>) => ({
+      ...current,
+      active_tier: 'full',
+    }));
+    expect(result.active_tier).toBe('full');
+  });
+});
+
+describe('deriveSessionGoal (tested via readRuntimeState)', () => {
+  it('derives discovery session goal from state phase', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Test',
+      phase: 'discovery',
+      phase_id: 'discovery',
+    });
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.current_session_goal.toLowerCase()).toContain('scope');
+  });
+
+  it('derives design session goal from state phase', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Test',
+      phase: 'design',
+      phase_id: 'design',
+      spec_approved: true,
+    });
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.current_session_goal.toLowerCase()).toContain('design');
+  });
+
+  it('derives develop session goal from state phase', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Test',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.current_session_goal.toLowerCase()).toContain('lane');
+  });
+
+  it('derives fix session goal from state phase', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Test',
+      phase: 'fix',
+      phase_id: 'fix',
+    });
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.current_session_goal.toLowerCase()).toContain('implementation');
+  });
+
+  it('derives delivery session goal from state phase', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Test',
+      phase: 'delivery',
+      phase_id: 'delivery',
+      spec_approved: true,
+      design_approved: true,
+    });
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.current_session_goal.toLowerCase()).toContain('delivery');
+  });
+});
+
+describe('selectContinuationTarget additional cases', () => {
+  it('returns phase for qa phase with empty runtime', () => {
+    const state = { phase_id: 'qa' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: [],
+      lanes: {},
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('phase');
+    expect(result.target).toBe('qa');
+  });
+
+  it('returns customer_blocker for delivery phase with blockers', () => {
+    const state = { phase_id: 'delivery' };
+    const runtime = {
+      customer_blockers: [{ summary: 'Approve final copy' }],
+      internal_blockers: [],
+      lanes: {},
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('customer_blocker');
+    expect(result.detail).toBe('Approve final copy');
+  });
+
+  it('returns internal_blocker with gate owner info', () => {
+    const state = { phase_id: 'security' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: [{ summary: 'Secret in config' }],
+      active_gate_owner: 'security-reviewer',
+      lanes: {},
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('internal_blocker');
+    expect(result.detail).toContain('Secret in config');
+    expect(result.detail).toContain('security-reviewer');
+  });
+
+  it('handles string-type blockers', () => {
+    const state = { phase_id: 'develop' };
+    const runtime = {
+      customer_blockers: ['Need API credentials'],
+      internal_blockers: [],
+      lanes: {},
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('customer_blocker');
+    expect(result.detail).toBe('Need API credentials');
   });
 });

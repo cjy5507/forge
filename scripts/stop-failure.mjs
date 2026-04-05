@@ -11,48 +11,35 @@
 //   input.error_details  — structured details (may be absent on other hosts)
 //   input.last_assistant_message — partial message before the failure
 
-import { readStdin } from './lib/stdin.mjs';
-import { handleHookError, logHookError } from './lib/error-handler.mjs';
+import { runHook } from './lib/hook-runner.mjs';
+import { logHookError } from './lib/error-handler.mjs';
 import { appendRecent, updateRuntimeState } from './lib/forge-state.mjs';
 
-async function main() {
-  let input;
-  try {
-    input = await readStdin();
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
+runHook(async (input) => {
   const cwd = input?.cwd || '.';
 
-  try {
-    const entry = {
-      at: new Date().toISOString(),
-      kind: 'stop-failure',
-      error: input?.error || 'unknown',
-      details: input?.error_details || '',
-      message: input?.last_assistant_message || '',
-    };
+  const entry = {
+    at: new Date().toISOString(),
+    kind: 'stop-failure',
+    error: input?.error || 'unknown',
+    details: input?.error_details || '',
+    message: input?.last_assistant_message || '',
+  };
 
-    updateRuntimeState(cwd, current => ({
-      ...current,
-      recent_failures: appendRecent(current.recent_failures, entry),
-      last_event: {
-        name: 'StopFailure',
-        at: entry.at,
-      },
-    }));
+  updateRuntimeState(cwd, current => ({
+    ...current,
+    recent_failures: appendRecent(current.recent_failures, entry),
+    last_event: {
+      name: 'StopFailure',
+      at: entry.at,
+    },
+  }));
 
-    logHookError(
-      new Error(`StopFailure: ${entry.error}`),
-      'stop-failure',
-      cwd,
-    );
+  logHookError(
+    new Error(`StopFailure: ${entry.error}`),
+    'stop-failure',
+    cwd,
+  );
 
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-  } catch (error) {
-    handleHookError(error, 'stop-failure', cwd);
-  }
-}
-
-main();
+  console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+}, { name: 'stop-failure' });

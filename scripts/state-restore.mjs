@@ -10,8 +10,7 @@
 // Claude Code convention.  On other hosts this field is silently ignored if the
 // host does not understand it.
 
-import { readStdin } from './lib/stdin.mjs';
-import { handleHookError } from './lib/error-handler.mjs';
+import { runHook } from './lib/hook-runner.mjs';
 import {
   compactForgeContext,
   readForgeState,
@@ -50,14 +49,7 @@ function abbreviatedContext(state, runtime) {
 
 // HUD update is now handled by the shared updateHudLine() from forge-state.mjs
 
-async function main() {
-  let input;
-  try {
-    input = await readStdin();
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
+runHook(async (input) => {
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
 
@@ -66,46 +58,45 @@ async function main() {
     return;
   }
 
-  try {
-    const normalized = writeForgeState(cwd, state);
-    const nextRuntime = updateRuntimeState(cwd, current => {
-      const withStats = {
-        ...current,
-        active_tier: normalized.tier,
-        stats: {
-          ...(current.stats || {}),
-          started_at: (current.stats || {}).started_at || normalized.created_at || new Date().toISOString(),
-          session_count: ((current.stats || {}).session_count || 0) + 1,
-        },
-      };
+  const normalized = writeForgeState(cwd, state);
+  const nextRuntime = updateRuntimeState(cwd, current => {
+    const withStats = {
+      ...current,
+      active_tier: normalized.tier,
+      stats: {
+        ...(current.stats || {}),
+        started_at: (current.stats || {}).started_at || normalized.created_at || new Date().toISOString(),
+        session_count: ((current.stats || {}).session_count || 0) + 1,
+      },
+    };
 
-      const elapsedMs = getStalenessMs(withStats);
-      const staleTier = getStaleTier(elapsedMs);
-
-      let context;
-      if (staleTier === 'stale') {
-        context = "[Forge] Inactive project detected. Run 'forge continue' or 'forge cancel'.";
-      } else if (staleTier === 'warm') {
-        context = abbreviatedContext(normalized, withStats);
-      } else {
-        context = compactForgeContext(normalized, withStats);
-      }
-
-      return {
-        ...withStats,
-        last_compact_context: context,
-      };
-    });
-
-    const elapsedMs = getStalenessMs(nextRuntime);
+    const elapsedMs = getStalenessMs(withStats);
     const staleTier = getStaleTier(elapsedMs);
 
-    try { updateHudLine(normalized, nextRuntime, staleTier); } catch { /* HUD not installed */ }
+    let context;
+    if (staleTier === 'stale') {
+      context = "[Forge] Inactive project detected. Run 'forge continue' or 'forge cancel'.";
+    } else if (staleTier === 'warm') {
+      context = abbreviatedContext(normalized, withStats);
+    } else {
+      context = compactForgeContext(normalized, withStats);
+    }
 
-    // For fresh sessions, auto-dispatch forge:continue to resume the pipeline
-    let additionalContext = nextRuntime.last_compact_context;
-    if (staleTier === 'fresh') {
-      additionalContext = `${additionalContext}
+    return {
+      ...withStats,
+      last_compact_context: context,
+    };
+  });
+
+  const elapsedMs = getStalenessMs(nextRuntime);
+  const staleTier = getStaleTier(elapsedMs);
+
+  try { updateHudLine(normalized, nextRuntime, staleTier); } catch { /* HUD not installed */ }
+
+  // For fresh sessions, auto-dispatch forge:continue to resume the pipeline
+  let additionalContext = nextRuntime.last_compact_context;
+  if (staleTier === 'fresh') {
+    additionalContext = `${additionalContext}
 
 [MAGIC KEYWORD: FORGE:CONTINUE]
 
@@ -113,23 +104,18 @@ You MUST invoke the skill using the Skill tool:
 Skill: forge:continue
 
 IMPORTANT: Invoke the skill IMMEDIATELY to resume the Forge pipeline. Do not ask the user — the project is fresh and ready to continue.`;
-    } else if (staleTier === 'warm') {
-      additionalContext = `${additionalContext}
+  } else if (staleTier === 'warm') {
+    additionalContext = `${additionalContext}
 
 [Forge] Active project detected. Type "forge continue" or "forge" to resume.`;
-    }
-
-    console.log(JSON.stringify({
-      continue: true,
-      suppressOutput: true,
-      hookSpecificOutput: {
-        hookEventName: 'SessionStart',
-        additionalContext,
-      },
-    }));
-  } catch (error) {
-    handleHookError(error, 'state-restore', cwd);
   }
-}
 
-main();
+  console.log(JSON.stringify({
+    continue: true,
+    suppressOutput: true,
+    hookSpecificOutput: {
+      hookEventName: 'SessionStart',
+      additionalContext,
+    },
+  }));
+}, { name: 'state-restore' });

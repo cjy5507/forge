@@ -42,232 +42,25 @@ import {
   appendLaneNote,
 } from './forge-lanes.mjs';
 
-// ─── Internal derive helpers ───────────────────────────────────────────
+// ─── Re-export extracted modules for backward compatibility ───────────
+export {
+  deriveSessionOwner,
+  deriveCompanyGateFields,
+  deriveSessionGoal,
+  deriveSessionExitCriteria,
+  deriveSessionFields,
+} from './forge-derive.mjs';
 
-function deriveSessionOwner({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
-  const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
-  const activeGate = requireString(runtime?.active_gate);
-  const phaseId = state ? resolvePhase(state).id : '';
+export { updateHudLine } from './forge-hud.mjs';
 
-  if (customerBlockers.length > 0 && !['develop', 'qa', 'security', 'fix'].includes(phaseId)) return 'pm';
-  if (activeGate === 'design_readiness') return 'cto';
-  if (activeGate === 'implementation_readiness') return 'lead-dev';
-  if (activeGate === 'qa') return 'qa';
-  if (activeGate === 'security') return 'security-reviewer';
-  if (activeGate === 'delivery_readiness' || activeGate === 'customer_review') return 'ceo';
-  if (phaseId === 'discovery') return 'pm';
-  if (phaseId === 'design') return 'cto';
-  if (phaseId === 'develop' || phaseId === 'fix') return 'lead-dev';
-  if (phaseId === 'qa') return 'qa';
-  if (phaseId === 'security') return 'security-reviewer';
-  if (phaseId === 'delivery') return 'ceo';
-  return '';
-}
+// Import derive helpers for internal use
+import {
+  deriveCompanyGateFields,
+  deriveSessionFields,
+} from './forge-derive.mjs';
 
-function deriveCompanyGateFields({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
-  const observedPhase = state ? resolvePhase(state).id : '';
-  const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
-  const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
-  const manualGate = runtime?.company_gate_mode === 'manual';
-  const phaseAnchor = typeof runtime?.company_phase_anchor === 'string' ? runtime.company_phase_anchor : '';
-
-  if (manualGate && !observedPhase) {
-    return {
-      company_gate_mode: 'manual',
-      company_phase_anchor: phaseAnchor,
-      active_gate: typeof runtime?.active_gate === 'string' ? runtime.active_gate : '',
-      active_gate_owner: typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner : '',
-      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
-    };
-  }
-
-  if (manualGate && phaseAnchor === observedPhase) {
-    return {
-      company_gate_mode: 'manual',
-      company_phase_anchor: observedPhase,
-      active_gate: typeof runtime?.active_gate === 'string' ? runtime.active_gate : '',
-      active_gate_owner: typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner : '',
-      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
-    };
-  }
-
-  if (observedPhase === 'discovery') {
-    return {
-      company_gate_mode: 'auto',
-      company_phase_anchor: observedPhase,
-      active_gate: 'spec_readiness',
-      active_gate_owner: 'pm',
-      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
-    };
-  }
-
-  if (observedPhase === 'design') {
-    return {
-      company_gate_mode: 'auto',
-      company_phase_anchor: observedPhase,
-      active_gate: 'design_readiness',
-      active_gate_owner: 'cto',
-      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
-    };
-  }
-
-  if (observedPhase === 'develop' || observedPhase === 'fix') {
-    return {
-      company_gate_mode: 'auto',
-      company_phase_anchor: observedPhase,
-      active_gate: 'implementation_readiness',
-      active_gate_owner: 'lead-dev',
-      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
-    };
-  }
-
-  if (observedPhase === 'qa') {
-    return {
-      company_gate_mode: 'auto',
-      company_phase_anchor: observedPhase,
-      active_gate: 'qa',
-      active_gate_owner: 'qa',
-      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
-    };
-  }
-
-  if (observedPhase === 'security') {
-    return {
-      company_gate_mode: 'auto',
-      company_phase_anchor: observedPhase,
-      active_gate: 'security',
-      active_gate_owner: 'security-reviewer',
-      delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
-    };
-  }
-
-  if (observedPhase === 'delivery') {
-    const readiness = customerBlockers.length > 0
-      ? 'in_progress'
-      : internalBlockers.length > 0
-        ? 'blocked'
-        : runtime?.delivery_readiness === 'delivered'
-          ? 'delivered'
-          : 'ready_for_review';
-
-    return {
-      company_gate_mode: 'auto',
-      company_phase_anchor: observedPhase,
-      active_gate: customerBlockers.length > 0 ? 'customer_review' : 'delivery_readiness',
-      active_gate_owner: 'ceo',
-      delivery_readiness: readiness,
-    };
-  }
-
-  if (observedPhase === 'complete') {
-    return {
-      company_gate_mode: 'auto',
-      company_phase_anchor: observedPhase,
-      active_gate: 'customer_review',
-      active_gate_owner: 'ceo',
-      delivery_readiness: 'delivered',
-    };
-  }
-
-  return {
-    company_gate_mode: manualGate ? 'manual' : 'auto',
-    company_phase_anchor: observedPhase,
-    active_gate: typeof runtime?.active_gate === 'string' ? runtime.active_gate : '',
-    active_gate_owner: typeof runtime?.active_gate_owner === 'string' ? runtime.active_gate_owner : '',
-    delivery_readiness: normalizeDeliveryReadiness(runtime?.delivery_readiness),
-  };
-}
-
-function deriveSessionGoal({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
-  const customerBlockers = normalizeBlockers(runtime?.customer_blockers);
-  const internalBlockers = normalizeBlockers(runtime?.internal_blockers);
-  const activeGate = requireString(runtime?.active_gate);
-  const readiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
-  const phaseId = state ? resolvePhase(state).id : '';
-
-  if (customerBlockers.length > 0 && !['develop', 'qa', 'security', 'fix'].includes(phaseId)) {
-    return `Resolve customer blocker: ${customerBlockers[0].summary}`;
-  }
-  if (activeGate === 'design_readiness') return 'Close design readiness gate';
-  if (activeGate === 'implementation_readiness') return 'Prepare reviewable implementation lanes';
-  if (activeGate === 'qa') return 'Clear QA blockers and re-verify';
-  if (activeGate === 'security') return 'Clear security blockers and re-check delivery readiness';
-  if (activeGate === 'delivery_readiness') {
-    return readiness === 'blocked' ? 'Make delivery ready for customer review' : 'Prepare delivery review package';
-  }
-  if (activeGate === 'customer_review') return 'Present delivery for customer review';
-  if (internalBlockers.length > 0) return `Clear internal blocker: ${internalBlockers[0].summary}`;
-  if (phaseId === 'discovery') return 'Clarify V1 scope and prepare spec handoff';
-  if (phaseId === 'design') return 'Close architecture and design decisions for implementation';
-  if (phaseId === 'develop') return 'Advance the next implementation lane';
-  if (phaseId === 'fix') return 'Resolve blockers and re-run verification';
-  if (phaseId === 'delivery') return 'Prepare final delivery review';
-  return '';
-}
-
-function deriveSessionExitCriteria({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
-  const activeGate = requireString(runtime?.active_gate);
-  const phaseId = state ? resolvePhase(state).id : '';
-
-  if (activeGate === 'design_readiness') return ['architecture approved internally', 'design specs complete', 'technical claims verified'];
-  if (activeGate === 'implementation_readiness') return ['lanes defined', 'owners assigned', 'session implementation brief written'];
-  if (activeGate === 'qa') return ['QA blockers cleared', 'verification rerun complete'];
-  if (activeGate === 'security') return ['security blockers cleared', 'delivery gate re-evaluated'];
-  if (activeGate === 'delivery_readiness') return ['blocker count is zero', 'delivery report ready'];
-  if (phaseId === 'discovery') return ['critical customer questions resolved', 'spec ready for internal review'];
-  if (phaseId === 'develop') return ['current reviewable slice completed', 'next session handoff recorded'];
-  return [];
-}
-
-function deriveSessionFields({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
-  const observedPhase = state ? resolvePhase(state).id : '';
-  const observedGate = requireString(runtime?.active_gate);
-  const observedCustomerBlockers = normalizeBlockers(runtime?.customer_blockers).length;
-  const observedInternalBlockers = normalizeBlockers(runtime?.internal_blockers).length;
-  const briefMode = runtime?.session_brief_mode === 'manual' ? 'manual' : 'auto';
-  const phaseAnchor = typeof runtime?.session_phase_anchor === 'string' ? runtime.session_phase_anchor : '';
-  const gateAnchor = typeof runtime?.session_gate_anchor === 'string' ? runtime.session_gate_anchor : '';
-  const customerAnchor = Number(runtime?.session_customer_blocker_count || 0);
-  const internalAnchor = Number(runtime?.session_internal_blocker_count || 0);
-  const anchorsMatch =
-    briefMode === 'manual' &&
-    phaseAnchor === observedPhase &&
-    gateAnchor === observedGate &&
-    customerAnchor === observedCustomerBlockers &&
-    internalAnchor === observedInternalBlockers;
-
-  if (anchorsMatch) {
-    return {
-      current_session_goal: runtime?.current_session_goal || '',
-      session_exit_criteria: normalizeStringList(runtime?.session_exit_criteria),
-      next_session_goal: runtime?.next_session_goal || '',
-      next_session_owner: runtime?.next_session_owner || '',
-      session_handoff_summary: runtime?.session_handoff_summary || '',
-      session_brief_mode: 'manual',
-      session_phase_anchor: observedPhase,
-      session_gate_anchor: observedGate,
-      session_customer_blocker_count: observedCustomerBlockers,
-      session_internal_blocker_count: observedInternalBlockers,
-    };
-  }
-
-  const nextOwner = deriveSessionOwner({ state, runtime });
-  const goal = deriveSessionGoal({ state, runtime });
-  const exitCriteria = deriveSessionExitCriteria({ state, runtime });
-
-  return {
-    current_session_goal: goal,
-    session_exit_criteria: exitCriteria,
-    next_session_goal: goal,
-    next_session_owner: nextOwner,
-    session_handoff_summary: goal && nextOwner ? `${goal} -> ${nextOwner}` : '',
-    session_brief_mode: 'auto',
-    session_phase_anchor: observedPhase,
-    session_gate_anchor: observedGate,
-    session_customer_blocker_count: observedCustomerBlockers,
-    session_internal_blocker_count: observedInternalBlockers,
-  };
-}
+// Import HUD helper for internal use
+import { updateHudLine } from './forge-hud.mjs';
 
 // ─── normalizeRuntimeState (central orchestrator) ──────────────────────
 
@@ -432,23 +225,19 @@ export function updateRuntimeState(cwd = '.', updater) {
             try { unlinkSync(lockPath); } catch {}
           }
         } catch {}
-        // Exponential backoff via Atomics.wait (non-blocking to other threads, no spin)
+        // Synchronous sleep via Atomics.wait — SharedArrayBuffer is always available in Node.js
+        // (unlike browsers which require cross-origin isolation). This avoids busy-wait spinning.
         const delay = retryDelay * Math.pow(2, attempt) + Math.random() * retryDelay;
-        try { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay | 0); } catch { /* fallback: no-op */ }
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay | 0);
         continue;
       }
       throw err;
     }
   }
-  // Fallback: proceed without lock after exhausting retries (log warning)
-  try { process.stderr.write(`[Forge] WARNING: lock acquisition failed after ${maxRetries} retries on ${lockPath}, proceeding without lock\n`); } catch {}
-  const state = readForgeState(cwd);
-  const current = normalizeRuntimeState(
-    readJsonFile(runtimePath, DEFAULT_RUNTIME),
-    { state },
-  );
-  const next = updater(current);
-  return writeRuntimeState(cwd, next, { state });
+
+  const error = new Error(`Forge runtime lock acquisition failed after ${maxRetries} retries: ${lockPath}`);
+  error.code = 'ELOCKED';
+  throw error;
 }
 
 export function recordStateStats(cwd = '.', updater) {
@@ -705,8 +494,8 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   }
 
   const phase = resolvePhase(state);
-  const spec = state.spec_approved ? '✓spec' : '×spec';
-  const design = state.design_approved ? '✓design' : '×design';
+  const spec = state.spec_approved ? '\u2713spec' : '\u00d7spec';
+  const design = state.design_approved ? '\u2713design' : '\u00d7design';
   const tier = normalizeTier(runtime?.active_tier || state.tier || inferTierFromState(state));
   const companyMode = normalizeCompanyMode(runtime?.company_mode);
   const activeGate = requireString(runtime?.active_gate);
@@ -742,26 +531,26 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
   ]
     .filter(Boolean)
     .join(' ');
-  const laneSuffix = laneCounts.total ? ` ${laneCounts.merged + laneCounts.done}/${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${nextLane ? ` ↺${nextLane}${focusHint}` : ''}` : '';
+  const laneSuffix = laneCounts.total ? ` ${laneCounts.merged + laneCounts.done}/${laneCounts.total}l${laneCounts.blocked ? ` ${laneCounts.blocked}b` : ''}${nextLane ? ` \u21ba${nextLane}${focusHint}` : ''}` : '';
   const mode = state.mode || 'build';
   const seq = phase.sequence || PHASE_SEQUENCE;
   const total = seq.length - 1; // exclude 'complete'
 
   // Actionable one-liner: most important thing first
-  const truncate = (s, max = 50) => s.length > max ? s.slice(0, max - 1) + '…' : s;
+  const truncate = (s, max = 50) => s.length > max ? s.slice(0, max - 1) + '\u2026' : s;
   let action = '';
   if (phase.mismatch) {
-    action = ` → MISMATCH: "${phase.id}" not in ${phase.mode} sequence`;
+    action = ` \u2192 MISMATCH: "${phase.id}" not in ${phase.mode} sequence`;
   } else if (state._phase_gate_warning) {
-    action = ` → GATE: ${truncate(state._phase_gate_warning)}`;
+    action = ` \u2192 GATE: ${truncate(state._phase_gate_warning)}`;
   } else if (customerBlockers.length) {
-    action = ` → waiting on client: ${truncate(String(customerBlockers[0]?.summary || customerBlockers[0]))}`;
+    action = ` \u2192 waiting on client: ${truncate(String(customerBlockers[0]?.summary || customerBlockers[0]))}`;
   } else if (internalBlockers.length) {
-    action = ` → blocked: ${truncate(String(internalBlockers[0]?.summary || internalBlockers[0]))}`;
+    action = ` \u2192 blocked: ${truncate(String(internalBlockers[0]?.summary || internalBlockers[0]))}`;
   } else if (deliveryReadiness === 'ready_for_review') {
-    action = ' → ready for review';
+    action = ' \u2192 ready for review';
   } else if (nextLane && focusHint) {
-    action = ` → ${nextLane}${focusHint}`;
+    action = ` \u2192 ${nextLane}${focusHint}`;
   }
 
   return `[Forge] ${mode} ${tier} ${phase.id} ${phase.index}/${total} ${spec} ${design}${companySuffix ? ` ${companySuffix}` : ''}${agentCount ? ` ${agentCount}a` : ''}${laneSuffix}${action}`;
@@ -857,71 +646,4 @@ export function updateAdaptiveTier(cwd = '.', { state = null, message = '' } = {
     recommendedAgents,
     runtime,
   };
-}
-
-/**
- * Update the claude-hud custom status line with current Forge state.
- * Shows phase, active agents, lanes, and blockers dynamically.
- * Safe to call from any hook — silently no-ops if HUD is not installed.
- */
-export function updateHudLine(state, runtime, staleTier = 'fresh') {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  if (!homeDir) return;
-  const hudConfigDir = join(homeDir, '.claude', 'plugins', 'claude-hud');
-  const hudConfigPath = join(hudConfigDir, 'config.json');
-  if (!existsSync(hudConfigPath) && !existsSync(hudConfigDir)) return;
-
-  let config = {};
-  try {
-    config = JSON.parse(readFileSync(hudConfigPath, 'utf8'));
-  } catch { /* no config yet */ }
-
-  // Use resolvePhase for consistent numbering with compactForgeContext
-  const resolved = resolvePhase(state || {});
-  const phase = resolved.id;
-  const phaseIdx = resolved.index;
-  const maxPhase = resolved.sequence.length - 1; // exclude 'complete'
-
-  // For stale projects, show minimal HUD
-  if (staleTier === 'stale') {
-    const nextLine = 'forge:stale';
-    config.display = config.display || {};
-    if (config.display.customLine === nextLine) return;
-    config.display.customLine = nextLine;
-    writeJsonFile(hudConfigPath, config);
-    return;
-  }
-
-  // Active agents
-  const activeAgents = runtime?.active_agents || {};
-  const agentEntries = Object.values(activeAgents).filter(a => a.status === 'running');
-  const agentInfo = agentEntries.length > 0
-    ? agentEntries.map(a => (a.type || 'agent').replace(/^forge:/, '')).join(' ')
-    : '';
-
-  // Active lanes
-  const lanes = runtime?.lanes || {};
-  const allLanes = Object.values(lanes);
-  const activeLanes = allLanes.filter(l => l.status !== 'done' && l.status !== 'merged');
-  const mergedCount = allLanes.length - activeLanes.length;
-  const activeDetail = activeLanes.map(l => `${l.id}(${l.status})`).join(' ');
-  const laneInfo = allLanes.length > 0
-    ? `${mergedCount}/${allLanes.length}l${activeDetail ? ` ${activeDetail}` : ''}`
-    : '';
-
-  const blockers = normalizeBlockers(runtime?.customer_blockers).length + normalizeBlockers(runtime?.internal_blockers).length;
-
-  // Build dynamic line: phase | agents | lanes | blockers
-  const parts = [`forge:${phase} ${phaseIdx}/${maxPhase}`];
-  if (agentInfo) parts.push(agentInfo);
-  if (laneInfo) parts.push(laneInfo);
-  parts.push(`${blockers} blockers`);
-
-  const nextLine = parts.join(' | ').slice(0, 80);
-
-  // Only write when the line actually changed to avoid HUD flickering
-  config.display = config.display || {};
-  if (config.display.customLine === nextLine) return;
-  config.display.customLine = nextLine;
-  writeJsonFile(hudConfigPath, config);
 }

@@ -2,7 +2,7 @@
 // Forge Hook: UserPromptSubmit — detects forge-related messages and updates adaptive tier/runtime
 
 import { existsSync } from 'fs';
-import { readStdin } from './lib/stdin.mjs';
+import { runHook } from './lib/hook-runner.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import {
   PHASE_SEQUENCE,
@@ -43,14 +43,7 @@ Skill: forge:${skillName}
 IMPORTANT: Invoke the skill IMMEDIATELY. Do not summarize, do not ask for confirmation. The Forge pipeline requires autonomous execution.`;
 }
 
-async function main() {
-  let input;
-  try {
-    input = await readStdin();
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
+runHook(async (input) => {
   const cwd = input?.cwd || '.';
   const message = String(input?.message || input?.content || '');
   const lowered = message.toLowerCase();
@@ -125,6 +118,4 @@ async function main() {
       additionalContext: output,
     },
   }));
-}
-
-main();
+}, { name: 'phase-detector' });

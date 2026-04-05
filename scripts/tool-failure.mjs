@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // Forge Hook: PostToolUseFailure — low-cost failure logging with tier-aware guidance
 
-import { readStdin } from './lib/stdin.mjs';
-import { handleHookError } from './lib/error-handler.mjs';
+import { runHook } from './lib/hook-runner.mjs';
 import {
   appendRecent,
   isProjectActive,
@@ -63,117 +62,104 @@ function classifyFailure(input) {
   return 'Tool execution failed. Adjust approach before repeating the same command.';
 }
 
-async function main() {
+runHook(async (input) => {
   const envTier = process.env.FORGE_TIER;
   if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
 
-  let input;
-  try {
-    input = await readStdin();
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
   const cwd = input?.cwd || '.';
   const rootCwd = resolveForgeBaseDir(cwd);
   const state = readForgeState(rootCwd);
   const tier = readActiveTier(rootCwd, state, input);
 
-  try {
-    const commandText = String(input?.tool_input?.command || input?.error || '');
-    const testLike = /(test|vitest|jest|playwright)/i.test(commandText);
-    const guidance = classifyFailure(input);
+  const commandText = String(input?.tool_input?.command || input?.error || '');
+  const testLike = /(test|vitest|jest|playwright)/i.test(commandText);
+  const guidance = classifyFailure(input);
 
-    // Only write to runtime.json if there's an active Forge project
-    if (!state || !isProjectActive(state)) {
-      console.log(JSON.stringify({
-        continue: true,
-        suppressOutput: true,
-        hookSpecificOutput: {
-          hookEventName: 'PostToolUseFailure',
-          additionalContext: `[Forge] ${guidance}`,
-        },
-      }));
-      return;
-    }
-
-    const laneFailureReason = summarizeLaneFailure(input);
-    const toolInput = input?.tool_input || {};
-    const truncatedInput = JSON.stringify(toolInput).length > 500
-      ? { _truncated: true, summary: JSON.stringify(toolInput).slice(0, 500) }
-      : toolInput;
-    const entry = {
-      at: new Date().toISOString(),
-      tool_name: input?.tool_name || 'unknown',
-      tool_input: truncatedInput,
-      error: input?.error || input?.tool_error || input?.stderr || 'unknown failure',
-      guidance,
-    };
-
-    // Phase mismatch check — skip lane modifications to prevent orphaned records
-    const phase = state ? resolvePhase(state) : null;
-    const phaseMismatch = phase?.mismatch ?? false;
-
-    updateRuntimeState(rootCwd, current => {
-      const { laneId, lane } = resolveRuntimeLaneContext(current, rootCwd, cwd);
-      const laneEntry = laneId ? { ...entry, lane_id: laneId } : entry;
-      const nextLanes = !phaseMismatch && laneId && laneFailureReason
-        ? {
-            ...current.lanes,
-            [laneId]: {
-              ...lane,
-              status: 'blocked',
-              blocked_reason: laneFailureReason,
-              session_handoff_notes: laneFailureReason,
-              last_event_at: entry.at,
-              handoff_notes: [
-                ...(Array.isArray(lane?.handoff_notes) ? lane.handoff_notes : []),
-                {
-                  kind: 'tool-failure',
-                  at: entry.at,
-                  tool_name: laneEntry.tool_name,
-                  note: laneFailureReason,
-                },
-              ],
-            },
-          }
-        : current.lanes;
-
-      return {
-        ...current,
-        active_tier: tier,
-        lanes: nextLanes,
-        recent_failures: appendRecent(current.recent_failures, laneEntry),
-        stats: {
-          ...current.stats,
-          failure_count: (current.stats.failure_count || 0) + 1,
-          test_runs: testLike ? (current.stats.test_runs || 0) + 1 : current.stats.test_runs || 0,
-          test_failures: testLike ? (current.stats.test_failures || 0) + 1 : current.stats.test_failures || 0,
-        },
-        last_event: {
-          name: 'PostToolUseFailure',
-          at: entry.at,
-        },
-      };
-    });
-
-    const mismatchWarning = phaseMismatch
-      ? ` [Warning: phase "${phase.id}" is not in the ${phase.mode} sequence — lane updates skipped]`
-      : '';
+  // Only write to runtime.json if there's an active Forge project
+  if (!state || !isProjectActive(state)) {
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'PostToolUseFailure',
-        additionalContext: (tier === 'light' ? '[Forge] failure logged' : `[Forge Failure Loop] ${guidance}`) + mismatchWarning,
+        additionalContext: `[Forge] ${guidance}`,
       },
     }));
-  } catch (error) {
-    handleHookError(error, 'tool-failure', rootCwd);
+    return;
   }
-}
 
-main();
+  const laneFailureReason = summarizeLaneFailure(input);
+  const toolInput = input?.tool_input || {};
+  const truncatedInput = JSON.stringify(toolInput).length > 500
+    ? { _truncated: true, summary: JSON.stringify(toolInput).slice(0, 500) }
+    : toolInput;
+  const entry = {
+    at: new Date().toISOString(),
+    tool_name: input?.tool_name || 'unknown',
+    tool_input: truncatedInput,
+    error: input?.error || input?.tool_error || input?.stderr || 'unknown failure',
+    guidance,
+  };
+
+  // Phase mismatch check — skip lane modifications to prevent orphaned records
+  const phase = state ? resolvePhase(state) : null;
+  const phaseMismatch = phase?.mismatch ?? false;
+
+  updateRuntimeState(rootCwd, current => {
+    const { laneId, lane } = resolveRuntimeLaneContext(current, rootCwd, cwd);
+    const laneEntry = laneId ? { ...entry, lane_id: laneId } : entry;
+    const nextLanes = !phaseMismatch && laneId && laneFailureReason
+      ? {
+          ...current.lanes,
+          [laneId]: {
+            ...lane,
+            status: 'blocked',
+            blocked_reason: laneFailureReason,
+            session_handoff_notes: laneFailureReason,
+            last_event_at: entry.at,
+            handoff_notes: [
+              ...(Array.isArray(lane?.handoff_notes) ? lane.handoff_notes : []),
+              {
+                kind: 'tool-failure',
+                at: entry.at,
+                tool_name: laneEntry.tool_name,
+                note: laneFailureReason,
+              },
+            ],
+          },
+        }
+      : current.lanes;
+
+    return {
+      ...current,
+      active_tier: tier,
+      lanes: nextLanes,
+      recent_failures: appendRecent(current.recent_failures, laneEntry),
+      stats: {
+        ...current.stats,
+        failure_count: (current.stats.failure_count || 0) + 1,
+        test_runs: testLike ? (current.stats.test_runs || 0) + 1 : current.stats.test_runs || 0,
+        test_failures: testLike ? (current.stats.test_failures || 0) + 1 : current.stats.test_failures || 0,
+      },
+      last_event: {
+        name: 'PostToolUseFailure',
+        at: entry.at,
+      },
+    };
+  });
+
+  const mismatchWarning = phaseMismatch
+    ? ` [Warning: phase "${phase.id}" is not in the ${phase.mode} sequence — lane updates skipped]`
+    : '';
+  console.log(JSON.stringify({
+    continue: true,
+    suppressOutput: true,
+    hookSpecificOutput: {
+      hookEventName: 'PostToolUseFailure',
+      additionalContext: (tier === 'light' ? '[Forge] failure logged' : `[Forge Failure Loop] ${guidance}`) + mismatchWarning,
+    },
+  }));
+}, { name: 'tool-failure' });

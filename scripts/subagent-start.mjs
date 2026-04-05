@@ -12,8 +12,7 @@
 //   input.agent_type     — e.g. "forge:developer", "forge:qa"
 //   input.transcript_path — path to the sub-agent's conversation transcript
 
-import { readStdin } from './lib/stdin.mjs';
-import { handleHookError } from './lib/error-handler.mjs';
+import { runHook } from './lib/hook-runner.mjs';
 import {
   appendRecent,
   isProjectActive,
@@ -29,154 +28,141 @@ import {
   updateRuntimeState,
 } from './lib/forge-state.mjs';
 
-async function main() {
+runHook(async (input) => {
   const envTier = (process.env.FORGE_TIER || '').toLowerCase();
   if (envTier === 'off' || envTier === 'light') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
 
-  let input;
-  try {
-    input = await readStdin();
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
   const cwd = input?.cwd || '.';
   const rootCwd = resolveForgeBaseDir(cwd);
   const state = readForgeState(rootCwd);
   const tier = readActiveTier(rootCwd, state, input);
 
-  try {
-    if (!tierAtLeast(tier, 'medium')) {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-      return;
-    }
+  if (!tierAtLeast(tier, 'medium')) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
 
-    // Only write to runtime.json if there's an active Forge project
-    if (!state || !isProjectActive(state)) {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-      return;
-    }
+  // Only write to runtime.json if there's an active Forge project
+  if (!state || !isProjectActive(state)) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
 
-    const startedAt = new Date().toISOString();
-    const phaseId = state ? resolvePhase(state).id : 'develop';
-    const runtime = readRuntimeState(rootCwd);
-    const { laneId, lane } = resolveRuntimeLaneContext(runtime, rootCwd, cwd);
-    const taskType = runtime.last_task_type || 'feature';
-    const recommended = recommendedAgentsFor({ tier, taskType, phaseId, runtime });
-    const agentId = input?.agent_id || `unknown-${Date.now()}`;
-    const agentType = input?.agent_type || 'unknown';
+  const startedAt = new Date().toISOString();
+  const phaseId = state ? resolvePhase(state).id : 'develop';
+  const runtime = readRuntimeState(rootCwd);
+  const { laneId, lane } = resolveRuntimeLaneContext(runtime, rootCwd, cwd);
+  const taskType = runtime.last_task_type || 'feature';
+  const recommended = recommendedAgentsFor({ tier, taskType, phaseId, runtime });
+  const agentId = input?.agent_id || `unknown-${Date.now()}`;
+  const agentType = input?.agent_type || 'unknown';
 
-    const updatedRuntime = updateRuntimeState(rootCwd, current => {
-      const nextLanes = laneId
-        ? {
-            ...current.lanes,
-            [laneId]: {
-              ...lane,
-              owner_agent_id: agentId,
-              owner_agent_type: agentType,
-              status: 'in_progress',
-              last_event_at: startedAt,
-            },
-          }
-        : current.lanes;
-
-      const nextWorktrees = laneId
-        ? {
-            ...current.active_worktrees,
-            [laneId]: lane?.worktree_path || cwd,
-          }
-        : current.active_worktrees;
-
-      return {
-        ...current,
-        active_tier: tier,
-        recommended_agents: current.recommended_agents?.length ? current.recommended_agents : recommended,
-        lanes: nextLanes,
-        active_worktrees: nextWorktrees,
-        active_agents: {
-          ...current.active_agents,
-          [agentId]: {
-            id: input?.agent_id || 'unknown',
-            type: agentType,
-            status: 'running',
-            started_at: startedAt,
-            transcript_path: input?.transcript_path || '',
-            lane_id: laneId,
+  const updatedRuntime = updateRuntimeState(rootCwd, current => {
+    const nextLanes = laneId
+      ? {
+          ...current.lanes,
+          [laneId]: {
+            ...lane,
+            owner_agent_id: agentId,
+            owner_agent_type: agentType,
+            status: 'in_progress',
+            last_event_at: startedAt,
           },
-        },
-        recent_agents: appendRecent(current.recent_agents, {
-          kind: 'subagent-start',
+        }
+      : current.lanes;
+
+    const nextWorktrees = laneId
+      ? {
+          ...current.active_worktrees,
+          [laneId]: lane?.worktree_path || cwd,
+        }
+      : current.active_worktrees;
+
+    return {
+      ...current,
+      active_tier: tier,
+      recommended_agents: current.recommended_agents?.length ? current.recommended_agents : recommended,
+      lanes: nextLanes,
+      active_worktrees: nextWorktrees,
+      active_agents: {
+        ...current.active_agents,
+        [agentId]: {
           id: input?.agent_id || 'unknown',
           type: agentType,
-          at: startedAt,
+          status: 'running',
+          started_at: startedAt,
+          transcript_path: input?.transcript_path || '',
           lane_id: laneId,
-        }),
-        stats: {
-          ...current.stats,
-          agent_calls: (current.stats.agent_calls || 0) + 1,
         },
-        last_event: {
-          name: 'SubagentStart',
-          at: startedAt,
-        },
-      };
-    });
-
-    try { updateHudLine(state, updatedRuntime); } catch { /* HUD not installed */ }
-
-    if (!state) {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-      return;
-    }
-
-    // Build analysis context when codebase-memory tools are available
-    let analysisHint = '';
-    const analysisPhases = ['design', 'isolate', 'reproduce', 'develop'];
-    if (analysisPhases.includes(phaseId) && recommended.tools?.length) {
-      analysisHint = ` | analysis: use ${recommended.tools.join(', ')} (search_graph, trace_call_path, get_architecture) for codebase context`;
-    }
-
-    // Surface layer info when structured recommendation is available
-    let layerHint = '';
-    if (recommended.layer1_team?.length) {
-      layerHint = ` | team: [${recommended.layer1_team.join(', ')}]`;
-    }
-
-    // Build lane-scoped context injection
-    let laneContext = '';
-    if (laneId && lane) {
-      const scope = Array.isArray(lane.scope) ? lane.scope : [];
-      const deps = Array.isArray(lane.dependencies) ? lane.dependencies : [];
-      const modelHint = lane.model_hint || '';
-      const parts = [`[Lane:${laneId}]`];
-      if (scope.length) parts.push(`scope:[${scope.join(',')}]`);
-      if (deps.length) parts.push(`deps:[${deps.join(',')}]`);
-      if (modelHint) parts.push(`model:${modelHint}`);
-      // Include task file content if available (max 2000 chars)
-      if (lane.task_file) {
-        try {
-          const { readFileSync } = await import('fs');
-          const content = readFileSync(lane.task_file, 'utf8').slice(0, 2000);
-          if (content) parts.push(`task:\n${content}`);
-        } catch { /* task file not found */ }
-      }
-      laneContext = ` | ${parts.join(' ')}`;
-    }
-
-    console.log(JSON.stringify({
-      continue: true,
-      suppressOutput: true,
-      hookSpecificOutput: {
-        hookEventName: 'SubagentStart',
-        additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}${laneContext}`,
       },
-    }));
-  } catch (error) {
-    handleHookError(error, 'subagent-start', rootCwd);
-  }
-}
+      recent_agents: appendRecent(current.recent_agents, {
+        kind: 'subagent-start',
+        id: input?.agent_id || 'unknown',
+        type: agentType,
+        at: startedAt,
+        lane_id: laneId,
+      }),
+      stats: {
+        ...current.stats,
+        agent_calls: (current.stats.agent_calls || 0) + 1,
+      },
+      last_event: {
+        name: 'SubagentStart',
+        at: startedAt,
+      },
+    };
+  });
 
-main();
+  try { updateHudLine(state, updatedRuntime); } catch { /* HUD not installed */ }
+
+  if (!state) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
+  // Build analysis context when codebase-memory tools are available
+  let analysisHint = '';
+  const analysisPhases = ['design', 'isolate', 'reproduce', 'develop'];
+  if (analysisPhases.includes(phaseId) && recommended.tools?.length) {
+    analysisHint = ` | analysis: use ${recommended.tools.join(', ')} (search_graph, trace_call_path, get_architecture) for codebase context`;
+  }
+
+  // Surface layer info when structured recommendation is available
+  let layerHint = '';
+  if (recommended.layer1_team?.length) {
+    layerHint = ` | team: [${recommended.layer1_team.join(', ')}]`;
+  }
+
+  // Build lane-scoped context injection
+  let laneContext = '';
+  if (laneId && lane) {
+    const scope = Array.isArray(lane.scope) ? lane.scope : [];
+    const deps = Array.isArray(lane.dependencies) ? lane.dependencies : [];
+    const modelHint = lane.model_hint || '';
+    const parts = [`[Lane:${laneId}]`];
+    if (scope.length) parts.push(`scope:[${scope.join(',')}]`);
+    if (deps.length) parts.push(`deps:[${deps.join(',')}]`);
+    if (modelHint) parts.push(`model:${modelHint}`);
+    // Include task file content if available (max 2000 chars)
+    if (lane.task_file) {
+      try {
+        const { readFileSync } = await import('fs');
+        const content = readFileSync(lane.task_file, 'utf8').slice(0, 2000);
+        if (content) parts.push(`task:\n${content}`);
+      } catch { /* task file not found */ }
+    }
+    laneContext = ` | ${parts.join(' ')}`;
+  }
+
+  console.log(JSON.stringify({
+    continue: true,
+    suppressOutput: true,
+    hookSpecificOutput: {
+      hookEventName: 'SubagentStart',
+      additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}${laneContext}`,
+    },
+  }));
+}, { name: 'subagent-start' });

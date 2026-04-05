@@ -100,7 +100,7 @@ export function readJsonFile(path, fallback = null) {
 
 export function writeJsonFile(path, value) {
   const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
-  writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`);
+  writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
   renameSync(tmp, path);
 }
 

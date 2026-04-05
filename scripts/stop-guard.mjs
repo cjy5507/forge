@@ -12,8 +12,7 @@
 //                                  waiting for user input
 //   input.stop_hook_active       — set by the host to prevent recursive blocks
 
-import { readStdin } from './lib/stdin.mjs';
-import { handleHookError } from './lib/error-handler.mjs';
+import { runHook } from './lib/hook-runner.mjs';
 import {
   appendRecent,
   isProjectActive,
@@ -28,20 +27,13 @@ import {
 
 const CRITICAL_PHASES = new Set(['develop', 'fix', 'qa']);
 
-async function main() {
+runHook(async (input) => {
   const envTier = (process.env.FORGE_TIER || '').toLowerCase();
   if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
 
-  let input;
-  try {
-    input = await readStdin();
-  } catch {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
   const cwd = input?.cwd || '.';
   const state = readForgeState(cwd);
 
@@ -50,70 +42,69 @@ async function main() {
     return;
   }
 
-  try {
-    const tier = readActiveTier(cwd, state, input);
-    const phase = resolvePhase(state);
-    const isCritical = CRITICAL_PHASES.has(phase.id);
+  const tier = readActiveTier(cwd, state, input);
+  const phase = resolvePhase(state);
+  const isCritical = CRITICAL_PHASES.has(phase.id);
 
-    // For non-critical phases, only full tier gets stop protection
-    if (!isCritical && !tierAtLeast(tier, 'full')) {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-      return;
-    }
+  // For non-critical phases, only full tier gets stop protection
+  if (!isCritical && !tierAtLeast(tier, 'full')) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
 
-    const lastMessage = String(input?.last_assistant_message || '');
-    const interactive = messageLooksInteractive(lastMessage);
+  const lastMessage = String(input?.last_assistant_message || '');
+  const interactive = messageLooksInteractive(lastMessage);
 
-    const runtime = updateRuntimeState(cwd, current => ({
+  const runtime = updateRuntimeState(cwd, current => ({
+    ...current,
+    recent_agents: appendRecent(current.recent_agents, {
+      kind: 'main-stop-attempt',
+      phase: phase.id,
+      at: new Date().toISOString(),
+    }),
+    last_event: {
+      name: 'Stop',
+      at: new Date().toISOString(),
+    },
+  }));
+
+  if (interactive || input?.stop_hook_active === true) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
+  const pending = summarizePendingWork(state);
+
+  // Critical phases at light/medium tier get a softer warning instead of a hard block
+  if (isCritical && !tierAtLeast(tier, 'full')) {
+    const warning = `[Forge Stop Guard] Warning: stopping during critical phase "${phase.id}" may leave work incomplete. Pending: ${pending.join(', ')}.`;
+    updateRuntimeState(cwd, current => ({
       ...current,
-      recent_agents: appendRecent(current.recent_agents, {
-        kind: 'main-stop-attempt',
-        phase: phase.id,
-        at: new Date().toISOString(),
-      }),
+      stop_guard: {
+        block_count: (current.stop_guard?.block_count || 0) + 1,
+        last_reason: warning,
+        last_message: lastMessage,
+      },
+      stats: {
+        ...(current.stats || {}),
+        stop_block_count: ((current.stats || {}).stop_block_count || 0) + 1,
+      },
       last_event: {
-        name: 'Stop',
+        name: 'StopWarned',
         at: new Date().toISOString(),
       },
     }));
+    console.log(JSON.stringify({
+      continue: true,
+      suppressOutput: false,
+      stopReason: warning,
+    }));
+    return;
+  }
 
-    if (interactive || input?.stop_hook_active === true) {
-      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-      return;
-    }
-
-    const pending = summarizePendingWork(state);
-
-    // Critical phases at light/medium tier get a softer warning instead of a hard block
-    if (isCritical && !tierAtLeast(tier, 'full')) {
-      const warning = `[Forge Stop Guard] Warning: stopping during critical phase "${phase.id}" may leave work incomplete. Pending: ${pending.join(', ')}.`;
-      updateRuntimeState(cwd, current => ({
-        ...current,
-        stop_guard: {
-          block_count: (current.stop_guard?.block_count || 0) + 1,
-          last_reason: warning,
-          last_message: lastMessage,
-        },
-        stats: {
-          ...(current.stats || {}),
-          stop_block_count: ((current.stats || {}).stop_block_count || 0) + 1,
-        },
-        last_event: {
-          name: 'StopWarned',
-          at: new Date().toISOString(),
-        },
-      }));
-      console.log(JSON.stringify({
-        continue: true,
-        suppressOutput: false,
-        stopReason: warning,
-      }));
-      return;
-    }
-
-    const PHASE_TO_SKILL = { delivery: 'deliver', complete: 'info' };
-    const currentSkill = PHASE_TO_SKILL[phase.id] || phase.id;
-    const reason = `[Forge Stop Guard] The Forge pipeline for "${state.project || 'unnamed'}" is still in progress (phase: ${phase.id}). Pending: ${pending.join(', ')}.
+  const PHASE_TO_SKILL = { delivery: 'deliver', complete: 'info' };
+  const currentSkill = PHASE_TO_SKILL[phase.id] || phase.id;
+  const reason = `[Forge Stop Guard] The Forge pipeline for "${state.project || 'unnamed'}" is still in progress (phase: ${phase.id}). Pending: ${pending.join(', ')}.
 
 [MAGIC KEYWORD: FORGE:${currentSkill.toUpperCase()}]
 
@@ -122,32 +113,27 @@ Skill: forge:${currentSkill}
 
 To stop, the user can say "forge cancel".`;
 
-    updateRuntimeState(cwd, current => ({
-      ...current,
-      stop_guard: {
-        block_count: (current.stop_guard?.block_count || 0) + 1,
-        last_reason: reason,
-        last_message: lastMessage,
-      },
-      stats: {
-        ...(current.stats || {}),
-        stop_block_count: ((current.stats || {}).stop_block_count || 0) + 1,
-      },
-      last_event: {
-        name: 'StopBlocked',
-        at: new Date().toISOString(),
-      },
-    }));
+  updateRuntimeState(cwd, current => ({
+    ...current,
+    stop_guard: {
+      block_count: (current.stop_guard?.block_count || 0) + 1,
+      last_reason: reason,
+      last_message: lastMessage,
+    },
+    stats: {
+      ...(current.stats || {}),
+      stop_block_count: ((current.stats || {}).stop_block_count || 0) + 1,
+    },
+    last_event: {
+      name: 'StopBlocked',
+      at: new Date().toISOString(),
+    },
+  }));
 
-    console.log(JSON.stringify({
-      continue: true,
-      suppressOutput: true,
-      decision: 'block',
-      reason,
-    }));
-  } catch (error) {
-    handleHookError(error, 'stop-guard', cwd);
-  }
-}
-
-main();
+  console.log(JSON.stringify({
+    continue: true,
+    suppressOutput: true,
+    decision: 'block',
+    reason,
+  }));
+}, { name: 'stop-guard' });

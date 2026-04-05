@@ -60,7 +60,7 @@ When express fast-path is active, collapse the PM interview:
 5. Initialize project state:
    a. Create .forge/ directory structure:
       .forge/state.json, .forge/runtime.json, .forge/design/, .forge/contracts/, .forge/evidence/,
-      .forge/holes/, .forge/tasks/, .forge/worktrees/, .forge/checkpoints/,
+      .forge/holes/, .forge/tasks/, .forge/worktrees/,
       .forge/knowledge/, .forge/delivery-report/
    b. Copy templates/state.json → .forge/state.json
    c. Initialize `.forge/runtime.json` for helper-backed company coordination:

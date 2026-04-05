@@ -93,6 +93,21 @@ export function inferTierFromState(state = null) {
   const taskCount = state.tasks?.length || 0;
   const queueCount = state.pr_queue?.length || 0;
   const holeCount = state.holes?.length || 0;
+  const lanes = state.lanes || {};
+  const laneCount = Object.keys(lanes).length;
+  const allLanesDone = laneCount > 0 && Object.values(lanes).every(l =>
+    ['done', 'merged'].includes(String(l?.status || '').toLowerCase())
+  );
+
+  // De-escalation: delivery/complete with no holes and all lanes done → light
+  if (['delivery', 'complete'].includes(phase.id) && holeCount === 0 && allLanesDone) {
+    return 'light';
+  }
+
+  // De-escalation: fix phase with no holes → light
+  if (phase.id === 'fix' && holeCount === 0) {
+    return 'light';
+  }
 
   if (['intake', 'discovery', 'design', 'delivery'].includes(phase.id)) {
     return 'full';
@@ -111,6 +126,34 @@ export function inferTierFromState(state = null) {
   }
 
   return 'light';
+}
+
+/**
+ * Suggest tier de-escalation based on current state.
+ * Returns the current tier if no de-escalation is warranted, or a lower tier if conditions are met.
+ */
+export function suggestTierDeescalation(state = null) {
+  if (!state) return null;
+  const currentTier = normalizeTier(state.tier);
+  const phase = resolvePhase(state);
+  const holeCount = state.holes?.length || 0;
+  const taskCount = state.tasks?.length || 0;
+  const lanes = state.lanes || {};
+  const allLanesDone = Object.values(lanes).every(l =>
+    ['done', 'merged'].includes(String(l?.status || '').toLowerCase())
+  );
+
+  // De-escalation conditions
+  if (currentTier === 'full') {
+    if (phase.id === 'delivery' && holeCount === 0 && allLanesDone) return 'light';
+    if (phase.id === 'complete') return 'light';
+    if (holeCount === 0 && taskCount < 3) return 'medium';
+  }
+  if (currentTier === 'medium') {
+    if (['delivery', 'complete'].includes(phase.id) && holeCount === 0) return 'light';
+  }
+
+  return currentTier; // no change
 }
 
 function uniqueAgents(agents = []) {

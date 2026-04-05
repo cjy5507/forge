@@ -68,6 +68,12 @@ describe('detectTaskType i18n', () => {
   // English still works
   it('English: bugfix', () => expect(detectTaskType('fix this bug')).toBe('bugfix'));
   it('English: feature', () => expect(detectTaskType('add a new feature')).toBe('feature'));
+  it('English: does not classify broad architecture prompts as questions', () => {
+    expect(detectTaskType('what architecture should we use')).not.toBe('question');
+  });
+  it('English: keeps pipeline prompts with what classified as pipeline', () => {
+    expect(detectTaskType('what workflow should we use for the whole system')).toBe('pipeline');
+  });
 });
 
 describe('classifyTierFromMessage i18n', () => {

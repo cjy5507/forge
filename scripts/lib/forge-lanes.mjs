@@ -4,6 +4,8 @@ import { DEFAULT_RUNTIME, requireString } from './forge-io.mjs';
 export const LANE_REVIEW_SEQUENCE = ['none', 'pending', 'changes_requested', 'approved'];
 export const LANE_MERGE_SEQUENCE = ['none', 'queued', 'rebasing', 'ready', 'merged'];
 export const LANE_STATUS_SEQUENCE = ['pending', 'ready', 'in_progress', 'blocked', 'in_review', 'merged', 'done'];
+export const MAX_RUNTIME_LANES = 50;
+export const MAX_HANDOFF_NOTES = 100;
 
 export function normalizeLaneStatus(value) {
   if (typeof value !== 'string') {
@@ -52,7 +54,8 @@ export function normalizeHandoffNotes(entries) {
       at: typeof entry.at === 'string' ? entry.at : '',
       kind: typeof entry.kind === 'string' ? entry.kind : 'handoff',
       note: typeof entry.note === 'string' ? entry.note : '',
-    }));
+    }))
+    .slice(-MAX_HANDOFF_NOTES);
 }
 
 export function normalizeLane(lane = {}, fallbackId = '') {
@@ -85,7 +88,7 @@ export function normalizeLane(lane = {}, fallbackId = '') {
 
 export function normalizeRuntimeLanes(lanes = {}) {
   if (Array.isArray(lanes)) {
-    return Object.fromEntries(lanes.map((lane, index) => {
+    return Object.fromEntries(lanes.slice(-MAX_RUNTIME_LANES).map((lane, index) => {
       const normalized = normalizeLane(lane, lane?.id || `lane-${index + 1}`);
       return [normalized.id, normalized];
     }));
@@ -95,7 +98,7 @@ export function normalizeRuntimeLanes(lanes = {}) {
     return {};
   }
 
-  return Object.fromEntries(Object.entries(lanes).map(([id, lane]) => {
+  return Object.fromEntries(Object.entries(lanes).slice(-MAX_RUNTIME_LANES).map(([id, lane]) => {
     const normalized = normalizeLane(lane, id);
     return [normalized.id, normalized];
   }));

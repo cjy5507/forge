@@ -1,6 +1,11 @@
-import { existsSync, statSync } from 'fs';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { resolveForgeBaseDir } from './forge-io.mjs';
+
+const REQUIRED_SECTIONS = {
+  'spec.md': ['## Scope', '## Constraints'],
+  'code-rules.md': ['## Rules'],
+};
 
 export const PHASE_SEQUENCE = [
   'intake',
@@ -178,6 +183,17 @@ export function checkPhaseGate(cwd, phaseId, mode = 'build') {
         const stat = statSync(artifactPath);
         if (stat.isFile() && stat.size < MIN_ARTIFACT_BYTES) {
           missing.push(req);
+        }
+        // For artifacts with required sections, verify they exist
+        if (stat.isFile() && REQUIRED_SECTIONS[req]) {
+          try {
+            const content = readFileSync(artifactPath, 'utf8');
+            for (const section of REQUIRED_SECTIONS[req]) {
+              if (!content.includes(section)) {
+                missing.push(`${req} (missing section: ${section})`);
+              }
+            }
+          } catch {}
         }
       } catch {}
     }
