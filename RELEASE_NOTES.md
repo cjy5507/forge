@@ -1,5 +1,21 @@
 # Forge Release Notes Draft
 
+## v0.3.6
+
+Worktree guard root-resolution hotfix.
+
+### Highlights
+
+- Fixed `write-gate` so worktree writes resolve `.forge` paths from the canonical repo root
+- Fixed false missing-contract errors when writing Forge task/state files from a worktree cwd
+- Added worktree regression coverage for `.forge/tasks/...` writes and root contract/evidence lookup
+- 330 automated tests passing
+
+### Notes
+
+- This is a safety fix for Forge plugin path resolution, not a workflow surface change
+- The goal is to keep develop-phase guards strict while making worktree lanes use the correct repo-root artifacts
+
 ## v0.3.5
 
 Codex evidence and evaluation alignment release.
