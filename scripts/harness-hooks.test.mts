@@ -1980,6 +1980,33 @@ describe('write-gate phase gate enforcement', () => {
     expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
   });
 
+  it('allows .forge task writes from a worktree cwd when the repo root owns the Forge state', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    const worktreeCwd = join(forgeDir, 'worktrees', 'L1-message-stream');
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    mkdirSync(worktreeCwd, { recursive: true });
+    writeFileSync(join(forgeDir, 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# Code Rules\n\n## Rules\n\n- Use TypeScript strict mode\n');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'medium',
+      status: 'in_progress',
+      spec_approved: true,
+      design_approved: true,
+    }));
+
+    const result = runHook('write-gate.mjs', worktreeCwd, {
+      tool_name: 'Write',
+      tool_input: { file_path: '.forge/tasks/L1-message-stream.md', content: '# task' },
+    }, { env: { FORGE_TIER: 'medium' } });
+
+    expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
+  });
+
   it('allows writes when all gate requirements are met', () => {
     const forgeDir = join(tmpDir, '.forge');
     mkdirSync(join(forgeDir, 'design'), { recursive: true });
@@ -1998,6 +2025,48 @@ describe('write-gate phase gate enforcement', () => {
       tool_input: { file_path: join(tmpDir, 'src', 'app.ts'), content: 'code' },
     }, { env: { FORGE_TIER: 'light' } });
     expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
+  });
+
+  it('uses repo-root contracts and evidence when evaluating writes from a worktree cwd', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    const worktreeCwd = join(forgeDir, 'worktrees', 'L1-message-stream');
+    mkdirSync(join(forgeDir, 'design'), { recursive: true });
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    mkdirSync(join(forgeDir, 'evidence'), { recursive: true });
+    mkdirSync(worktreeCwd, { recursive: true });
+    writeFileSync(join(forgeDir, 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# Code Rules\n\n## Rules\n\n- Use TypeScript strict mode\n');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'medium',
+      status: 'in_progress',
+      spec_approved: true,
+      design_approved: true,
+    }));
+    writeRuntimeState(tmpDir, {
+      next_lane: 'shared',
+      lanes: {
+        shared: {
+          id: 'shared',
+          title: 'Shared utilities',
+          status: 'in_progress',
+          worktree_path: worktreeCwd,
+          requirement_refs: ['FR-1'],
+        },
+      },
+    });
+
+    const result = runHook('write-gate.mjs', worktreeCwd, {
+      tool_name: 'Write',
+      tool_input: { file_path: 'package.json', content: '{"dependencies":{"new-lib":"1.0.0"}}' },
+    }, { env: { FORGE_TIER: 'medium' } });
+
+    expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
+    expect(result.hookSpecificOutput?.additionalContext).toContain('[Forge] medium high write');
+    expect(result.hookSpecificOutput?.additionalContext).not.toContain('contract files in .forge/contracts/');
   });
 
   it('denies on mode-phase mismatch', () => {

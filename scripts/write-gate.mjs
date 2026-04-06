@@ -22,10 +22,24 @@ import { readEnvTier } from './lib/forge-tiers.mjs';
 // (spec, design, contracts) only apply at or past this threshold.
 const CODE_WRITING_THRESHOLD = resolvePhase({ phase_id: 'develop' }).index;
 
+function resolveForgeAwarePath(cwd = '.', filePath = '') {
+  const baseDir = resolveForgeBaseDir(cwd);
+  const target = String(filePath || '').trim();
+  if (!target) {
+    return resolve(cwd);
+  }
+
+  if (target === '.forge' || target.startsWith('.forge/')) {
+    return resolve(baseDir, target);
+  }
+
+  return resolve(cwd, target);
+}
+
 function isForgeStateFile(filePath, cwd = '.') {
   if (!filePath) return false;
   const forgeDir = resolve(resolveForgeBaseDir(cwd), '.forge');
-  const resolved = resolve(cwd, filePath);
+  const resolved = resolveForgeAwarePath(cwd, filePath);
   return resolved.startsWith(forgeDir + '/') || resolved === forgeDir;
 }
 
@@ -137,9 +151,10 @@ runHook(async (input) => {
   }
 
   const missing = [];
-  const rulesFile = `${cwd}/.forge/code-rules.md`;
-  const contractsDir = `${cwd}/.forge/contracts`;
-  const evidenceDir = `${cwd}/.forge/evidence`;
+  const forgeBaseDir = resolveForgeBaseDir(cwd);
+  const rulesFile = resolve(forgeBaseDir, '.forge', 'code-rules.md');
+  const contractsDir = resolve(forgeBaseDir, '.forge', 'contracts');
+  const evidenceDir = resolve(forgeBaseDir, '.forge', 'evidence');
   const contracts = existsSync(contractsDir)
     ? readdirSync(contractsDir).filter(file =>
         file.endsWith('.ts') || file.endsWith('.json') || file.endsWith('.mjs') || file.endsWith('.zod')
