@@ -558,7 +558,27 @@ export function shouldRefreshAnalysis(state = {}, runtime = DEFAULT_RUNTIME, { p
   };
 }
 
+function isDeliveredProject(state = {}, runtime = DEFAULT_RUNTIME) {
+  const safeState = state && typeof state === 'object' ? state : {};
+  const phase = resolvePhase(safeState);
+  return String(safeState.status || '').toLowerCase() === 'delivered'
+    || String(runtime?.delivery_readiness || '').toLowerCase() === 'delivered'
+    || phase.id === 'complete';
+}
+
 export function selectResumeSkill(state = {}, runtime = DEFAULT_RUNTIME) {
+  if (isDeliveredProject(state, runtime)) {
+    return {
+      skill: 'info',
+      reason: 'project is already delivered',
+      continuation: {
+        kind: 'complete',
+        target: 'complete',
+        detail: 'project is already delivered',
+      },
+    };
+  }
+
   const continuation = selectContinuationTarget(state, runtime);
   if (continuation.kind === 'analysis_refresh') {
     return {
@@ -577,11 +597,7 @@ export function selectResumeSkill(state = {}, runtime = DEFAULT_RUNTIME) {
 
 export function deriveNextAction(state = {}, runtime = DEFAULT_RUNTIME) {
   const safeState = state && typeof state === 'object' ? state : {};
-  const phase = resolvePhase(safeState);
-  const delivered = String(safeState.status || '').toLowerCase() === 'delivered'
-    || String(runtime?.delivery_readiness || '').toLowerCase() === 'delivered'
-    || phase.id === 'complete';
-  if (delivered) {
+  if (isDeliveredProject(safeState, runtime)) {
     return normalizeNextAction({
       ...DEFAULT_NEXT_ACTION,
       kind: 'complete',

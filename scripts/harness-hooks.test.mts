@@ -272,6 +272,26 @@ describe('forge harness hooks', () => {
     expect(output.hookSpecificOutput.additionalContext).toContain('saved analysis is stale');
   });
 
+  it('auto-dispatches forge info on session restore when the project is already complete', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, {
+      phase: 'complete',
+      phase_id: 'complete',
+      phase_name: 'complete',
+      status: 'delivered',
+    });
+    writeRuntimeState(cwd, {
+      active_gate: 'customer_review',
+      delivery_readiness: 'delivered',
+    });
+
+    const output = runHook('state-restore.mjs', cwd);
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
+    expect(output.hookSpecificOutput.additionalContext).not.toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Project delivered');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
+  });
+
   it('includes company-mode gate and blocker hints on SessionStart when runtime has them', () => {
     const cwd = makeWorkspace();
     writeState(cwd, { phase: 'delivery', phase_id: 'delivery', phase_name: 'delivery' });
@@ -1253,6 +1273,24 @@ describe('phase-detector hook', () => {
     expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:analyze');
     expect(output.hookSpecificOutput.additionalContext).toContain('stale');
     expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+  });
+
+  it('routes explicit forge continue requests to info when the project is already complete', () => {
+    writeState(tmpDir, {
+      phase: 'complete',
+      phase_id: 'complete',
+      phase_name: 'complete',
+      status: 'delivered',
+    });
+    writeRuntimeState(tmpDir, {
+      active_gate: 'customer_review',
+      delivery_readiness: 'delivered',
+    });
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge continue' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('Project delivered');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
   });
 
   it('routes generic forge requests to analyze first in repair mode when analysis is missing', () => {

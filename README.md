@@ -77,6 +77,17 @@ Typical uses:
 - dependency tracing before a fix
 - quality/risk scanning before review
 
+### `forge eval` — turn a run into a scorecard
+
+Compares baseline vs harness runs and emits both machine-readable JSON and a markdown
+report under `.forge/eval/`. If you do not provide a harness summary, Forge derives one
+from the current runtime, status, traceability, and delivery artifacts.
+
+Typical uses:
+- capture a Codex or Claude smoke run as an evidence artifact
+- compare with/without-Forge outcomes for the same task
+- append lightweight product proof to `.forge/events/eval.jsonl`
+
 ### `forge` — start a new project or fix an existing one
 
 Forge detects whether you're building something new or fixing something broken,
@@ -246,7 +257,7 @@ lookups during fact-checking. No API key required.
 | Host | Status | Notes |
 |------|--------|-------|
 | Claude Code | **Verified** | Full hook lifecycle, subagent routing, lane management |
-| Codex | **Degraded support** | Skills, `.forge/` state, `forge-status`, and `next_action` surfaces work from shared runtime helpers. Claude-style hook lifecycle parity is not yet achieved. |
+| Codex | **Degraded support** | Live smoke verified `forge status`, `forge info`, `forge continue`, and `forge analyze` on shared runtime/skill surfaces. Claude-style hook lifecycle parity is not yet achieved. |
 
 Forge's file-based state system (`.forge/`, `state.json`, `runtime.json`) is host-agnostic.
 The automation layer (hooks, subagent tracking, stop guards) currently requires Claude Code.

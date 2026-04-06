@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
@@ -7,8 +7,9 @@ import { fileURLToPath } from 'url';
 
 import {
   parseHoleReport,
+  readHoleSummaries,
   renderDeliveryReport,
-  summarizeHoles,
+  scopeHoleSummariesToProject,
   writeDeliveryReport,
 } from './lib/forge-delivery-report.mjs';
 
@@ -106,6 +107,28 @@ describe('forge delivery report', () => {
     expect(report).toContain('Coverage: 50%');
     expect(report).toContain('Verified coverage: 50%');
     expect(report).toContain('Known issue');
+  });
+
+  it('scopes hole summaries to the active project window', () => {
+    const cwd = makeWorkspace();
+    workspaces.push(cwd);
+
+    writeFileSync(join(cwd, '.forge', 'state.json'), JSON.stringify({
+      project: 'scoped-project',
+      created_at: '2026-04-06T00:00:00.000Z',
+    }, null, 2));
+    const oldHolePath = join(cwd, '.forge', 'holes', 'HOLE-OLD.md');
+    const newHolePath = join(cwd, '.forge', 'holes', 'HOLE-NEW.md');
+    writeFileSync(oldHolePath, '# Old\n\n**Severity:** blocker\n**Status:** open\n');
+    writeFileSync(newHolePath, '# New\n\n**Severity:** major\n**Status:** open\n');
+    utimesSync(oldHolePath, new Date('2026-04-05T00:00:00.000Z'), new Date('2026-04-05T00:00:00.000Z'));
+    utimesSync(newHolePath, new Date('2026-04-06T01:00:00.000Z'), new Date('2026-04-06T01:00:00.000Z'));
+
+    const holes = scopeHoleSummariesToProject(readHoleSummaries(cwd), {
+      created_at: '2026-04-06T00:00:00.000Z',
+    });
+    expect(holes).toHaveLength(1);
+    expect(holes[0].filePath).toBe(newHolePath);
   });
 
   it('writes report path from CLI', () => {

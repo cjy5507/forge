@@ -135,8 +135,10 @@ runHook(async (input) => {
 
       if (currentSkill === 'continue') {
         const resume = selectResumeSkill(state, runtime);
-        if (resume.skill === 'analyze') {
-          currentSkill = 'analyze';
+        if (resume.skill && resume.skill !== 'continue') {
+          currentSkill = resume.skill;
+        }
+        if (currentSkill === 'analyze') {
           context = `${compactForgeContext(state, adaptive.runtime)} → forge:analyze (${resume.reason}) [${adaptive.recommendedAgents.join(', ')}]`;
         }
       }

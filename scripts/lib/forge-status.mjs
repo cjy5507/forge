@@ -1,8 +1,7 @@
 import { spawnSync } from 'child_process';
-import { statSync } from 'fs';
 import { basename } from 'path';
 import { readForgeState, readRuntimeState, resolvePhase, normalizeRuntimeState, summarizeLaneCounts, normalizeRuntimeLanes } from './forge-state.mjs';
-import { readHoleSummaries, summarizeHoles } from './forge-delivery-report.mjs';
+import { readHoleSummaries, scopeHoleSummariesToProject, summarizeHoles } from './forge-delivery-report.mjs';
 
 const PHASE_LABELS = {
   intake: 'Intake',
@@ -90,23 +89,6 @@ function getLatestForgeTag(cwd = '.') {
     .filter(Boolean)[0] || '';
 }
 
-function filterHoleSummariesForActiveProject(holes = [], state = {}) {
-  const createdAt = typeof state?.created_at === 'string' ? state.created_at : '';
-  const createdMs = createdAt ? new Date(createdAt).getTime() : NaN;
-  if (!Number.isFinite(createdMs) || createdMs <= 0) {
-    return holes;
-  }
-
-  return holes.filter((hole) => {
-    try {
-      const stats = statSync(hole.filePath);
-      return stats.mtime.getTime() >= createdMs;
-    } catch {
-      return true;
-    }
-  });
-}
-
 export function buildStatusModel({
   cwd = '.',
   state = undefined,
@@ -122,7 +104,7 @@ export function buildStatusModel({
   const currentRuntime = normalizeRuntimeState(runtime ?? readRuntimeState(cwd), { state: currentState });
   const phase = resolvePhase(currentState);
   const counts = summarizeLaneCounts(currentRuntime);
-  const scopedHoles = filterHoleSummariesForActiveProject(readHoleSummaries(cwd), currentState);
+  const scopedHoles = scopeHoleSummariesToProject(readHoleSummaries(cwd), currentState);
   const holes = holeSummary ?? summarizeHoles(scopedHoles);
   const tag = latestTag ?? getLatestForgeTag(cwd);
   const pct = phaseProgress(phase, currentRuntime);

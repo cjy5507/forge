@@ -11,6 +11,7 @@
 // host does not understand it.
 
 import { runHook } from './lib/hook-runner.mjs';
+import { buildStatusModel, renderStatusText } from './lib/forge-status.mjs';
 import {
   compactForgeContext,
   readForgeState,
@@ -99,6 +100,15 @@ runHook(async (input) => {
   if (staleTier === 'fresh' || staleTier === 'warm') {
     const resume = selectResumeSkill(normalized, nextRuntime);
     const resumeSkill = resume.skill || 'continue';
+    if (resumeSkill === 'info') {
+      additionalContext = `${renderStatusText(buildStatusModel({
+        cwd,
+        state: normalized,
+        runtime: nextRuntime,
+      })).trim()}
+
+[Forge] Canonical status surface from scripts/forge-status.mjs`;
+    }
     const warmNote = staleTier === 'warm'
       ? '\nResume from the saved handoff first, then continue the current phase from that context.'
       : '';

@@ -29,6 +29,12 @@ the single source of truth for project progress, decisions, and work tracking.
 ├── evidence/               # Fact-checker verification results
 │   └── *.md                # One file per verified claim
 │
+├── eval/                   # A/B scorecards and machine-readable comparisons
+│   └── *.json / *.md       # Baseline vs harness reports
+│
+├── events/                 # Append-only operational events
+│   └── *.jsonl             # eval runs, handoffs, retries, blockers
+│
 ├── worktrees/              # Git worktree directories (Phase 3, transient)
 │   └── {lane-name}/        # Isolated working copy per lane
 │
@@ -58,6 +64,8 @@ the single source of truth for project progress, decisions, and work tracking.
 | tasks/           | Phase 3    | Phase 3        | develop (scope)            |
 | holes/           | Phase 4    | Phase 4–5      | fix, status                |
 | evidence/        | Phase 2+   | Any phase      | fact-checker               |
+| eval/            | Phase 2+   | Any phase      | forge eval, delivery proof |
+| events/          | Phase 2+   | Any phase      | forge eval, runtime audits |
 | worktrees/       | Phase 3    | Cleaned up after Phase 3 | develop         |
 | checkpoints/     | Any phase  | Before compaction | continue               |
 | delivery-report/ | Phase 6    | Phase 6        | deliver                    |
@@ -102,6 +110,24 @@ Tracks parallel work during development and fix phases. Each lane has:
 Runtime also tracks:
 - **analysis**: last saved analysis metadata, confidence, staleness
 - **next_action**: canonical next step used by restore, resume, stop-guard, HUD, and status surfaces
+
+### eval/*.json and eval/*.md
+
+`forge eval` writes side-by-side machine-readable and narrative scorecards:
+
+- `.forge/eval/{slug}.json` — normalized metrics, baseline/harness summaries, recommendation
+- `.forge/eval/{slug}.md` — human-readable A/B report
+- `.forge/events/eval.jsonl` — append-only record of each generated scorecard
+
+The MVP metric set is:
+
+- completion
+- first-pass success
+- retry count
+- tests passed
+- regressions
+- output consistency
+- user corrections
 
 Example next action:
 

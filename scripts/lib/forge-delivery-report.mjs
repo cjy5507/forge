@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { readTraceabilitySnapshot, summarizeTraceability } from './forge-traceability.mjs';
 
@@ -91,6 +91,23 @@ export function summarizeHoles(holes = []) {
     majorCount: majors.length,
     minorCount: minors.length + cosmetics.length,
   };
+}
+
+export function scopeHoleSummariesToProject(holes = [], state = {}) {
+  const createdAt = typeof state?.created_at === 'string' ? state.created_at : '';
+  const createdMs = createdAt ? new Date(createdAt).getTime() : NaN;
+  if (!Number.isFinite(createdMs) || createdMs <= 0) {
+    return holes;
+  }
+
+  return holes.filter((hole) => {
+    try {
+      const stats = statSync(hole.filePath);
+      return stats.mtime.getTime() >= createdMs;
+    } catch {
+      return true;
+    }
+  });
 }
 
 export function renderDeliveryReport({
@@ -207,7 +224,7 @@ export function writeDeliveryReport(cwd = '.') {
   const pkg = pkgText ? JSON.parse(pkgText) : {};
 
   const traceabilitySummary = summarizeTraceability(readTraceabilitySnapshot(cwd));
-  const holeSummary = summarizeHoles(readHoleSummaries(cwd));
+  const holeSummary = summarizeHoles(scopeHoleSummariesToProject(readHoleSummaries(cwd), state));
   const markdown = renderDeliveryReport({
     project: state.project || 'unnamed-project',
     version: pkg.version || state.version || '0.0.0',
