@@ -105,7 +105,11 @@ Tracks parallel work during development and fix phases. Each lane has:
 - **owner_role**: which agent role owns the lane
 - **worktree_path**: isolated git worktree location
 - **dependencies**: upstream lanes that must complete first
+- **review_state**: review progress (`none | pending | changes_requested | approved`)
+- **merge_state**: integration progress (`none | queued | rebasing | ready | merged`)
 - **handoff_notes**: ordered status updates for session continuity
+
+Approved / merge-ready lanes should be merged before starting more implementation scope; otherwise merge debt accumulates and later rebases become high-conflict.
 
 Runtime also tracks:
 - **analysis**: last saved analysis metadata, confidence, staleness

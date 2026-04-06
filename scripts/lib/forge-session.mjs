@@ -489,8 +489,40 @@ export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME) 
     };
   }
 
-  // Priority 3: In-progress lane with handoff notes
   const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
+  const prioritizedLane = selectNextLane(runtime);
+  const prioritizedLaneRecord = prioritizedLane
+    ? normalizeLane(runtime?.lanes?.[prioritizedLane], prioritizedLane)
+    : null;
+  if (prioritizedLaneRecord?.merge_state === 'rebasing') {
+    return {
+      kind: 'next_lane',
+      target: prioritizedLane,
+      detail: '',
+    };
+  }
+  if (prioritizedLaneRecord?.review_state === 'changes_requested') {
+    return {
+      kind: 'next_lane',
+      target: prioritizedLane,
+      detail: '',
+    };
+  }
+  const mergeReadyLane = lanes.find(
+    lane => lane.review_state === 'approved' || lane.merge_state === 'ready' || lane.merge_state === 'queued',
+  );
+  if (mergeReadyLane) {
+    const detail = mergeReadyLane.merge_state === 'queued'
+      ? 'queued for merge; land it before starting more work'
+      : 'approved and ready to merge; land it before starting more work';
+    return {
+      kind: 'merge_lane',
+      target: mergeReadyLane.id,
+      detail,
+    };
+  }
+
+  // Priority 3: In-progress lane with handoff notes
   const activeWithHandoff = lanes.find(
     lane => lane.status === 'in_progress' && lane.handoff_notes && lane.handoff_notes.length > 0
   );
@@ -620,10 +652,21 @@ export function deriveNextAction(state = {}, runtime = DEFAULT_RUNTIME) {
     summary = `Resolve customer blocker${continuation.detail ? ` — ${continuation.detail}` : ''}`;
   } else if (continuation.kind === 'internal_blocker') {
     summary = `Clear internal blocker${continuation.detail ? ` — ${continuation.detail}` : ''}`;
+  } else if (continuation.kind === 'merge_lane') {
+    summary = `Merge lane ${continuation.target}${continuation.detail ? ` — ${continuation.detail}` : ''}`;
   } else if (continuation.kind === 'active_lane') {
     summary = `Resume lane ${continuation.target}${continuation.detail ? ` — ${continuation.detail}` : ''}`;
   } else if (continuation.kind === 'next_lane') {
-    summary = `Continue lane ${continuation.target}`;
+    const lane = continuation.target ? normalizeLane(runtime?.lanes?.[continuation.target], continuation.target) : null;
+    if (lane?.merge_state === 'rebasing') {
+      summary = `Rebase lane ${continuation.target}`;
+    } else if (lane?.review_state === 'changes_requested') {
+      summary = `Revise lane ${continuation.target}`;
+    } else if (lane?.status === 'in_review') {
+      summary = `Review lane ${continuation.target}`;
+    } else {
+      summary = `Continue lane ${continuation.target}`;
+    }
   } else if (continuation.kind === 'phase') {
     summary = `Continue phase ${continuation.target}`;
   }
@@ -716,6 +759,10 @@ export function compactForgeContext(state, runtime = DEFAULT_RUNTIME) {
     focusHint = ' rebase';
   } else if (nextLaneRecord?.review_state === 'changes_requested') {
     focusHint = ' review!';
+  } else if (nextLaneRecord?.review_state === 'approved' || nextLaneRecord?.merge_state === 'ready') {
+    focusHint = ' merge';
+  } else if (nextLaneRecord?.merge_state === 'queued') {
+    focusHint = ' queue';
   } else if (nextLaneRecord?.status === 'in_review') {
     focusHint = ' review';
   }

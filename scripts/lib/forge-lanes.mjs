@@ -163,6 +163,9 @@ export function selectNextLane(runtime = DEFAULT_RUNTIME) {
   const priorityChecks = [
     lane => lane.merge_state === 'rebasing',
     lane => lane.review_state === 'changes_requested',
+    lane => lane.review_state === 'approved',
+    lane => lane.merge_state === 'ready',
+    lane => lane.merge_state === 'queued',
     lane => lane.status === 'in_progress',
     lane => lane.status === 'ready',
     lane => lane.status === 'in_review',
@@ -190,6 +193,12 @@ export function summarizeLaneBriefs(runtime = DEFAULT_RUNTIME, limit = 3) {
       }
       if (lane.review_state === 'changes_requested') {
         return `${lane.id}:changes`;
+      }
+      if (lane.review_state === 'approved' || lane.merge_state === 'ready') {
+        return `${lane.id}:merge`;
+      }
+      if (lane.merge_state === 'queued') {
+        return `${lane.id}:queued`;
       }
       return `${lane.id}:${lane.status}`;
     });

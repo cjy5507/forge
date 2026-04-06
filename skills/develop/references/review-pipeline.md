@@ -28,3 +28,4 @@ Use only when architecture risk exists:
 ## Worktree rule
 
 Each module gets its own worktree. Rebase remaining worktrees after each merge.
+Approved or merge-ready lanes are not "done later" work. Land them immediately before opening more implementation scope.

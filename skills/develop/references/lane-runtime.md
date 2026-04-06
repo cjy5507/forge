@@ -12,6 +12,8 @@ Forge lane orchestration is file-backed. The canonical state lives in `.forge/ru
 - `lanes.<lane-id>.dependencies[]` — upstream lane ids; this is the lane graph
 - `lanes.<lane-id>.session_handoff_notes` — latest handoff summary
 - `lanes.<lane-id>.handoff_notes[]` — ordered status and handoff notes
+- `lanes.<lane-id>.review_state` — `none | pending | changes_requested | approved`
+- `lanes.<lane-id>.merge_state` — `none | queued | rebasing | ready | merged`
 - `active_worktrees` — lane-to-worktree lookup
 - `next_lane` — the next lane Forge should continue
 
@@ -71,4 +73,6 @@ node scripts/forge-lane-runtime.mjs summarize-lanes
 - Every lane gets a worktree created through `scripts/forge-worktree.mjs`.
 - Every lane transition updates `.forge/runtime.json`.
 - Handoff notes are required before review, reassignment, or merge coordination.
+- Approved / merge-ready lanes should be surfaced and landed before new implementation work starts.
+- `subagent-stop` will auto-infer narrow control-tower signals from final notes such as `approved`, `changes requested`, `ready to merge`, and `needs rebase`.
 - The Lead Developer manages the lane graph; no helper auto-merges or auto-rebases on its own.

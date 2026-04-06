@@ -30,6 +30,7 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
 7. Every created worktree/task must have a runtime lane record before dispatch
 8. Handoff notes are required before review or reassignment
 9. Explicit review, merge, and rebase states must be reflected in runtime
+10. Zero merge debt before new scope — approved or merge-ready lanes must be landed before starting more implementation work unless a blocker is explicitly recorded
 </Core_Rules>
 
 <Hybrid_Dispatch>
@@ -157,6 +158,9 @@ Layer 2 — Isolated Subagent (parallel execution):
    - Task file content (up to 2000 chars)
 
    **Wait for each batch to complete before starting the next batch.**
+   If any lane in the batch reaches `review_state=approved`, `merge_state=ready`, or `merge_state=queued`,
+   stop opening more implementation scope and land that lane first. Merge debt is a control-tower blocker,
+   not background work for later.
    Batches with dependencies must run sequentially; lanes within a batch run in parallel.
 
    Lane owner assigned via:
@@ -228,12 +232,19 @@ Layer 2 — Isolated Subagent (parallel execution):
    - Only invoked if Lead flags architectural concerns
    -> Reject = CTO provides redesign guidance
 
-   All tiers approve -> merge to main
+   All tiers approve -> mark the lane review-approved / merge-ready in runtime, then merge to main:
+   ```
+   node scripts/forge-lane-runtime.mjs mark-review-state --lane {module} --state approved --note "Lead/CTO review approved"
+   node scripts/forge-lane-runtime.mjs mark-merge-state --lane {module} --state ready --note "Ready to merge after review approval"
+   ```
+   Leaving approved lanes unmerged creates merge debt and weakens the living standard for later lanes.
 
 9. After each merge, update the lane record, then rebase all other active worktrees:
    node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status merged --note "Merged to main"
    node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status done --note "Worktree cleaned up"
    cd .forge/worktrees/{other-module} && git rebase main
+   - Do not accumulate multiple approved lanes for a later mega-merge. The moment a lane is approved or merge-ready,
+     land it, rebase the remaining worktrees, and only then continue the next batch.
    - If rebase conflicts: developer resolves in their worktree
    - If conflict is architectural: escalate to Lead
    - If a lane is waiting on rebase, mark that in runtime so status/continue can surface it as an active control-tower signal.

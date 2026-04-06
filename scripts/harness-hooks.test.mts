@@ -1086,11 +1086,27 @@ describe('lane runtime helpers', () => {
   it('selectNextLane prefers explicit lane and then priority order', () => {
     expect(selectNextLane({ next_lane: 'ui', lanes: { ui: { id: 'ui', status: 'blocked' } } })).toBe('ui');
     expect(selectNextLane({ lanes: { api: { id: 'api', status: 'ready' }, worker: { id: 'worker', status: 'in_progress' } } })).toBe('worker');
+    expect(selectNextLane({
+      lanes: {
+        worker: { id: 'worker', status: 'in_progress' },
+        review: { id: 'review', status: 'in_review', review_state: 'approved' },
+      },
+    })).toBe('review');
   });
 
   it('summarizeLaneBriefs produces compact lane labels', () => {
     const briefs = summarizeLaneBriefs({ lanes: { api: { id: 'api', status: 'ready' }, doneLane: { id: 'doneLane', status: 'done' } } });
     expect(briefs).toEqual(['api:ready']);
+  });
+
+  it('summarizeLaneBriefs marks merge-ready lanes explicitly', () => {
+    const briefs = summarizeLaneBriefs({
+      lanes: {
+        api: { id: 'api', status: 'in_review', review_state: 'approved' },
+        queue: { id: 'queue', status: 'in_review', merge_state: 'queued' },
+      },
+    });
+    expect(briefs).toEqual(['api:merge', 'queue:queued']);
   });
 
   it('summarizePendingWork can include lane counts', () => {

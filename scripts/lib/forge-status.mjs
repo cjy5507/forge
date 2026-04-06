@@ -112,6 +112,11 @@ export function buildStatusModel({
   const nextAction = currentRuntime.next_action || {};
   const lanes = Object.values(normalizeRuntimeLanes(currentRuntime.lanes || {}))
     .filter(lane => lane.status !== 'done' && lane.status !== 'merged');
+  const rebasingLanes = lanes.filter(lane => lane.merge_state === 'rebasing');
+  const reviewFixLanes = lanes.filter(lane => lane.review_state === 'changes_requested');
+  const mergeReadyLanes = lanes.filter(
+    lane => lane.review_state === 'approved' || lane.merge_state === 'ready' || lane.merge_state === 'queued',
+  );
 
   let supportSummary = '';
   if (currentRuntime.customer_blockers?.length) {
@@ -124,6 +129,12 @@ export function buildStatusModel({
     supportSummary = 'Delivered';
   } else if (currentRuntime.delivery_readiness === 'ready_for_review') {
     supportSummary = 'Ready for review — run forge deliver to finalize';
+  } else if (rebasingLanes.length > 0) {
+    supportSummary = `Rebase now: ${rebasingLanes.map(lane => lane.id).join(', ')}.`;
+  } else if (reviewFixLanes.length > 0) {
+    supportSummary = `Review changes requested: ${reviewFixLanes.map(lane => lane.id).join(', ')}.`;
+  } else if (mergeReadyLanes.length > 0) {
+    supportSummary = `Merge now: ${mergeReadyLanes.map(lane => lane.id).join(', ')}.`;
   } else if (counts.in_progress > 0) {
     const activeNames = lanes.filter(lane => lane.status === 'in_progress').map(lane => lane.id);
     supportSummary = `Active: ${activeNames.join(', ')}.`;
@@ -134,6 +145,18 @@ export function buildStatusModel({
   const laneDetails = lanes.map(lane => {
     const lastNote = lane.handoff_notes?.[lane.handoff_notes.length - 1];
     const noteText = lastNote?.note ? ` — ${lastNote.note}` : '';
+    if (lane.merge_state === 'rebasing') {
+      return `${lane.id} (${lane.owner_role || '?'}, rebasing)${noteText}`;
+    }
+    if (lane.review_state === 'changes_requested') {
+      return `${lane.id} (${lane.owner_role || '?'}, changes_requested)${noteText}`;
+    }
+    if (lane.review_state === 'approved' || lane.merge_state === 'ready') {
+      return `${lane.id} (${lane.owner_role || '?'}, merge-ready)${noteText}`;
+    }
+    if (lane.merge_state === 'queued') {
+      return `${lane.id} (${lane.owner_role || '?'}, queued-for-merge)${noteText}`;
+    }
     if (lane.status === 'blocked') {
       return `${lane.id} (${lane.owner_role || '?'}, blocked) — ${lane.blocked_reason || 'no reason'}`;
     }

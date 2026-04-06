@@ -81,6 +81,72 @@ describe('forge status helper', () => {
     expect(text).toContain('Harness: tier=medium');
   });
 
+  it('surfaces merge-ready lanes ahead of active implementation in status output', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'merge-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      lanes: {
+        api: {
+          id: 'api',
+          status: 'in_review',
+          owner_role: 'developer',
+          review_state: 'approved',
+          handoff_notes: [{ note: 'Approved after lead review' }],
+        },
+        ui: {
+          id: 'ui',
+          status: 'in_progress',
+          owner_role: 'publisher',
+          handoff_notes: [{ note: 'Still polishing copy' }],
+        },
+      },
+    });
+
+    const model = buildStatusModel({ cwd });
+    expect(model?.next_action.summary).toContain('Merge lane api');
+    expect(model?.support_summary).toBe('Merge now: api.');
+    expect(model?.lanes.details).toContain('api (developer, merge-ready) — Approved after lead review');
+  });
+
+  it('surfaces rebasing lanes ahead of active implementation in status output', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'rebase-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      lanes: {
+        api: {
+          id: 'api',
+          status: 'in_progress',
+          owner_role: 'developer',
+          merge_state: 'rebasing',
+          handoff_notes: [{ note: 'Need rebase after main moved' }],
+        },
+        ui: {
+          id: 'ui',
+          status: 'in_progress',
+          owner_role: 'publisher',
+          handoff_notes: [{ note: 'Still polishing copy' }],
+        },
+      },
+    });
+
+    const model = buildStatusModel({ cwd });
+    expect(model?.next_action.summary).toContain('Rebase lane api');
+    expect(model?.support_summary).toBe('Rebase now: api.');
+    expect(model?.lanes.details).toContain('api (developer, rebasing) — Need rebase after main moved');
+  });
+
   it('prints compact status from the CLI', () => {
     const cwd = makeWorkspace();
     writeForgeState(cwd, {

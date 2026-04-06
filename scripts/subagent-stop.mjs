@@ -14,6 +14,9 @@
 import { runHook } from './lib/hook-runner.mjs';
 import {
   appendRecent,
+  markLaneMergeState,
+  markLaneReviewState,
+  recordLaneHandoff,
   readActiveTier,
   readForgeState,
   resolveForgeBaseDir,
@@ -22,6 +25,36 @@ import {
   updateRuntimeState,
 } from './lib/forge-state.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
+
+function inferLaneControlSignals(noteText = '') {
+  const text = String(noteText || '').trim();
+  if (!text) {
+    return { reviewState: '', mergeState: '' };
+  }
+
+  const normalized = text.toLowerCase();
+  const hasChangesRequested = /\bchanges? requested\b|\brequest changes\b|\bneeds changes\b/.test(normalized);
+  const hasApproved = !/\bnot approved\b|\bnot lgtm\b/.test(normalized)
+    && (/\blgtm\b|\blooks good to me\b|\bapproved\b|\bapproval\b/.test(normalized));
+
+  let reviewState = '';
+  if (hasChangesRequested) {
+    reviewState = 'changes_requested';
+  } else if (hasApproved) {
+    reviewState = 'approved';
+  }
+
+  let mergeState = '';
+  if (/\brebas(?:e|ing)\b|\bneeds? rebase\b|\brebase required\b/.test(normalized)) {
+    mergeState = 'rebasing';
+  } else if (/\bqueued for merge\b|\bqueue(?:d)? to merge\b/.test(normalized)) {
+    mergeState = 'queued';
+  } else if (/\bready to merge\b|\bready for merge\b|\bmerge-ready\b|\bmerge ready\b/.test(normalized)) {
+    mergeState = 'ready';
+  }
+
+  return { reviewState, mergeState };
+}
 
 runHook(async (input) => {
   const envTier = readEnvTier();
@@ -49,30 +82,9 @@ runHook(async (input) => {
     const nextAgents = { ...current.active_agents };
     delete nextAgents[agentId];
     const noteText = String(input?.last_assistant_message || '').trim();
-    const nextLanes = laneId
-      ? {
-          ...current.lanes,
-          [laneId]: {
-            ...lane,
-            last_event_at: stoppedAt,
-            session_handoff_notes: noteText || lane?.session_handoff_notes || '',
-            handoff_notes: [
-              ...(Array.isArray(lane?.handoff_notes) ? lane.handoff_notes : []),
-              {
-                kind: 'subagent-stop',
-                id: agentId,
-                type: input?.agent_type || activeAgent?.type || 'unknown',
-                at: stoppedAt,
-                note: noteText,
-              },
-            ],
-          },
-        }
-      : current.lanes;
-
-    return {
+    const signals = inferLaneControlSignals(noteText);
+    let nextRuntime = {
       ...current,
-      lanes: nextLanes,
       active_agents: nextAgents,
       recent_agents: appendRecent(current.recent_agents, {
         kind: 'subagent-stop',
@@ -86,6 +98,30 @@ runHook(async (input) => {
         at: stoppedAt,
       },
     };
+
+    if (laneId) {
+      nextRuntime = recordLaneHandoff(nextRuntime, {
+        laneId,
+        note: noteText,
+        kind: 'subagent-stop',
+      });
+
+      if (signals.reviewState) {
+        nextRuntime = markLaneReviewState(nextRuntime, {
+          laneId,
+          reviewState: signals.reviewState,
+        });
+      }
+
+      if (signals.mergeState) {
+        nextRuntime = markLaneMergeState(nextRuntime, {
+          laneId,
+          mergeState: signals.mergeState,
+        });
+      }
+    }
+
+    return nextRuntime;
   });
 
   try { updateHudLine(state, updatedRuntime); } catch { /* HUD not installed */ }

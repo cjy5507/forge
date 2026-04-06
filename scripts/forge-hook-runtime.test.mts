@@ -116,6 +116,68 @@ describe('forge runtime hook integration', () => {
     expect(runtime.lanes.api.session_handoff_notes).toContain('tests are green');
   });
 
+  it('infers review approval and merge readiness from subagent stop notes', () => {
+    const root = makeWorkspace();
+    const worktreeCwd = join(root, '.forge', 'worktrees', 'api');
+    mkdirSync(worktreeCwd, { recursive: true });
+    writeState(root);
+    writeRuntimeState(root, {
+      lanes: {
+        api: {
+          id: 'api',
+          title: 'API lane',
+          status: 'in_review',
+          review_state: 'pending',
+          owner_role: 'lead-dev',
+          worktree_path: worktreeCwd,
+        },
+      },
+    });
+
+    const stop = runHook('subagent-stop.mjs', worktreeCwd, {
+      agent_id: 'agent-review',
+      agent_type: 'code-reviewer',
+      last_assistant_message: 'LGTM. Approved and ready to merge after smoke checks.',
+    });
+    expect(stop.status).toBe(0);
+
+    const runtime = readRuntime(root);
+    expect(runtime.lanes.api.review_state).toBe('approved');
+    expect(runtime.lanes.api.merge_state).toBe('ready');
+    expect(runtime.next_action.summary).toContain('Merge lane api');
+  });
+
+  it('infers review changes and rebase work from subagent stop notes', () => {
+    const root = makeWorkspace();
+    const worktreeCwd = join(root, '.forge', 'worktrees', 'api');
+    mkdirSync(worktreeCwd, { recursive: true });
+    writeState(root);
+    writeRuntimeState(root, {
+      lanes: {
+        api: {
+          id: 'api',
+          title: 'API lane',
+          status: 'in_review',
+          review_state: 'pending',
+          owner_role: 'lead-dev',
+          worktree_path: worktreeCwd,
+        },
+      },
+    });
+
+    const stop = runHook('subagent-stop.mjs', worktreeCwd, {
+      agent_id: 'agent-review',
+      agent_type: 'code-reviewer',
+      last_assistant_message: 'Changes requested. Main moved, so this lane needs rebase before re-review.',
+    });
+    expect(stop.status).toBe(0);
+
+    const runtime = readRuntime(root);
+    expect(runtime.lanes.api.review_state).toBe('changes_requested');
+    expect(runtime.lanes.api.merge_state).toBe('rebasing');
+    expect(runtime.next_action.summary).toContain('Rebase lane api');
+  });
+
   it('records lane-specific failure context for git and review style failures', () => {
     const root = makeWorkspace();
     const worktreeCwd = join(root, '.forge', 'worktrees', 'api');

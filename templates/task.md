@@ -52,6 +52,8 @@
 - Review owner: {{reviewer}}
 - Review handoff trigger:
   - Update lane status to `in_review`
+- Merge gate:
+  - If review is approved or merge becomes ready, land this task before opening more implementation scope
 - Review notes:
   - {{review_note_or_none}}
 
@@ -63,3 +65,5 @@
 - Runtime commands:
   - `node scripts/forge-lane-runtime.mjs write-handoff --lane {{lane_id}} --note "<summary>"`
   - `node scripts/forge-lane-runtime.mjs update-lane-status --lane {{lane_id}} --status <pending|ready|in_progress|blocked|in_review|merged|done>`
+  - `node scripts/forge-lane-runtime.mjs mark-review-state --lane {{lane_id}} --state <pending|changes_requested|approved>`
+  - `node scripts/forge-lane-runtime.mjs mark-merge-state --lane {{lane_id}} --state <queued|rebasing|ready|merged>`

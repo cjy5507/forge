@@ -162,6 +162,24 @@ describe('forge runtime core', () => {
     expect(lane).toBe('ui');
   });
 
+  it('prioritizes merge-ready lanes before more implementation work', () => {
+    const lane = selectNextLane({
+      lanes: {
+        worker: {
+          id: 'worker',
+          status: 'in_progress',
+        },
+        api: {
+          id: 'api',
+          status: 'in_review',
+          review_state: 'approved',
+        },
+      },
+    });
+
+    expect(lane).toBe('api');
+  });
+
   it('ignores explicit next_lane when that lane is already terminal', () => {
     const lane = selectNextLane({
       next_lane: 'api',
@@ -290,6 +308,66 @@ describe('forge runtime core', () => {
     const parsed = JSON.parse(summary.stdout);
     expect(parsed.next_lane).toBe('api');
     expect(parsed.briefs).toContain('api:changes');
+  });
+
+  it('surfaces merge-ready lanes in next action summaries', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      lanes: {
+        api: {
+          id: 'api',
+          status: 'in_review',
+          review_state: 'approved',
+          handoff_notes: [{ note: 'Approved after lead review' }],
+        },
+        ui: {
+          id: 'ui',
+          status: 'in_progress',
+          handoff_notes: [{ note: 'Still wiring tests' }],
+        },
+      },
+    });
+
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.next_lane).toBe('api');
+    expect(runtime.next_action.summary).toContain('Merge lane api');
+  });
+
+  it('surfaces rebasing lanes in next action summaries before active work', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      lanes: {
+        api: {
+          id: 'api',
+          status: 'in_progress',
+          merge_state: 'rebasing',
+          handoff_notes: [{ note: 'Need rebase after auth merged' }],
+        },
+        ui: {
+          id: 'ui',
+          status: 'in_progress',
+          handoff_notes: [{ note: 'Still wiring tests' }],
+        },
+      },
+    });
+
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.next_lane).toBe('api');
+    expect(runtime.next_action.summary).toContain('Rebase lane api');
   });
 
   it('includes next action in human-readable summarize-lanes output', () => {
