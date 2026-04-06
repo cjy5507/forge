@@ -1,5 +1,22 @@
 # Forge Release Notes Draft
 
+## v0.3.5
+
+Codex evidence and evaluation alignment release.
+
+### Highlights
+
+- Added `forge eval` MVP with machine-readable scorecards and markdown reports under `.forge/eval/`
+- Added live Codex smoke evidence for `forge status`, `forge info`, `forge continue`, and `forge analyze`
+- Fixed delivered-project resume routing so terminal projects collapse to the canonical info surface
+- Unified hole scoping across status, delivery, and evaluation so product proof surfaces stop drifting
+- 328 automated tests passing
+
+### Notes
+
+- Codex support remains explicitly degraded for lifecycle hooks; the verified surface is runtime, status, continue, and analysis
+- `forge eval` is ready to capture harness runs, but still needs baseline runs for stronger A/B claims
+
 ## v0.3.4
 
 Intent traceability hardening release.
