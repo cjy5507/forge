@@ -12,6 +12,7 @@ import {
   resolveRuntimeLaneContext,
   updateRuntimeState,
 } from './lib/forge-state.mjs';
+import { readEnvTier } from './lib/forge-tiers.mjs';
 
 function summarizeLaneFailure(input) {
   const toolName = String(input?.tool_name || 'unknown');
@@ -63,7 +64,7 @@ function classifyFailure(input) {
 }
 
 runHook(async (input) => {
-  const envTier = process.env.FORGE_TIER;
+  const envTier = readEnvTier();
   if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;

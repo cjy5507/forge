@@ -162,6 +162,24 @@ describe('forge runtime core', () => {
     expect(lane).toBe('ui');
   });
 
+  it('ignores explicit next_lane when that lane is already terminal', () => {
+    const lane = selectNextLane({
+      next_lane: 'api',
+      lanes: {
+        api: {
+          id: 'api',
+          status: 'done',
+        },
+        ui: {
+          id: 'ui',
+          status: 'ready',
+        },
+      },
+    });
+
+    expect(lane).toBe('ui');
+  });
+
   it('requires a handoff note before sending a lane into review', () => {
     const cwd = makeWorkspace();
     const init = runLaneRuntime([
@@ -272,6 +290,115 @@ describe('forge runtime core', () => {
     const parsed = JSON.parse(summary.stdout);
     expect(parsed.next_lane).toBe('api');
     expect(parsed.briefs).toContain('api:changes');
+  });
+
+  it('includes next action in human-readable summarize-lanes output', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+
+    expect(runLaneRuntime([
+      'init-lane',
+      '--lane',
+      'api',
+      '--title',
+      'API lane',
+      '--worktree',
+      '.forge/worktrees/api',
+    ], cwd).status).toBe(0);
+
+    expect(runLaneRuntime([
+      'write-handoff',
+      '--lane',
+      'api',
+      '--note',
+      'Resume api lane after auth tests',
+    ], cwd).status).toBe(0);
+
+    const summary = runLaneRuntime(['summarize-lanes'], cwd);
+    expect(summary.status).toBe(0);
+    expect(summary.stdout).toContain('Next action: Continue lane api');
+  });
+
+  it('records analysis metadata to state and runtime via the lane runtime cli', () => {
+    const cwd = makeWorkspace();
+    mkdirSync(join(cwd, '.forge', 'design'), { recursive: true });
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'design',
+      spec_approved: true,
+    });
+    writeFileSync(join(cwd, '.forge', 'design', 'codebase-analysis.md'), '# Analysis\n');
+
+    const result = runLaneRuntime([
+      'record-analysis',
+      '--type',
+      'architecture',
+      '--target',
+      'scripts/lib',
+      '--artifact',
+      '.forge/design/codebase-analysis.md',
+      '--graph-health',
+      'module-only',
+      '--confidence',
+      'medium',
+      '--risk',
+      'local',
+      '--summary',
+      'Module graph only; fallback required for call paths',
+    ], cwd);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('type: architecture');
+    expect(result.stdout).toContain('artifact_exists: yes');
+
+    const state = readForgeState(cwd);
+    const runtime = readRuntimeState(cwd);
+    expect(state.analysis.last_type).toBe('architecture');
+    expect(state.analysis.last_target).toBe('scripts/lib');
+    expect(runtime.analysis.confidence).toBe('medium');
+    expect(runtime.analysis.graph_health).toBe('module-only');
+    expect(runtime.analysis.stale).toBe(false);
+  });
+
+  it('reports analysis status as stale when the artifact is missing', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+
+    expect(runLaneRuntime([
+      'record-analysis',
+      '--type',
+      'impact',
+      '--target',
+      'scripts/write-gate.mjs',
+      '--artifact',
+      '.forge/design/missing-analysis.md',
+      '--confidence',
+      'low',
+      '--graph-health',
+      'sparse',
+      '--risk',
+      'systemic',
+    ], cwd).status).toBe(0);
+
+    const status = runLaneRuntime(['analysis-status', '--json'], cwd);
+    expect(status.status).toBe(0);
+
+    const payload = JSON.parse(status.stdout);
+    expect(payload.analysis_type).toBe('impact');
+    expect(payload.artifact_exists).toBe(false);
+    expect(payload.stale).toBe(true);
+    expect(payload.risk_level).toBe('systemic');
   });
 
   it('persists session brief and session handoff through the runtime cli', () => {
@@ -665,6 +792,8 @@ describe('forge runtime core', () => {
     expect(parsed.delivery_readiness).toBe('blocked');
     expect(parsed.current_session_goal.toLowerCase()).toContain('security');
     expect(parsed.next_session_owner).toBe('security-reviewer');
+    expect(parsed.next_action.skill).toBe('continue');
+    expect(typeof parsed.next_action.summary).toBe('string');
   });
 
   it('selectContinuationTarget returns customer_blocker first', () => {
@@ -692,6 +821,38 @@ describe('forge runtime core', () => {
     expect(result.kind).toBe('internal_blocker');
     expect(result.detail).toContain('DB schema');
     expect(result.detail).toContain('cto');
+  });
+
+  it('selectContinuationTarget routes to analysis refresh when repair flow has no analysis yet', () => {
+    const state = { phase_id: 'isolate', mode: 'repair' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: [],
+      lanes: {},
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('analysis_refresh');
+    expect(result.detail).toContain('no codebase analysis');
+  });
+
+  it('selectContinuationTarget routes to analysis refresh when saved analysis is stale', () => {
+    const state = { phase_id: 'develop', mode: 'build' };
+    const runtime = {
+      customer_blockers: [],
+      internal_blockers: [],
+      analysis: {
+        last_type: 'impact',
+        last_target: 'scripts/write-gate.mjs',
+        stale: true,
+      },
+      lanes: {
+        api: { id: 'api', status: 'in_progress', handoff_notes: [{ note: 'resume api lane' }] },
+      },
+    };
+    const result = selectContinuationTarget(state, runtime);
+    expect(result.kind).toBe('analysis_refresh');
+    expect(result.target).toBe('scripts/write-gate.mjs');
+    expect(result.detail).toContain('stale');
   });
 
   it('selectContinuationTarget returns active_lane with handoff notes', () => {
@@ -735,6 +896,54 @@ describe('forge runtime core', () => {
     const result = selectContinuationTarget(state, runtime);
     expect(result.kind).toBe('phase');
     expect(result.target).toBe('design');
+  });
+
+  it('readRuntimeState derives next_action for stale analysis refresh', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      analysis: {
+        last_type: 'impact',
+        last_target: 'scripts/write-gate.mjs',
+        stale: true,
+      },
+    });
+
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.next_action.skill).toBe('analyze');
+    expect(runtime.next_action.target).toBe('scripts/write-gate.mjs');
+    expect(runtime.next_action.summary).toContain('forge:analyze');
+  });
+
+  it('readRuntimeState derives next_action for active lane resumes', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      lanes: {
+        api: {
+          id: 'api',
+          status: 'in_progress',
+          handoff_notes: [{ note: 'resume api lane after auth tests' }],
+        },
+      },
+    });
+
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.next_action.skill).toBe('continue');
+    expect(runtime.next_action.kind).toBe('active_lane');
+    expect(runtime.next_action.summary).toContain('Resume lane api');
   });
 
   it('selectContinuationTarget works with no runtime at all', () => {

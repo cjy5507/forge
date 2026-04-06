@@ -9,6 +9,7 @@ import {
   markLaneMergeState,
   markLaneReviewState,
   normalizeRuntimeLanes,
+  recordAnalysisMetadata,
   recordLaneHandoff,
   readForgeState,
   readRuntimeState,
@@ -41,6 +42,8 @@ Usage:
   node scripts/forge-lane-runtime.mjs write-session-handoff --summary <text> [--next-goal <text>] [--next-owner <owner>]
   node scripts/forge-lane-runtime.mjs set-company-gate --gate <gate> [--gate-owner <owner>] [--delivery-state <state>] [--customer-blockers <a,b>] [--internal-blockers <a,b>]
   node scripts/forge-lane-runtime.mjs auto-decompose --description <text> [--dry-run] [--json]
+  node scripts/forge-lane-runtime.mjs record-analysis --type <kind> [--target <target>] [--artifact <path>] [--graph-health <health>] [--confidence <level>] [--risk <level>] [--summary <text>] [--stale]
+  node scripts/forge-lane-runtime.mjs analysis-status [--json]
   node scripts/forge-lane-runtime.mjs summarize-lanes [--json]
   node scripts/forge-lane-runtime.mjs --help
 
@@ -69,6 +72,13 @@ Options:
   --internal-blockers comma-separated internal blockers
   --owner       current lane owner role or label
   --note        handoff or status note
+  --type        analysis type (architecture | impact | dependency | quality)
+  --target      analysis target symbol, file, module, or lane
+  --artifact    analysis artifact path
+  --graph-health graph fidelity / health descriptor
+  --confidence  confidence level for analysis result
+  --risk        risk level from analysis result
+  --stale       mark saved analysis as stale
   --json        emit machine-readable summary
   --help        show this message
 `);
@@ -164,6 +174,12 @@ function parseArgs(argv) {
       '--owner',
       '--note',
       '--description',
+      '--type',
+      '--target',
+      '--artifact',
+      '--graph-health',
+      '--confidence',
+      '--risk',
     ].includes(arg)) {
       const value = rest[index + 1];
       if (!value) {
@@ -221,7 +237,24 @@ function parseArgs(argv) {
         options.note = value.trim();
       } else if (arg === '--description') {
         options.description = value.trim();
+      } else if (arg === '--type') {
+        options.type = value.trim();
+      } else if (arg === '--target') {
+        options.target = value.trim();
+      } else if (arg === '--artifact') {
+        options.artifact = value.trim();
+      } else if (arg === '--graph-health') {
+        options.graphHealth = value.trim();
+      } else if (arg === '--confidence') {
+        options.confidence = value.trim();
+      } else if (arg === '--risk') {
+        options.risk = value.trim();
       }
+      continue;
+    }
+
+    if (arg === '--stale') {
+      options.stale = true;
       continue;
     }
 
@@ -588,6 +621,7 @@ function summarizeLanes(options) {
     console.log(JSON.stringify({
       counts,
       next_lane: nextLane,
+      next_action: nextRuntime.next_action || {},
       briefs,
       active_gate: nextRuntime.active_gate || '',
       active_gate_owner: nextRuntime.active_gate_owner || '',
@@ -610,6 +644,9 @@ function summarizeLanes(options) {
 
   console.log(`Lanes: ${counts.total}`);
   console.log(`Next lane: ${nextLane || '(none)'}`);
+  if (nextRuntime.next_action?.summary) {
+    console.log(`Next action: ${nextRuntime.next_action.summary}`);
+  }
   console.log(`Gate: ${nextRuntime.active_gate || '(none)'}`);
   console.log(`Delivery: ${nextRuntime.delivery_readiness || 'unknown'}`);
   if (nextRuntime.current_session_goal) {
@@ -687,6 +724,71 @@ function autoDecompose(options) {
   }
 }
 
+function recordAnalysis(options) {
+  if (!options.type) {
+    fail('Expected --type for record-analysis');
+  }
+
+  const artifactPath = options.artifact || '.forge/design/codebase-analysis.md';
+  const artifactExists = existsSync(resolve(process.cwd(), artifactPath));
+  const saved = recordAnalysisMetadata(process.cwd(), {
+    last_type: options.type,
+    last_target: options.target || '',
+    artifact_path: artifactPath,
+    graph_health: options.graphHealth || 'unknown',
+    confidence: options.confidence || 'unknown',
+    risk_level: options.risk || 'unknown',
+    summary: options.summary || '',
+    stale: Boolean(options.stale) || !artifactExists,
+  });
+
+  console.log(`type: ${saved.analysis.last_type}`);
+  console.log(`target: ${saved.analysis.last_target || '(none)'}`);
+  console.log(`artifact: ${saved.analysis.artifact_path}`);
+  console.log(`artifact_exists: ${artifactExists ? 'yes' : 'no'}`);
+  console.log(`graph_health: ${saved.analysis.graph_health}`);
+  console.log(`confidence: ${saved.analysis.confidence}`);
+  console.log(`risk: ${saved.analysis.risk_level}`);
+  console.log(`stale: ${saved.analysis.stale ? 'yes' : 'no'}`);
+}
+
+function analysisStatus(options) {
+  const state = readForgeState(process.cwd());
+  const runtime = readRuntimeState(process.cwd());
+  const analysis = runtime.analysis || state?.analysis || {};
+  const artifactPath = analysis.artifact_path || '.forge/design/codebase-analysis.md';
+  const artifactExists = existsSync(resolve(process.cwd(), artifactPath));
+
+  if (options.json) {
+    console.log(JSON.stringify({
+      analysis_type: analysis.last_type || '',
+      target: analysis.last_target || '',
+      artifact_path: artifactPath,
+      artifact_exists: artifactExists,
+      graph_health: analysis.graph_health || 'unknown',
+      confidence: analysis.confidence || 'unknown',
+      risk_level: analysis.risk_level || 'unknown',
+      summary: analysis.summary || '',
+      updated_at: analysis.updated_at || '',
+      stale: Boolean(analysis.stale) || !artifactExists,
+    }, null, 2));
+    return;
+  }
+
+  console.log(`type: ${analysis.last_type || '(none)'}`);
+  console.log(`target: ${analysis.last_target || '(none)'}`);
+  console.log(`artifact: ${artifactPath}`);
+  console.log(`artifact_exists: ${artifactExists ? 'yes' : 'no'}`);
+  console.log(`graph_health: ${analysis.graph_health || 'unknown'}`);
+  console.log(`confidence: ${analysis.confidence || 'unknown'}`);
+  console.log(`risk: ${analysis.risk_level || 'unknown'}`);
+  console.log(`updated_at: ${analysis.updated_at || '(none)'}`);
+  console.log(`stale: ${(Boolean(analysis.stale) || !artifactExists) ? 'yes' : 'no'}`);
+  if (analysis.summary) {
+    console.log(`summary: ${analysis.summary}`);
+  }
+}
+
 function main() {
   const { command, options } = parseArgs(process.argv.slice(2));
 
@@ -747,6 +849,16 @@ function main() {
 
   if (command === 'auto-decompose') {
     autoDecompose(options);
+    return;
+  }
+
+  if (command === 'record-analysis') {
+    recordAnalysis(options);
+    return;
+  }
+
+  if (command === 'analysis-status') {
+    analysisStatus(options);
     return;
   }
 

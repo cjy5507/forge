@@ -55,11 +55,15 @@ export function updateHudLine(state, runtime, staleTier = 'fresh') {
     : '';
 
   const blockers = normalizeBlockers(runtime?.customer_blockers).length + normalizeBlockers(runtime?.internal_blockers).length;
+  const nextAction = runtime?.next_action?.skill
+    ? `next:${runtime.next_action.skill}${runtime?.next_action?.target ? `(${runtime.next_action.target})` : ''}`
+    : '';
 
   // Build dynamic line: phase | agents | lanes | blockers
   const parts = [`forge:${phase} ${phaseIdx}/${maxPhase}`];
   if (agentInfo) parts.push(agentInfo);
   if (laneInfo) parts.push(laneInfo);
+  if (nextAction) parts.push(nextAction);
   parts.push(`${blockers} blockers`);
 
   const nextLine = parts.join(' | ').slice(0, 80);

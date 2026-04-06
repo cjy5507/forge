@@ -64,6 +64,7 @@ Layer 2 — Isolated Subagent (parallel execution):
 <Steps>
 -1. **Staleness Check (constraint propagation)**
     - Read state.json.staleness — if architecture, contracts, code_rules, components, or tokens are stale, BLOCK.
+    - Read analysis metadata — if saved analysis is stale or missing for an existing-code path, route to `forge:analyze` first.
     - Route to CTO/Designer to update stale artifacts before implementation proceeds.
     - Only continue when all staleness entries relevant to this phase are cleared.
 

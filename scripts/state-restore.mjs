@@ -16,6 +16,7 @@ import {
   readForgeState,
   readRuntimeState,
   resolvePhase,
+  selectResumeSkill,
   updateHudLine,
   updateRuntimeState,
   writeForgeState,
@@ -93,21 +94,23 @@ runHook(async (input) => {
 
   try { updateHudLine(normalized, nextRuntime, staleTier); } catch { /* HUD not installed */ }
 
-  // For fresh sessions, auto-dispatch forge:continue to resume the pipeline
+  // For fresh and warm sessions, auto-dispatch the best resume skill
   let additionalContext = nextRuntime.last_compact_context;
-  if (staleTier === 'fresh') {
+  if (staleTier === 'fresh' || staleTier === 'warm') {
+    const resume = selectResumeSkill(normalized, nextRuntime);
+    const resumeSkill = resume.skill || 'continue';
+    const warmNote = staleTier === 'warm'
+      ? '\nResume from the saved handoff first, then continue the current phase from that context.'
+      : '';
+    const resumeReason = resume.reason ? `\nReason: ${resume.reason}` : '';
     additionalContext = `${additionalContext}
 
-[MAGIC KEYWORD: FORGE:CONTINUE]
+[MAGIC KEYWORD: FORGE:${resumeSkill.toUpperCase()}]
 
 You MUST invoke the skill using the Skill tool:
-Skill: forge:continue
+Skill: forge:${resumeSkill}
 
-IMPORTANT: Invoke the skill IMMEDIATELY to resume the Forge pipeline. Do not ask the user — the project is fresh and ready to continue.`;
-  } else if (staleTier === 'warm') {
-    additionalContext = `${additionalContext}
-
-[Forge] Active project detected. Type "forge continue" or "forge" to resume.`;
+IMPORTANT: Invoke the skill IMMEDIATELY to resume the Forge pipeline. Do not ask the user — the project is ready to continue.${warmNote}${resumeReason}`;
   }
 
   console.log(JSON.stringify({

@@ -74,9 +74,10 @@ Evaluate in this exact order. Take the FIRST match — do not skip ahead.
 |----------|-------------------------------------------------|-----------------------------------------------------|
 | 1        | Customer blocker exists                         | Surface the question. Don't pretend work can continue without user input. |
 | 2        | Internal blocker exists                         | Route to the owning team's phase skill with the blocker context. |
-| 3        | Lane has handoff notes and is `in_progress`     | Load that lane's task file, worktree, and latest handoff note. Continue in-lane. |
-| 4        | Runtime has a designated next lane (`next_lane`) | Load that lane's context. This is the lead dev's recommendation for where to pick up. |
-| 5        | None of the above                               | Fall back to the current phase skill. |
+| 3        | Saved analysis is stale, or repair flow has no analysis yet | Route to `forge:analyze` first. Refresh analysis before phase work continues. |
+| 4        | Lane has handoff notes and is `in_progress`     | Load that lane's task file, worktree, and latest handoff note. Continue in-lane. |
+| 5        | Runtime has a designated next lane (`next_lane`) | Load that lane's context. This is the lead dev's recommendation for where to pick up. |
+| 6        | None of the above                               | Fall back to the current phase skill. |
 
 The goal: the user types `forge continue` and lands on the single most useful thing to work on, with full context loaded and zero re-explanation needed.
 

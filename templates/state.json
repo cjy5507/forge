@@ -17,6 +17,17 @@
   "artifact_versions": {},
   "staleness": {},
   "lessons_brief": [],
+  "analysis": {
+    "last_type": "",
+    "last_target": "",
+    "artifact_path": "",
+    "graph_health": "unknown",
+    "confidence": "unknown",
+    "risk_level": "unknown",
+    "summary": "",
+    "updated_at": "",
+    "stale": false
+  },
   "tasks": [],
   "holes": [],
   "pr_queue": [],

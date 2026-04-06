@@ -14,6 +14,27 @@ export const DEFAULT_STATS = {
   test_failures: 0,
 };
 
+export const DEFAULT_ANALYSIS = {
+  last_type: '',
+  last_target: '',
+  artifact_path: '',
+  graph_health: 'unknown',
+  confidence: 'unknown',
+  risk_level: 'unknown',
+  summary: '',
+  updated_at: '',
+  stale: false,
+};
+
+export const DEFAULT_NEXT_ACTION = {
+  kind: '',
+  skill: '',
+  target: '',
+  reason: '',
+  summary: '',
+  updated_at: '',
+};
+
 export const DEFAULT_RUNTIME = {
   version: 3,
   active_tier: 'light',
@@ -45,6 +66,8 @@ export const DEFAULT_RUNTIME = {
   active_agents: {},
   recent_agents: [],
   recent_failures: [],
+  analysis: { ...DEFAULT_ANALYSIS },
+  next_action: { ...DEFAULT_NEXT_ACTION },
   stop_guard: {
     block_count: 0,
     last_reason: '',
@@ -180,6 +203,41 @@ export function normalizeStringList(values = []) {
   return values
     .map(value => String(value || '').trim())
     .filter(Boolean);
+}
+
+export function normalizeAnalysisMeta(analysis = {}) {
+  const normalized = {
+    ...DEFAULT_ANALYSIS,
+    ...(analysis && typeof analysis === 'object' ? analysis : {}),
+  };
+
+  normalized.last_type = requireString(normalized.last_type);
+  normalized.last_target = requireString(normalized.last_target);
+  normalized.artifact_path = requireString(normalized.artifact_path);
+  normalized.graph_health = requireString(normalized.graph_health, 'unknown') || 'unknown';
+  normalized.confidence = requireString(normalized.confidence, 'unknown') || 'unknown';
+  normalized.risk_level = requireString(normalized.risk_level, 'unknown') || 'unknown';
+  normalized.summary = requireString(normalized.summary);
+  normalized.updated_at = requireString(normalized.updated_at);
+  normalized.stale = Boolean(normalized.stale);
+
+  return normalized;
+}
+
+export function normalizeNextAction(nextAction = {}) {
+  const normalized = {
+    ...DEFAULT_NEXT_ACTION,
+    ...(nextAction && typeof nextAction === 'object' ? nextAction : {}),
+  };
+
+  normalized.kind = requireString(normalized.kind);
+  normalized.skill = requireString(normalized.skill);
+  normalized.target = requireString(normalized.target);
+  normalized.reason = requireString(normalized.reason);
+  normalized.summary = requireString(normalized.summary);
+  normalized.updated_at = requireString(normalized.updated_at);
+
+  return normalized;
 }
 
 export function appendRecent(list, entry, limit = 20) {

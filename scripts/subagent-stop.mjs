@@ -18,14 +18,14 @@ import {
   readForgeState,
   resolveForgeBaseDir,
   resolveRuntimeLaneContext,
-  tierAtLeast,
   updateHudLine,
   updateRuntimeState,
 } from './lib/forge-state.mjs';
+import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 
 runHook(async (input) => {
-  const envTier = (process.env.FORGE_TIER || '').toLowerCase();
-  if (envTier === 'off' || envTier === 'light') {
+  const envTier = readEnvTier();
+  if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
@@ -35,7 +35,7 @@ runHook(async (input) => {
   const state = readForgeState(rootCwd);
   const tier = readActiveTier(rootCwd, state, input);
 
-  if (!tierAtLeast(tier, 'medium')) {
+  if (!tierAtLeast(tier, 'light')) {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }

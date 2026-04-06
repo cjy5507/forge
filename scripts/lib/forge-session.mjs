@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import {
+  DEFAULT_ANALYSIS,
+  DEFAULT_NEXT_ACTION,
   DEFAULT_RUNTIME,
   DEFAULT_STATS,
   requireString,
@@ -14,6 +16,8 @@ import {
   normalizeCompanyMode,
   normalizeDeliveryReadiness,
   normalizeBlockers,
+  normalizeAnalysisMeta,
+  normalizeNextAction,
   normalizeStringList,
 } from './forge-io.mjs';
 import {
@@ -93,6 +97,8 @@ export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null 
     active_agents: runtime?.active_agents && typeof runtime.active_agents === 'object' ? runtime.active_agents : {},
     recent_agents: Array.isArray(runtime?.recent_agents) ? runtime.recent_agents : [],
     recent_failures: Array.isArray(runtime?.recent_failures) ? runtime.recent_failures : [],
+    analysis: normalizeAnalysisMeta(runtime?.analysis),
+    next_action: normalizeNextAction(runtime?.next_action),
     lanes: normalizeRuntimeLanes(runtime?.lanes || {}),
     stop_guard: {
       ...DEFAULT_RUNTIME.stop_guard,
@@ -109,6 +115,7 @@ export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null 
     ...normalized,
     active_worktrees: normalized.active_worktrees,
   });
+  normalized.next_action = deriveNextAction(state || {}, normalized);
   return normalized;
 }
 
@@ -132,7 +139,41 @@ export function normalizeStateShape(state = {}) {
     tasks: Array.isArray(state.tasks) ? state.tasks : [],
     holes: Array.isArray(state.holes) ? state.holes : [],
     pr_queue: Array.isArray(state.pr_queue) ? state.pr_queue : [],
+    analysis: normalizeAnalysisMeta(state.analysis),
     stats: mergeStats(state.stats),
+  };
+}
+
+export function recordAnalysisMetadata(cwd = '.', analysis = {}) {
+  const state = readForgeState(cwd);
+  const runtime = readRuntimeState(cwd);
+  const nextAnalysis = normalizeAnalysisMeta({
+    ...DEFAULT_ANALYSIS,
+    ...state?.analysis,
+    ...runtime?.analysis,
+    ...analysis,
+    updated_at: analysis.updated_at || new Date().toISOString(),
+  });
+
+  const nextState = state ? writeForgeState(cwd, {
+    ...state,
+    analysis: nextAnalysis,
+  }) : null;
+
+  const nextRuntime = writeRuntimeState(cwd, {
+    ...runtime,
+    analysis: nextAnalysis,
+    last_event: {
+      name: 'record-analysis',
+      lane: '',
+      at: nextAnalysis.updated_at,
+    },
+  }, { state: nextState || state });
+
+  return {
+    state: nextState,
+    runtime: nextRuntime,
+    analysis: nextAnalysis,
   };
 }
 
@@ -411,7 +452,8 @@ export function markLaneMergeState(runtime = DEFAULT_RUNTIME, {
 // ─── Session continuity ────────────────────────────────────────────────
 
 export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME) {
-  const phase = resolvePhase(state);
+  const safeState = state && typeof state === 'object' ? state : {};
+  const phase = resolvePhase(safeState);
   const customerBlockers = runtime?.customer_blockers;
   const internalBlockers = runtime?.internal_blockers;
 
@@ -435,6 +477,15 @@ export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME) 
       kind: 'internal_blocker',
       target: phase.id,
       detail: `${text}${gateOwner ? ` (owner: ${gateOwner})` : ''}`,
+    };
+  }
+
+  const analysisRefresh = shouldRefreshAnalysis(state, runtime);
+  if (analysisRefresh.needed) {
+    return {
+      kind: 'analysis_refresh',
+      target: analysisRefresh.target,
+      detail: analysisRefresh.reason,
     };
   }
 
@@ -468,6 +519,108 @@ export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME) 
     target: phase.id,
     detail: '',
   };
+}
+
+export function shouldRefreshAnalysis(state = {}, runtime = DEFAULT_RUNTIME, { phaseOverride = '' } = {}) {
+  const safeState = state && typeof state === 'object' ? state : {};
+  const phase = phaseOverride
+    ? resolvePhase({ ...safeState, phase: phaseOverride, phase_id: phaseOverride, phase_name: phaseOverride })
+    : resolvePhase(safeState);
+  const analysis = normalizeAnalysisMeta(runtime?.analysis || state?.analysis);
+  const hasAnalysisRecord = Boolean(
+    analysis.last_type ||
+    analysis.last_target ||
+    analysis.artifact_path ||
+    analysis.updated_at,
+  );
+
+  const repairAnalysisPhases = new Set(['intake', 'reproduce', 'isolate', 'fix', 'regress', 'verify']);
+  if (phase.mode === 'repair' && repairAnalysisPhases.has(phase.id) && !hasAnalysisRecord) {
+    return {
+      needed: true,
+      target: phase.id,
+      reason: 'repair flow has no codebase analysis yet',
+    };
+  }
+
+  if (hasAnalysisRecord && analysis.stale) {
+    return {
+      needed: true,
+      target: analysis.last_target || phase.id,
+      reason: 'saved analysis is stale; refresh before continuing',
+    };
+  }
+
+  return {
+    needed: false,
+    target: '',
+    reason: '',
+  };
+}
+
+export function selectResumeSkill(state = {}, runtime = DEFAULT_RUNTIME) {
+  const continuation = selectContinuationTarget(state, runtime);
+  if (continuation.kind === 'analysis_refresh') {
+    return {
+      skill: 'analyze',
+      reason: continuation.detail,
+      continuation,
+    };
+  }
+
+  return {
+    skill: 'continue',
+    reason: continuation.detail || '',
+    continuation,
+  };
+}
+
+export function deriveNextAction(state = {}, runtime = DEFAULT_RUNTIME) {
+  const safeState = state && typeof state === 'object' ? state : {};
+  const phase = resolvePhase(safeState);
+  const delivered = String(safeState.status || '').toLowerCase() === 'delivered'
+    || String(runtime?.delivery_readiness || '').toLowerCase() === 'delivered'
+    || phase.id === 'complete';
+  if (delivered) {
+    return normalizeNextAction({
+      ...DEFAULT_NEXT_ACTION,
+      kind: 'complete',
+      skill: 'info',
+      target: 'complete',
+      reason: '',
+      summary: 'Project delivered',
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  const resume = selectResumeSkill(safeState, runtime);
+  const continuation = resume.continuation || { kind: '', target: '', detail: '' };
+  const now = new Date().toISOString();
+  let summary = '';
+
+  if (resume.skill === 'analyze') {
+    summary = `Run forge:analyze first${resume.reason ? ` — ${resume.reason}` : ''}`;
+  } else if (continuation.kind === 'customer_blocker') {
+    summary = `Resolve customer blocker${continuation.detail ? ` — ${continuation.detail}` : ''}`;
+  } else if (continuation.kind === 'internal_blocker') {
+    summary = `Clear internal blocker${continuation.detail ? ` — ${continuation.detail}` : ''}`;
+  } else if (continuation.kind === 'active_lane') {
+    summary = `Resume lane ${continuation.target}${continuation.detail ? ` — ${continuation.detail}` : ''}`;
+  } else if (continuation.kind === 'next_lane') {
+    summary = `Continue lane ${continuation.target}`;
+  } else if (continuation.kind === 'phase') {
+    summary = `Continue phase ${continuation.target}`;
+  }
+
+  return normalizeNextAction({
+    ...DEFAULT_NEXT_ACTION,
+    kind: continuation.kind || '',
+    skill: resume.skill || '',
+    target: continuation.target || '',
+    reason: resume.reason || continuation.detail || '',
+    summary,
+    updated_at: now,
+  });
 }
 
 export function setSessionBrief(runtime = DEFAULT_RUNTIME, {

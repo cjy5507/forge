@@ -16,6 +16,7 @@ import {
   resolveRuntimeLaneContext,
   tierAtLeast,
 } from './lib/forge-state.mjs';
+import { readEnvTier } from './lib/forge-tiers.mjs';
 
 // Phase index at which "writing code" begins — tier-based artifact checks
 // (spec, design, contracts) only apply at or past this threshold.
@@ -117,7 +118,7 @@ runHook(async (input) => {
   }
 
   // ── Tier-based checks (existing behavior) ──
-  const envTier = (process.env.FORGE_TIER || '').toLowerCase();
+  const envTier = readEnvTier();
   if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;

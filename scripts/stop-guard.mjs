@@ -20,15 +20,16 @@ import {
   readActiveTier,
   readForgeState,
   resolvePhase,
+  selectResumeSkill,
   summarizePendingWork,
-  tierAtLeast,
   updateRuntimeState,
 } from './lib/forge-state.mjs';
+import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 
 const CRITICAL_PHASES = new Set(['develop', 'fix', 'qa']);
 
 runHook(async (input) => {
-  const envTier = (process.env.FORGE_TIER || '').toLowerCase();
+  const envTier = readEnvTier();
   if (envTier === 'off') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
@@ -102,8 +103,9 @@ runHook(async (input) => {
     return;
   }
 
-  const PHASE_TO_SKILL = { delivery: 'deliver', complete: 'info' };
-  const currentSkill = PHASE_TO_SKILL[phase.id] || phase.id;
+  const resume = selectResumeSkill(state, runtime);
+  const currentSkill = resume.skill || 'continue';
+  const extraReason = resume.reason ? `\nResume reason: ${resume.reason}` : '';
   const reason = `[Forge Stop Guard] The Forge pipeline for "${state.project || 'unnamed'}" is still in progress (phase: ${phase.id}). Pending: ${pending.join(', ')}.
 
 [MAGIC KEYWORD: FORGE:${currentSkill.toUpperCase()}]
@@ -111,7 +113,7 @@ runHook(async (input) => {
 To continue, invoke the skill:
 Skill: forge:${currentSkill}
 
-To stop, the user can say "forge cancel".`;
+To stop, the user can say "forge cancel".${extraReason}`;
 
   updateRuntimeState(cwd, current => ({
     ...current,

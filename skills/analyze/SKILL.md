@@ -8,6 +8,9 @@ On-demand codebase analysis using the Analyst agent and codebase-memory-mcp tool
 Produces architecture maps, impact reports, dependency traces, or quality assessments
 depending on what the user asks for. Can run standalone or feed results into an active
 Forge phase (design, develop, fix).
+
+This skill must produce a durable analysis artifact and analysis metadata, not just
+an ephemeral chat answer.
 </Purpose>
 
 <Use_When>
@@ -47,6 +50,17 @@ Check if codebase-memory-mcp has current data:
 - If stale or unindexed: run index_repository first
 - If recently indexed: proceed directly
 
+## 2b. Check graph health before trusting graph-only conclusions
+
+Before choosing the analysis path, inspect whether the current graph is sufficient
+for the requested mode.
+
+- If function/call relationships are sparse or absent:
+  - downgrade impact/dependency analysis to file/module scope
+  - use `search_code` and LSP/grep fallback
+  - report confidence explicitly
+- Never present precise caller/callee claims when the graph cannot support them
+
 ## 3. Dispatch Analyst
 
 Dispatch the Analyst agent (forge:analyst) with the selected analysis type:
@@ -61,6 +75,7 @@ The Analyst uses codebase-memory-mcp tools:
 - **trace_call_path** — call chains, dependency trees, impact radius
 - **query_graph** — custom Cypher queries for complex patterns
 - **detect_changes** — what changed and blast radius
+- **search_code / LSP fallback** — when graph fidelity is too weak for symbol-level confidence
 
 ## 4. Present results
 
@@ -103,8 +118,10 @@ Format the Analyst's output based on type:
 
 If a Forge project is active (.forge/state.json exists):
 - Save analysis to `.forge/design/codebase-analysis.md`
-- Update runtime with analysis timestamp
+- Record analysis metadata via:
+  `node scripts/forge-lane-runtime.mjs record-analysis --type <kind> --target <target> --artifact .forge/design/codebase-analysis.md --graph-health <health> --confidence <level> --risk <level> --summary "<summary>"`
 - CTO, Lead, or Troubleshooter can reference this in their phase work
+- Use `node scripts/forge-lane-runtime.mjs analysis-status --json` when checking freshness before design/develop/fix
 
 </Steps>
 

@@ -154,8 +154,11 @@ export function selectNextLane(runtime = DEFAULT_RUNTIME) {
   if (!lanes.length) {
     return '';
   }
-  if (typeof runtime?.next_lane === 'string' && runtime.next_lane && lanes.some(lane => lane.id === runtime.next_lane)) {
-    return runtime.next_lane;
+  if (typeof runtime?.next_lane === 'string' && runtime.next_lane) {
+    const explicitLane = lanes.find(lane => lane.id === runtime.next_lane);
+    if (explicitLane && !TERMINAL_STATUSES.has(String(explicitLane.status || '').toLowerCase())) {
+      return runtime.next_lane;
+    }
   }
   const priorityChecks = [
     lane => lane.merge_state === 'rebasing',
@@ -167,19 +170,7 @@ export function selectNextLane(runtime = DEFAULT_RUNTIME) {
     lane => lane.status === 'pending',
   ];
 
-  // Deprioritize done/merged — only select if no actionable lanes exist
-  const terminalFallbacks = [
-    lane => lane.status === 'merged',
-    lane => lane.status === 'done',
-  ];
-
   for (const matches of priorityChecks) {
-    const lane = lanes.find(matches);
-    if (lane) {
-      return lane.id;
-    }
-  }
-  for (const matches of terminalFallbacks) {
     const lane = lanes.find(matches);
     if (lane) {
       return lane.id;

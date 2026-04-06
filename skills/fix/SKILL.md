@@ -17,6 +17,10 @@ Max 3 iterations before escalating to the client with alternatives.
 </Use_When>
 
 <Steps>
+0. Analysis freshness check:
+   - If saved analysis is stale, or repair/fix flow has no structural analysis yet, route to `forge:analyze` before continuing.
+   - Fix work should not begin blind when impact radius is still unknown.
+
 1. Load all open issues from .forge/holes/:
    a. Read each .forge/holes/{issue-id}.md
    b. Sort by severity: blocker → major → minor → cosmetic

@@ -28,11 +28,15 @@ exactly where the last one stopped.
 
 Shows current phase, what's blocking, and what to do next. One glance, not a wall of fields.
 
+Internally this is backed by `node scripts/forge-status.mjs`, so the compact dashboard
+stays consistent with the runtime's canonical `next_action`.
+
 ```
 Forge: my-saas-app (build)
 Phase 3/8 — develop
 ████████████░░░░ 55%
 
+Next action: Resume lane auth-api — JWT middleware done, testing refresh token flow
 Active: auth-api, payment-ui. Blocked: db-schema (waiting on contract review)
 
 Lanes: 2/5 done, 1 blocked
@@ -51,14 +55,27 @@ Forge: my-saas-app
 Phase 3/8 — develop
 3 lanes active, 1 blocked (auth waiting on DB schema)
 
-Next: Continue auth-api lane after resolving DB contract
+Next action: Resume lane auth-api — JWT middleware done, testing refresh token flow
 ```
 
 It picks the right entry point automatically:
 - **Blocker that needs your input?** Surfaces that first.
 - **Internal blocker?** Routes to the owning team.
+- **Analysis is stale?** Refreshes analysis before phase work continues.
 - **Active lane with handoff notes?** Loads that lane's worktree and task context.
 - **None of the above?** Falls back to the current phase skill.
+
+### `forge analyze` — map impact before you touch code
+
+Runs Forge's Analyst flow to produce a durable codebase analysis artifact for the
+active project. This is especially useful before design on existing code, before
+lane splitting, and before risky fixes.
+
+Typical uses:
+- architecture mapping for an existing codebase
+- impact analysis for a target file/module/symbol
+- dependency tracing before a fix
+- quality/risk scanning before review
 
 ### `forge` — start a new project or fix an existing one
 
@@ -143,6 +160,7 @@ Then:
 forge                  # start a new project or fix an existing one
 forge info             # see current phase, blockers, next steps
 forge continue         # restore state and pick up where you left off
+forge analyze          # produce/update codebase analysis for the current project
 ```
 
 This installs Forge globally at `~/.forge/plugins/forge`.
@@ -228,7 +246,7 @@ lookups during fact-checking. No API key required.
 | Host | Status | Notes |
 |------|--------|-------|
 | Claude Code | **Verified** | Full hook lifecycle, subagent routing, lane management |
-| Codex | **Manifest only** | `.codex-plugin/plugin.json` present, but hooks use Claude-specific events (`${CLAUDE_PLUGIN_ROOT}`, `SubagentStart`, etc.) — runtime parity not yet achieved |
+| Codex | **Degraded support** | Skills, `.forge/` state, `forge-status`, and `next_action` surfaces work from shared runtime helpers. Claude-style hook lifecycle parity is not yet achieved. |
 
 Forge's file-based state system (`.forge/`, `state.json`, `runtime.json`) is host-agnostic.
 The automation layer (hooks, subagent tracking, stop guards) currently requires Claude Code.

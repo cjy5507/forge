@@ -22,6 +22,14 @@ export function normalizeTier(value) {
   return TIER_SEQUENCE.includes(lowered) ? lowered : 'light';
 }
 
+export function readEnvTier() {
+  const raw = process.env.FORGE_TIER;
+  if (typeof raw !== 'string' || !raw.trim()) {
+    return '';
+  }
+  return normalizeTier(raw);
+}
+
 export function tierAtLeast(currentTier, requiredTier) {
   return TIER_SEQUENCE.indexOf(normalizeTier(currentTier)) >= TIER_SEQUENCE.indexOf(normalizeTier(requiredTier));
 }

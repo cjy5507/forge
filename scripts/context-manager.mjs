@@ -7,9 +7,10 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { readForgeState, compactForgeContext, readRuntimeState } from './lib/forge-state.mjs';
+import { readEnvTier } from './lib/forge-tiers.mjs';
 
 runHook(async (input) => {
-  const envTier = (process.env.FORGE_TIER || '').toLowerCase();
+  const envTier = readEnvTier();
   if (envTier === 'off' || envTier === 'light') {
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;

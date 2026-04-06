@@ -19,7 +19,7 @@
   ],
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
-  "_hooksNote": "hooks.json lists event names defined by Claude Code (SubagentStart, SubagentStop, PreCompact, StopFailure, Stop, SessionStart, SessionEnd, etc.). Each hook script degrades gracefully when its event is not fired by the host: if stdin is empty or absent the script exits 0 with { continue: true } and does nothing. Hosts that support only a subset of these events are safe to use.",
+  "_hooksNote": "hooks.json lists events primarily aligned with Claude Code. When a host does not fire a matching event, Forge degrades safely: hook scripts exit 0 with { continue: true } and do not mutate state. Codex still uses the shared .forge runtime, skills, forge-status, and next_action surfaces, but full hook lifecycle parity is not yet achieved.",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Forge",

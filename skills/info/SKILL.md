@@ -62,6 +62,7 @@ Forge: {{project_name}} ({{build|repair}})
 Phase {{N}}/{{max}} — {{phase_name}}
 {{progress_bar}} {{X}}%
 
+Next action: {{next_action_summary}}
 {{actionable_summary}}
 
 Lanes: {{done}}/{{total}} done{{if blocked}}, {{blocked}} blocked{{/if}}
@@ -73,7 +74,9 @@ Harness: tier={{tier}} sessions={{N}} agents={{N}} failures={{N}} stops={{N}}
 
 ### Actionable summary rules
 
-Pick the FIRST that applies:
+Use `runtime.next_action.summary` when present. That is the canonical next-step line.
+
+Then derive the supporting summary below. Pick the FIRST that applies:
 
 | Priority | Condition                  | Output format                                        |
 |----------|----------------------------|------------------------------------------------------|
@@ -118,4 +121,5 @@ Default is always the compact view.
 <Tool_Usage>
 - Read: .forge/state.json, .forge/runtime.json, .forge/holes/*.md
 - Bash: git tag -l "forge/*" --sort=-version:refname | head -1
+- Preferred implementation surface: `node scripts/forge-status.mjs` (`--json` or `--verbose` as needed)
 </Tool_Usage>

@@ -234,10 +234,42 @@ describe('forge harness hooks', () => {
     expect(output.hookSpecificOutput.hookEventName).toBe('SessionStart');
     expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
     expect(output.hookSpecificOutput.additionalContext).toContain('security');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
 
     const normalized = JSON.parse(readFileSync(join(cwd, '.forge', 'state.json'), 'utf8'));
     expect(normalized.phase_id).toBe('security');
     expect(normalized.phase_index).toBe(5);
+  });
+
+  it('auto-dispatches forge continue for warm active sessions too', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, { phase: 'develop', phase_id: 'develop', phase_name: 'develop' });
+    writeRuntimeState(cwd, {
+      updated_at: new Date(Date.now() - (2 * 60 * 60 * 1000)).toISOString(),
+      stats: {
+        last_finished_at: new Date(Date.now() - (2 * 60 * 60 * 1000)).toISOString(),
+      },
+    });
+
+    const output = runHook('state-restore.mjs', cwd);
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('saved handoff');
+  });
+
+  it('auto-dispatches forge analyze on session restore when analysis refresh is required', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, { phase: 'develop', phase_id: 'develop', phase_name: 'develop' });
+    writeRuntimeState(cwd, {
+      analysis: {
+        last_type: 'impact',
+        last_target: 'scripts/write-gate.mjs',
+        stale: true,
+      },
+    });
+
+    const output = runHook('state-restore.mjs', cwd);
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('saved analysis is stale');
   });
 
   it('includes company-mode gate and blocker hints on SessionStart when runtime has them', () => {
@@ -352,6 +384,31 @@ describe('forge harness hooks', () => {
     expect(runtime.stats.agent_calls).toBe(1);
   });
 
+  it('tracks subagent lifecycle even when FORGE_TIER env is light-cased', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, { phase: 'develop', tier: 'light' });
+
+    runHook('subagent-start.mjs', cwd, {
+      agent_id: 'agent-light',
+      agent_type: 'Explore',
+    }, {
+      env: { FORGE_TIER: 'Light' },
+    });
+
+    runHook('subagent-stop.mjs', cwd, {
+      agent_id: 'agent-light',
+      agent_type: 'Explore',
+      last_assistant_message: 'done at light tier',
+    }, {
+      env: { FORGE_TIER: 'Light' },
+    });
+
+    const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
+    expect(runtime.active_agents['agent-light']).toBeUndefined();
+    expect(runtime.recent_agents[0].id).toBe('agent-light');
+    expect(runtime.recent_agents[0].kind).toBe('subagent-stop');
+  });
+
   it('blocks premature stop while work is still active', () => {
     const cwd = makeWorkspace();
     writeState(cwd, { tasks: ['T-1'] });
@@ -383,6 +440,22 @@ describe('forge harness hooks', () => {
     const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
     expect(runtime.stats.failure_count).toBe(1);
     expect(runtime.stats.test_failures).toBe(1);
+  });
+
+  it('treats FORGE_TIER=OFF as off for tool-failure suppression', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd);
+
+    const output = runHook('tool-failure.mjs', cwd, {
+      tool_name: 'Bash',
+      tool_input: { command: 'npm test' },
+      error: 'Command failed',
+    }, {
+      env: { FORGE_TIER: 'OFF' },
+    });
+
+    expect(output.suppressOutput).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'runtime.json'))).toBe(false);
   });
 
   it('keeps company gate, staffing, and session ownership coherent across a synthetic delivery flow', () => {
@@ -1118,12 +1191,75 @@ describe('phase-detector hook', () => {
     writeState(tmpDir, { phase: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
     expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:continue');
   });
 
   it('detects Korean forge trigger', () => {
     writeState(tmpDir, { phase: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: '포지 상태' });
     expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:continue');
+  });
+
+  it('routes explicit forge analyze requests to forge analyze', () => {
+    writeState(tmpDir, { phase: 'develop', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge analyze scripts/write-gate.mjs' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+  });
+
+  it('routes explicit forge info requests to forge info', () => {
+    writeState(tmpDir, { phase: 'develop', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge info' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('Next action:');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
+  });
+
+  it('routes explicit forge develop requests to analyze when saved analysis is stale', () => {
+    writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
+    writeRuntimeState(tmpDir, {
+      analysis: {
+        last_type: 'impact',
+        last_target: 'scripts/write-gate.mjs',
+        stale: true,
+      },
+    });
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge develop' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('saved analysis is stale');
+  });
+
+  it('routes explicit forge fix requests to analyze in repair mode when analysis is missing', () => {
+    writeState(tmpDir, { phase: 'fix', phase_id: 'fix', phase_name: 'fix', mode: 'repair', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge fix' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('no codebase analysis');
+  });
+
+  it('routes forge continue to analyze when saved analysis is stale', () => {
+    writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
+    writeRuntimeState(tmpDir, {
+      analysis: {
+        last_type: 'impact',
+        last_target: 'scripts/write-gate.mjs',
+        artifact_path: '.forge/design/codebase-analysis.md',
+        stale: true,
+      },
+    });
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge continue' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('stale');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+  });
+
+  it('routes generic forge requests to analyze first in repair mode when analysis is missing', () => {
+    writeState(tmpDir, { phase: 'isolate', phase_id: 'isolate', phase_name: 'isolate', mode: 'repair', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('no codebase analysis');
   });
 
   it('refreshes tier on non-forge follow-up messages when runtime exists', () => {
@@ -1180,7 +1316,7 @@ describe('phase-detector hook', () => {
     expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:continue');
   });
 
-  it('keeps forge requests on the active internal phase when customer blockers exist but ownership is internal', () => {
+  it('routes generic forge requests through continue even when the active blocker owner is internal', () => {
     writeState(tmpDir, { phase: 'fix', phase_id: 'fix', phase_name: 'fix', status: 'active' });
     writeRuntimeState(tmpDir, {
       company_mode: 'autonomous_company',
@@ -1192,7 +1328,7 @@ describe('phase-detector hook', () => {
 
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
     expect(output.hookSpecificOutput.additionalContext).toContain('next:lead-dev');
-    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:fix');
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:continue');
   });
 
   it('surfaces gate-aware staffing in forge request context', () => {
@@ -1315,6 +1451,39 @@ describe('malformed stdin handling', () => {
     expect(outputs).toHaveLength(1);
     expect(outputs[0].continue).toBe(true);
     expect(outputs[0].suppressOutput).toBe(true);
+  });
+});
+
+describe('stop-guard hook', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeWorkspace();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('routes stop-blocked resume to forge analyze when analysis refresh is required', () => {
+    writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active', tier: 'full' });
+    writeRuntimeState(tmpDir, {
+      analysis: {
+        last_type: 'impact',
+        last_target: 'scripts/write-gate.mjs',
+        stale: true,
+      },
+    });
+
+    const output = runHook('stop-guard.mjs', tmpDir, {
+      last_assistant_message: 'Still implementing the develop phase.',
+    }, {
+      env: { FORGE_TIER: 'full' },
+    });
+
+    expect(output.decision).toBe('block');
+    expect(output.reason).toContain('Skill: forge:analyze');
+    expect(output.reason).toContain('saved analysis is stale');
   });
 });
 

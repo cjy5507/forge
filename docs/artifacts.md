@@ -78,6 +78,13 @@ The minimal coordination file. Every Forge command reads this first.
   "tier": "medium",
   "mode": "build",
   "status": "in_progress",
+  "analysis": {
+    "last_type": "impact",
+    "last_target": "scripts/write-gate.mjs",
+    "artifact_path": ".forge/design/codebase-analysis.md",
+    "confidence": "medium",
+    "stale": false
+  },
   "spec_approved": true,
   "design_approved": true
 }
@@ -91,6 +98,24 @@ Tracks parallel work during development and fix phases. Each lane has:
 - **worktree_path**: isolated git worktree location
 - **dependencies**: upstream lanes that must complete first
 - **handoff_notes**: ordered status updates for session continuity
+
+Runtime also tracks:
+- **analysis**: last saved analysis metadata, confidence, staleness
+- **next_action**: canonical next step used by restore, resume, stop-guard, HUD, and status surfaces
+
+Example next action:
+
+```json
+{
+  "next_action": {
+    "kind": "active_lane",
+    "skill": "continue",
+    "target": "auth-api",
+    "reason": "JWT middleware done, testing refresh token flow",
+    "summary": "Resume lane auth-api — JWT middleware done, testing refresh token flow"
+  }
+}
+```
 
 ### holes/{issue-id}.md
 

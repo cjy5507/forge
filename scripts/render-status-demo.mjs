@@ -12,6 +12,7 @@ import { readFileSync, readdirSync } from 'fs';
 import { join, basename } from 'path';
 import {
   compactForgeContext,
+  normalizeRuntimeState,
   summarizePendingWork,
   selectNextLane,
   selectContinuationTarget,
@@ -53,7 +54,8 @@ function phaseProgress(phaseIndex, total, runtime) {
 }
 
 function renderDashboard(name, data) {
-  const { state, runtime } = data;
+  const state = data.state;
+  const runtime = normalizeRuntimeState(data.runtime, { state });
   const phase = resolvePhase(state);
   const mode = state.mode === 'repair' ? 'repair' : 'build';
   const total = 8; // max phases
@@ -62,26 +64,34 @@ function renderDashboard(name, data) {
   const counts = summarizeLaneCounts(runtime);
   const nextLane = selectNextLane(runtime);
   const cont = selectContinuationTarget(state, runtime);
+  const nextAction = runtime?.next_action || {};
   const customerBlockers = Array.isArray(runtime?.customer_blockers) ? runtime.customer_blockers : [];
   const internalBlockers = Array.isArray(runtime?.internal_blockers) ? runtime.internal_blockers : [];
 
   // Actionable summary (first-match priority)
-  let actionLine = '';
+  let actionLine = nextAction.summary ? `Next action: ${nextAction.summary}` : '';
+  let supportLine = '';
   if (customerBlockers.length) {
-    actionLine = `Waiting on you: ${customerBlockers[0]}`;
+    supportLine = `Waiting on you: ${customerBlockers[0]}`;
+    actionLine = actionLine || supportLine;
   } else if (internalBlockers.length) {
-    actionLine = `Blocked: ${internalBlockers[0]} (owner: ${runtime?.active_gate_owner || 'unknown'})`;
+    supportLine = `Blocked: ${internalBlockers[0]} (owner: ${runtime?.active_gate_owner || 'unknown'})`;
+    actionLine = actionLine || supportLine;
   } else if (runtime?.delivery_readiness === 'ready_for_review') {
-    actionLine = 'Ready for review — run `forge deliver` to finalize';
+    supportLine = 'Ready for review — run `forge deliver` to finalize';
+    actionLine = actionLine || supportLine;
   } else if (counts.in_progress > 0) {
     const activeNames = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}))
       .filter(l => l.status === 'in_progress')
       .map(l => l.id);
-    actionLine = `Active: ${activeNames.join(', ')}. Next: continue ${cont.target || 'current phase'}`;
+    supportLine = `Active: ${activeNames.join(', ')}. Next: continue ${cont.target || 'current phase'}`;
+    actionLine = actionLine || supportLine;
   } else if (nextLane) {
-    actionLine = `Next: pick up ${nextLane}`;
+    supportLine = `Next: pick up ${nextLane}`;
+    actionLine = actionLine || supportLine;
   } else {
-    actionLine = `Phase ${phaseName} in progress`;
+    supportLine = `Phase ${phaseName} in progress`;
+    actionLine = actionLine || supportLine;
   }
 
   // Lane detail lines
@@ -108,6 +118,7 @@ function renderDashboard(name, data) {
 
   // Truncate action line to fit dashboard
   if (actionLine.length > 58) actionLine = actionLine.slice(0, 57) + '…';
+  if (supportLine.length > 58) supportLine = supportLine.slice(0, 57) + '…';
 
   const lines = [
     `Forge: ${state.project || 'unknown'} (${mode})`,
@@ -116,6 +127,10 @@ function renderDashboard(name, data) {
     '',
     actionLine,
   ];
+
+  if (supportLine && supportLine !== actionLine) {
+    lines.push(supportLine);
+  }
 
   if (counts.total > 0) {
     const doneCount = counts.done + counts.merged;
@@ -139,6 +154,7 @@ function renderDashboard(name, data) {
 
   // Also show the compact hook line for comparison
   console.log(`  Hook: ${compactForgeContext(state, runtime)}`);
+  console.log(`  Next action: ${nextAction.skill || '(none)'}${nextAction.summary ? ' — ' + nextAction.summary : ''}`);
   console.log(`  Continue: ${cont.kind} → ${cont.target}${cont.detail ? ' (' + cont.detail.slice(0, 50) + ')' : ''}`);
   console.log('');
 }

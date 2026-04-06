@@ -96,6 +96,7 @@ Researcher is for EXTERNAL investigation only:
 <Steps>
 -1. **Staleness Check (constraint propagation)**
     - Read state.json.staleness — if `spec` is marked stale, BLOCK.
+    - Read analysis metadata — if saved codebase analysis is stale or missing for a non-greenfield path, route to `forge:analyze` first.
     - Route to PM to update spec before design proceeds.
     - Only continue when spec staleness is cleared.
 

@@ -123,7 +123,7 @@ describe('forge company e2e smoke', () => {
     runtime = readRuntime(cwd);
     expect(runtime.active_gate).toBe('implementation_readiness');
     expect(runtime.next_session_owner).toBe('lead-dev');
-    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:fix');
+    expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:continue');
     expect(output.hookSpecificOutput.additionalContext).toContain('next:lead-dev');
 
     writeState(cwd, {
