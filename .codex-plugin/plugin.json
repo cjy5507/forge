@@ -1,6 +1,6 @@
 {
   "name": "forge",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Structured build and repair workflows for coding agents",
   "author": {
     "name": "Forge Contributors",

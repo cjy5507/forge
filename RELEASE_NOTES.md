@@ -1,5 +1,22 @@
 # Forge Release Notes Draft
 
+## v0.3.7
+
+Merge-debt control-tower release.
+
+### Highlights
+
+- Surfaced `approved`, `merge-ready`, `queued`, `rebasing`, and `changes requested` lanes ahead of fresh implementation work
+- Updated `forge status` and next-action routing so small reviewed slices are landed before more scope opens
+- Added narrow `subagent-stop` inference for review approval, requested changes, merge readiness, and rebase-needed notes
+- Bumped package, plugin, and marketplace metadata to `0.3.7` for update detection and cache refresh
+- 231 targeted automated tests passing for runtime, hooks, and status surfaces
+
+### Notes
+
+- This release is aimed at reducing large catch-up merges by making merge debt first-class in the harness
+- `merged` and `done` remain explicit state transitions; Forge does not infer irreversible integration state from prose
+
 ## v0.3.6
 
 Worktree guard root-resolution hotfix.
