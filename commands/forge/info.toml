@@ -1,0 +1,10 @@
+description = "Show the canonical Forge status and next action for this repository."
+
+prompt = """
+Use Forge to report the current project status for this repository.
+
+Requirements:
+- Read shared .forge/ state.
+- Use the canonical status/info surface rather than a freeform summary.
+- Keep the result compact and action-oriented.
+"""

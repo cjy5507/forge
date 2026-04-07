@@ -1,0 +1,11 @@
+description = "Resume this repository through Forge's shared runtime state."
+
+prompt = """
+Use Forge to continue work in this repository.
+
+Requirements:
+- Treat .forge/ state as the source of truth.
+- Read the repo guidance before acting.
+- Resume the current Forge lane or phase instead of inventing a new workflow.
+- If the project is already delivered, fall back to the canonical status/info surface.
+"""

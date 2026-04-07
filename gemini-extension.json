@@ -1,0 +1,11 @@
+{
+  "name": "forge",
+  "version": "0.4.3",
+  "mcpServers": {
+    "context7": {
+      "type": "url",
+      "url": "https://mcp.context7.com/mcp"
+    }
+  },
+  "contextFileName": "GEMINI.md"
+}

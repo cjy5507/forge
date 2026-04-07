@@ -247,6 +247,24 @@ Point the host at the repository root containing `.codex-plugin/plugin.json`.
 Recommended roots: `~/.forge/plugins/forge` or `./.forge/plugins/forge`.
 </details>
 
+<details>
+<summary>Gemini CLI</summary>
+
+```bash
+gemini extensions install /absolute/path/to/forge
+```
+
+For a linked development install:
+
+```bash
+gemini extensions link /absolute/path/to/forge
+```
+
+Gemini looks for `gemini-extension.json` at the extension root, so point it at the repository root.
+Forge currently supports explicit shared-state flows through Gemini commands such as `/forge:continue`
+and `/forge:info`; Claude-style hook lifecycle parity is not claimed.
+</details>
+
 ## Validation
 
 ```bash
@@ -268,6 +286,7 @@ inspection with lower confidence.
 |------|--------|-------|
 | Claude Code | **Verified** | Full hook lifecycle, subagent routing, lane management |
 | Codex | **Degraded support** | Live smoke verified `forge status`, `forge info`, explicit cross-host `forge continue`, and `forge analyze` on shared runtime/skill surfaces. Claude-style hook lifecycle parity is not yet achieved. |
+| Gemini CLI | **Degraded support** | Root extension manifest, explicit Forge commands, and shared `.forge` runtime flows are shipped. Session/tool hook parity is not yet claimed. |
 
 Forge's file-based state system (`.forge/`, `state.json`, `runtime.json`) is host-agnostic.
 Explicit `forge continue` through shared `.forge/` state works across Claude and Codex; the deeper
