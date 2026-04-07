@@ -260,6 +260,18 @@ For a linked development install:
 gemini extensions link /absolute/path/to/forge
 ```
 
+Verify the install:
+
+```bash
+gemini extensions list
+```
+
+Update a previously installed local copy:
+
+```bash
+gemini extensions update forge
+```
+
 Gemini looks for `gemini-extension.json` at the extension root, so point it at the repository root.
 Forge currently supports explicit shared-state flows through Gemini commands such as `/forge:continue`
 and `/forge:info`; Claude-style hook lifecycle parity is not claimed.
@@ -276,6 +288,18 @@ Or from Git:
 
 ```bash
 qwen extensions install https://github.com/cjy5507/forge.git
+```
+
+Verify the install:
+
+```bash
+qwen extensions list
+```
+
+Update a previously installed local copy:
+
+```bash
+qwen extensions update forge
 ```
 
 Forge ships a native `qwen-extension.json` surface with `skills/`, `agents/`, MCP wiring, and
