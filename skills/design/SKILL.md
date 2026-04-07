@@ -223,7 +223,7 @@ Researcher is for EXTERNAL investigation only:
 
 10. Create git tag: forge/v1-design
 
-11. Transition to Phase 3 (forge:plan)
+11. Transition to Phase 3 (forge:plans)
 </Steps>
 
 <Scale_Decision>
@@ -293,6 +293,6 @@ Over-engineering a small project is as bad as under-engineering a large one.
 <Auto_Chain>
 When design completes (architecture.md, code-rules.md, contracts/ all produced, CTO+Designer confirm):
 1. Update state.json: phase_id → "plan", design_approved → true
-2. IMMEDIATELY invoke Skill: forge:plan
+2. IMMEDIATELY invoke Skill: forge:plans
 Do NOT stop, summarize, or ask the user. Lead Dev will decompose the work before developers start implementing.
 </Auto_Chain>

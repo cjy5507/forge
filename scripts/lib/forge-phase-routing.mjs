@@ -10,6 +10,7 @@ const buildTriggers = allTriggers(BUILD_TRIGGERS_I18N);
 const repairTriggers = allTriggers(REPAIR_TRIGGERS_I18N);
 
 const PHASE_TO_SKILL = {
+  plan: 'plans',
   delivery: 'deliver',
   complete: 'info',
 };
@@ -28,7 +29,7 @@ export function extractExplicitForgeSkill(message) {
     { skill: 'analyze', patterns: [/\bforge\s+analy[sz]e\b/, /\bforge\s+analysis\b/, /포지\s*분석/] },
     { skill: 'cancel', patterns: [/\bforge\s+cancel\b/, /\bforge\s+stop\b/, /\bforge\s+abort\b/, /포지\s*취소/, /포지\s*중단/] },
     { skill: 'design', patterns: [/\bforge\s+design\b/] },
-    { skill: 'plan', patterns: [/\bforge\s+plan\b/] },
+    { skill: 'plans', patterns: [/\bforge\s+plans\b/, /\bforge\s+plan\b/] },
     { skill: 'develop', patterns: [/\bforge\s+develop\b/] },
     { skill: 'fix', patterns: [/\bforge\s+fix\b/] },
     { skill: 'qa', patterns: [/\bforge\s+qa\b/] },

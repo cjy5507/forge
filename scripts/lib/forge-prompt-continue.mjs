@@ -29,8 +29,9 @@ export function resolveActiveForgePrompt({
   let currentSkill = initialSkill;
   let context = `[Forge] full intake 0/${PHASE_SEQUENCE.length - 1} ×spec ×design`;
 
-  if (['design', 'plan', 'develop', 'fix'].includes(currentSkill)) {
-    const gate = shouldRefreshAnalysis(state, runtime, { phaseOverride: currentSkill });
+  if (['design', 'plan', 'plans', 'develop', 'fix'].includes(currentSkill)) {
+    const phaseOverride = currentSkill === 'plans' ? 'plan' : currentSkill;
+    const gate = shouldRefreshAnalysis(state, runtime, { phaseOverride });
     if (gate.needed) {
       currentSkill = 'analyze';
       context = `${compactForgeContext(state, runtime)} → forge:analyze (${gate.reason}) [${recommendedAgents.join(', ')}]`;

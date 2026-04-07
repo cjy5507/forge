@@ -146,7 +146,7 @@ Phase 3 — PLAN (Lead Dev):
      - Lead generates planning questions (ambiguous boundaries, unclear dependencies, oversized lanes)
      - CEO triages: CTO answers technical, Designer answers UX, client if business-owned
      - Lead confirms understanding before decomposition begins
-  2. Invoke forge:plan skill
+  2. Invoke forge:plans skill
   3. Lead uses Forge's native decomposition helpers to produce the execution plan
   4. Output: `.forge/plan.md`, lane graph, task briefs
   5. Internal planning gate passes → Phase 4

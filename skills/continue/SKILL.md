@@ -98,7 +98,7 @@ Standard mode (build, N/9):
 - 0 → forge:intake
 - 1 → forge:discovery
 - 2 → forge:design
-- 3 → forge:plan
+- 3 → forge:plans
 - 4 → forge:develop
 - 5 → forge:qa
 - 6 → forge:security
