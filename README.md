@@ -265,6 +265,24 @@ Forge currently supports explicit shared-state flows through Gemini commands suc
 and `/forge:info`; Claude-style hook lifecycle parity is not claimed.
 </details>
 
+<details>
+<summary>Qwen Code</summary>
+
+```bash
+qwen extensions install /absolute/path/to/forge
+```
+
+Or from Git:
+
+```bash
+qwen extensions install https://github.com/cjy5507/forge.git
+```
+
+Forge ships a native `qwen-extension.json` surface with `skills/`, `agents/`, MCP wiring, and
+explicit `/forge:*` commands. Hook lifecycle parity is not claimed; Qwen support currently focuses
+on explicit commands and shared `.forge` state.
+</details>
+
 ## Validation
 
 ```bash
@@ -287,6 +305,7 @@ inspection with lower confidence.
 | Claude Code | **Verified** | Full hook lifecycle, subagent routing, lane management |
 | Codex | **Degraded support** | Live smoke verified `forge status`, `forge info`, explicit cross-host `forge continue`, and `forge analyze` on shared runtime/skill surfaces. Claude-style hook lifecycle parity is not yet achieved. |
 | Gemini CLI | **Degraded support** | Root extension manifest, explicit Forge commands, and shared `.forge` runtime flows are shipped. Session/tool hook parity is not yet claimed. |
+| Qwen Code | **Degraded support** | Native `qwen-extension.json`, `skills/`, `agents/`, and explicit `/forge:*` commands are shipped. Hook lifecycle parity is not yet claimed. |
 
 Forge's file-based state system (`.forge/`, `state.json`, `runtime.json`) is host-agnostic.
 Explicit `forge continue` through shared `.forge/` state works across Claude and Codex; the deeper

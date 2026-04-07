@@ -13,7 +13,7 @@ describe('forge host support', () => {
     expect(profile.capabilities.degradedModes).toContain('session_hooks_unverified');
   });
 
-  it('upgrades Gemini once the extension surface is shipped while keeping Qwen planned', () => {
+  it('upgrades Gemini and Qwen once their explicit extension surfaces are shipped', () => {
     const gemini = getForgeHostCapabilities('gemini');
     const qwen = getForgeHostSupportProfile('qwen');
 
@@ -21,8 +21,9 @@ describe('forge host support', () => {
     expect(gemini.sharedContinue).toBe(true);
     expect(gemini.degradedModes).toContain('session_hooks_unverified');
     expect(qwen.displayName).toBe('Qwen Code');
-    expect(qwen.supportLevel).toBe('planned');
-    expect(qwen.capabilities.sharedContinue).toBe(false);
+    expect(qwen.supportLevel).toBe('degraded');
+    expect(qwen.capabilities.sharedContinue).toBe(true);
+    expect(qwen.capabilities.explicitContinue).toBe(true);
   });
 
   it('normalizes unknown hosts to an explicit unknown profile', () => {
