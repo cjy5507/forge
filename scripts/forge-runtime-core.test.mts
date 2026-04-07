@@ -4,7 +4,7 @@ import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
-import { applyHostContext } from './lib/forge-host-context.mjs';
+import { applyHostContext, describeCrossHostResume, detectHostId } from './lib/forge-host-context.mjs';
 import { compactForgeContext, initLaneRecord, markLaneMergeState, markLaneReviewState, readRuntimeState, selectContinuationTarget, setLaneOwner, setLaneStatus, updateRuntimeState, readForgeState, writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
 import { selectNextLane } from './lib/forge-lanes.mjs';
 import { inferTierFromState, suggestTierDeescalation } from './lib/forge-tiers.mjs';
@@ -91,6 +91,23 @@ describe('forge runtime core', () => {
     expect(runtime.host_context.previous_host).toBe('claude');
     expect(runtime.host_context.last_event_name).toBe('session.start');
     expect(runtime.host_context.last_resume_host).toBe('codex');
+  });
+
+  it('accepts explicit Gemini and Qwen host ids without relying on env heuristics', () => {
+    expect(detectHostId({ hostId: 'gemini' }, {})).toBe('gemini');
+    expect(detectHostId({ host_id: 'qwen' }, { CLAUDE_PLUGIN_ROOT: '/tmp/claude' })).toBe('qwen');
+  });
+
+  it('renders cross-host handoff text for newly declared hosts', () => {
+    const handoff = describeCrossHostResume({
+      host_context: {
+        current_host: 'qwen',
+        previous_host: 'gemini',
+      },
+    });
+
+    expect(handoff).toContain('Gemini CLI');
+    expect(handoff).toContain('Qwen Code');
   });
 
   it('provides transition helpers that keep lane state and control-tower hints in sync', () => {

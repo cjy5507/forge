@@ -287,7 +287,7 @@ export function normalizeAnalysisMeta(analysis = {}) {
 
 export function normalizeHostId(value, fallback = '') {
   const normalized = requireString(value, fallback).toLowerCase();
-  if (['claude', 'codex', 'unknown'].includes(normalized)) {
+  if (['claude', 'codex', 'gemini', 'qwen', 'unknown'].includes(normalized)) {
     return normalized;
   }
   return fallback;
