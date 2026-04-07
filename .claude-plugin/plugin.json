@@ -1,0 +1,21 @@
+{
+  "name": "forge",
+  "version": "0.4.1",
+  "description": "Structure, ownership, and continuable state for long-running coding agent work.",
+  "author": {
+    "name": "Forge Contributors",
+    "url": "https://github.com/cjy5507/forge"
+  },
+  "homepage": "https://github.com/cjy5507/forge",
+  "repository": "https://github.com/cjy5507/forge",
+  "license": "MIT",
+  "keywords": [
+    "workflow",
+    "continuity",
+    "build",
+    "repair",
+    "phase-gated"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

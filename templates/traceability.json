@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "generatedAt": "{{DATE}}",
+  "requirements": [
+    {
+      "id": "FR-1",
+      "title": "{{requirement_title}}",
+      "summary": "{{requirement_summary}}",
+      "rationale": "{{why_this_matters}}",
+      "type": "functional",
+      "phaseOwner": "develop",
+      "status": "planned",
+      "acceptanceCriteria": [
+        {
+          "id": "FR-1-AC-1",
+          "text": "{{acceptance_text}}",
+          "status": "pending",
+          "evidenceRefs": []
+        }
+      ],
+      "designRefs": [],
+      "contractRefs": [],
+      "taskRefs": [],
+      "holeRefs": [],
+      "deliveryRefs": []
+    }
+  ]
+}

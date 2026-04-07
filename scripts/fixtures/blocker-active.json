@@ -1,0 +1,38 @@
+{
+  "state": {
+    "version": "0.1.0",
+    "project": "my-saas-app",
+    "phase_id": "develop",
+    "mode": "build",
+    "tier": "medium",
+    "status": "in_progress",
+    "spec_approved": true,
+    "design_approved": true
+  },
+  "runtime": {
+    "version": 3,
+    "active_tier": "medium",
+    "active_gate": "implementation_readiness",
+    "active_gate_owner": "lead-dev",
+    "delivery_readiness": "blocked",
+    "customer_blockers": [
+      "Need production database credentials from client"
+    ],
+    "internal_blockers": [
+      "Auth service dependency not yet deployed"
+    ],
+    "next_lane": "auth-api",
+    "lanes": {
+      "auth-api": {
+        "id": "auth-api",
+        "title": "Auth API routes",
+        "status": "blocked",
+        "owner_role": "developer",
+        "blocked_reason": "Waiting on client DB credentials",
+        "handoff_notes": [
+          { "kind": "status", "note": "All routes implemented, blocked on DB connection string", "at": "2026-04-03T10:00:00Z" }
+        ]
+      }
+    }
+  }
+}

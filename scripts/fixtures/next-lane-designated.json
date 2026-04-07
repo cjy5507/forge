@@ -1,0 +1,40 @@
+{
+  "state": {
+    "version": "0.1.0",
+    "project": "my-saas-app",
+    "phase_id": "develop",
+    "mode": "build",
+    "tier": "medium",
+    "status": "in_progress",
+    "spec_approved": true,
+    "design_approved": true
+  },
+  "runtime": {
+    "version": 3,
+    "active_tier": "medium",
+    "active_gate": "implementation_readiness",
+    "active_gate_owner": "lead-dev",
+    "delivery_readiness": "in_progress",
+    "customer_blockers": [],
+    "internal_blockers": [],
+    "next_lane": "payment-ui",
+    "lanes": {
+      "auth-api": {
+        "id": "auth-api",
+        "title": "Auth API routes",
+        "status": "merged",
+        "owner_role": "developer",
+        "handoff_notes": [
+          { "kind": "merge", "note": "Merged to main, all tests passing", "at": "2026-04-03T11:00:00Z" }
+        ]
+      },
+      "payment-ui": {
+        "id": "payment-ui",
+        "title": "Payment checkout UI",
+        "status": "ready",
+        "owner_role": "publisher",
+        "handoff_notes": []
+      }
+    }
+  }
+}

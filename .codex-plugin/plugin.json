@@ -1,0 +1,51 @@
+{
+  "name": "forge",
+  "version": "0.4.1",
+  "description": "Structured build and repair workflows for coding agents",
+  "author": {
+    "name": "Forge Contributors",
+    "url": "https://github.com/cjy5507/forge"
+  },
+  "homepage": "https://github.com/cjy5507/forge",
+  "repository": "https://github.com/cjy5507/forge",
+  "license": "MIT",
+  "keywords": [
+    "forge",
+    "workflow",
+    "continuity",
+    "build",
+    "repair",
+    "phase-gated"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json",
+  "_hooksNote": "hooks.json lists events primarily aligned with Claude Code. When a host does not fire a matching event, Forge degrades safely: hook scripts exit 0 with { continue: true } and do not mutate state. Codex still uses the shared .forge runtime, skills, forge-status, next_action, and explicit cross-host `forge continue` surfaces, but full hook lifecycle parity is not yet achieved.",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Forge",
+    "shortDescription": "Continuable build and repair harness for coding agents",
+    "longDescription": "Gives long-running coding work persistent project structure — phase gates, ownership tracking, and continuable state across sessions.",
+    "developerName": "Forge Contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Write",
+      "Interactive",
+      "Automation"
+    ],
+    "websiteURL": "https://github.com/cjy5507/forge",
+    "privacyPolicyURL": "https://github.com/cjy5507/forge/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/cjy5507/forge/blob/main/TERMS.md",
+    "defaultPrompt": [
+      "Start a Forge harness for this project.",
+      "Resume the shared Forge project from this host with `forge continue`.",
+      "Use Forge to diagnose and fix this repo."
+    ],
+    "brandColor": "#1F6FEB",
+    "composerIcon": "./assets/forge-icon.svg",
+    "logo": "./assets/forge-logo.svg",
+    "screenshots": [
+      "./assets/screenshot-overview.png",
+      "./assets/screenshot-console.png"
+    ]
+  }
+}

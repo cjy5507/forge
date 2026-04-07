@@ -1,0 +1,30 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="44" fill="#07111F"/>
+  <rect x="42" y="42" width="1116" height="546" rx="36" fill="url(#panel)"/>
+  <rect x="96" y="110" width="116" height="116" rx="28" fill="#0B1220"/>
+  <path d="M123 139H185V153H147V167H176V181H147V206H132V181H123V167H132V153H123V139Z" fill="#F3F6FB"/>
+  <path d="M177 127L198 148L177 169" stroke="#F59E0B" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="246" y="170" fill="#F7FAFC" font-size="92" font-family="SF Pro Display, Inter, sans-serif" font-weight="700">Forge</text>
+  <text x="248" y="236" fill="#9FB0C8" font-size="30" font-family="SF Pro Display, Inter, sans-serif" font-weight="500">Harness-engineered software company workflow</text>
+  <rect x="98" y="304" width="300" height="190" rx="24" fill="#0D1728" stroke="#24344D"/>
+  <text x="128" y="352" fill="#F7FAFC" font-size="28" font-family="SF Pro Display, Inter, sans-serif" font-weight="650">Control Plane</text>
+  <text x="128" y="394" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Stop guard</text>
+  <text x="128" y="426" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Subagent tracking</text>
+  <text x="128" y="458" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Failure loop guidance</text>
+  <rect x="450" y="304" width="300" height="190" rx="24" fill="#0D1728" stroke="#24344D"/>
+  <text x="480" y="352" fill="#F7FAFC" font-size="28" font-family="SF Pro Display, Inter, sans-serif" font-weight="650">Phase Gates</text>
+  <text x="480" y="394" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Build mode</text>
+  <text x="480" y="426" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Repair mode</text>
+  <text x="480" y="458" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Delivery workflow</text>
+  <rect x="802" y="304" width="300" height="190" rx="24" fill="#0D1728" stroke="#24344D"/>
+  <text x="832" y="352" fill="#F7FAFC" font-size="28" font-family="SF Pro Display, Inter, sans-serif" font-weight="650">Evidence</text>
+  <text x="832" y="394" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Contracts</text>
+  <text x="832" y="426" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Code rules</text>
+  <text x="832" y="458" fill="#C5D1E0" font-size="20" font-family="SF Pro Text, Inter, sans-serif">Context7 docs</text>
+  <defs>
+    <linearGradient id="panel" x1="76" y1="66" x2="1132" y2="564" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#122033"/>
+      <stop offset="1" stop-color="#1C2F46"/>
+    </linearGradient>
+  </defs>
+</svg>

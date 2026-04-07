@@ -1,0 +1,30 @@
+{
+  "name": "forge",
+  "owner": {
+    "name": "Forge Contributors"
+  },
+  "metadata": {
+    "description": "Forge marketplace — continuable project workflows for coding agents",
+    "version": "0.4.1"
+  },
+  "plugins": [
+    {
+      "name": "forge",
+      "description": "Gives long-running coding agent work persistent project structure — phase gates, ownership tracking, and continuable state across sessions.",
+      "version": "0.4.1",
+      "author": {
+        "name": "Forge Contributors"
+      },
+      "source": "./",
+      "category": "developer-tools",
+      "homepage": "https://github.com/cjy5507/forge",
+      "tags": [
+        "workflow",
+        "continuity",
+        "build",
+        "repair",
+        "phase-gated"
+      ]
+    }
+  ]
+}

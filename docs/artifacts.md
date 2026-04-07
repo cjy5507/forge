@@ -1,0 +1,200 @@
+# Forge Artifact Structure
+
+Forge persists all project state in a `.forge/` directory at the project root. This directory is
+the single source of truth for project progress, decisions, and work tracking.
+
+## Directory layout
+
+```
+.forge/
+├── state.json              # Current phase, mode, tier, progress
+├── runtime.json            # Lane graph, ownership, blockers, handoff notes
+├── spec.md                 # Requirements (Phase 1 output)
+├── code-rules.md           # Code conventions enforced on every PR (Phase 2)
+├── plan.md                 # Execution plan and lane ordering (Phase 3)
+│
+├── design/                 # Phase 2 outputs
+│   ├── architecture.md     # System architecture, tech stack, key decisions
+│   ├── components.md       # UI component definitions (if applicable)
+│   └── tokens.json         # Design tokens (if applicable)
+│
+├── contracts/              # Interface contracts (Phase 2)
+│   └── *.ts                # TypeScript interface stubs for module boundaries
+│
+├── tasks/                  # Lane task briefs (Phase 3)
+│   └── {lane-name}.md      # One file per lane: scope, acceptance criteria, dependencies
+│
+├── holes/                  # Issue tracker (Phase 5+)
+│   └── {issue-id}.md       # One file per issue: severity, description, attempts, status
+│
+├── evidence/               # Fact-checker verification results
+│   └── *.md                # One file per verified claim
+│
+├── eval/                   # A/B scorecards and machine-readable comparisons
+│   └── *.json / *.md       # Baseline vs harness reports
+│
+├── events/                 # Append-only operational events
+│   └── *.jsonl             # eval runs, handoffs, retries, blockers
+│
+├── worktrees/              # Git worktree directories (Phase 4, transient)
+│   └── {lane-name}/        # Isolated working copy per lane
+│
+├── checkpoints/            # Context snapshots for session continuity
+│   └── {phase}-{timestamp}.md
+│
+├── delivery-report/        # Final delivery (Phase 8)
+│   ├── report.md           # Spec coverage, test results, known issues
+│   ├── api-docs.md         # API documentation (if applicable)
+│   ├── component-docs.md   # Component documentation (if applicable)
+│   └── deploy-guide.md     # Deployment instructions
+│
+└── knowledge/              # Project-specific knowledge base
+    └── *.md                # Decisions, trade-offs, context that doesn't fit elsewhere
+```
+
+## Artifact lifecycle
+
+| Artifact         | Created at | Updated at     | Used by                    |
+|------------------|------------|----------------|----------------------------|
+| state.json       | Phase 0    | Every phase    | continue, status, all skills|
+| runtime.json     | Phase 3    | Phase 3–7      | continue, status, plan, develop, fix |
+| spec.md          | Phase 1    | Phase 1 (amendments rare) | All phases after 1   |
+| code-rules.md    | Phase 2    | Phase 2        | develop, fix (enforcement) |
+| plan.md          | Phase 3    | Phase 3        | develop, continue          |
+| design/          | Phase 2    | Phase 2        | plan, develop (reference)  |
+| contracts/       | Phase 2    | Phase 2–4      | plan, develop, fix (guard) |
+| tasks/           | Phase 3    | Phase 3–4      | plan, develop (scope)      |
+| holes/           | Phase 5    | Phase 5–6      | fix, status                |
+| evidence/        | Phase 2+   | Any phase      | fact-checker               |
+| eval/            | Phase 2+   | Any phase      | forge eval, delivery proof |
+| events/          | Phase 2+   | Any phase      | forge eval, runtime audits |
+| worktrees/       | Phase 4    | Cleaned up after Phase 4 | develop         |
+| checkpoints/     | Any phase  | Before compaction | continue               |
+| delivery-report/ | Phase 8    | Phase 8        | deliver                    |
+
+## Key files explained
+
+### state.json
+
+The minimal coordination file. Every Forge command reads this first.
+
+```json
+{
+  "version": "0.1.0",
+  "project": "my-saas-app",
+  "phase": 3,
+  "phase_id": "plan",
+  "phase_name": "plan",
+  "tier": "medium",
+  "mode": "build",
+  "status": "in_progress",
+  "analysis": {
+    "last_type": "impact",
+    "last_target": "scripts/write-gate.mjs",
+    "artifact_path": ".forge/design/codebase-analysis.md",
+    "confidence": "medium",
+    "stale": false
+  },
+  "spec_approved": true,
+  "design_approved": true
+}
+```
+
+### runtime.json
+
+Tracks lane state from planning through fix phases. Each lane has:
+- **status**: pending → ready → in_progress → blocked → in_review → merged → done
+- **owner_role**: which agent role owns the lane
+- **worktree_path**: isolated git worktree location
+- **dependencies**: upstream lanes that must complete first
+- **review_state**: review progress (`none | pending | changes_requested | approved`)
+- **merge_state**: integration progress (`none | queued | rebasing | ready | merged`)
+- **handoff_notes**: ordered status updates for session continuity
+
+Approved / merge-ready lanes should be merged before starting more implementation scope; otherwise merge debt accumulates and later rebases become high-conflict.
+
+Runtime also tracks:
+- **analysis**: last saved analysis metadata, confidence, staleness
+- **next_action**: canonical next step used by restore, resume, stop-guard, HUD, and status surfaces
+
+### eval/*.json and eval/*.md
+
+`forge eval` writes side-by-side machine-readable and narrative scorecards:
+
+- `.forge/eval/{slug}.json` — normalized metrics, baseline/harness summaries, recommendation
+- `.forge/eval/{slug}.md` — human-readable A/B report
+- `.forge/events/eval.jsonl` — append-only record of each generated scorecard
+
+The MVP metric set is:
+
+- completion
+- first-pass success
+- retry count
+- tests passed
+- regressions
+- output consistency
+- user corrections
+
+Example next action:
+
+```json
+{
+  "next_action": {
+    "kind": "active_lane",
+    "skill": "continue",
+    "target": "auth-api",
+    "reason": "JWT middleware done, testing refresh token flow",
+    "summary": "Resume lane auth-api — JWT middleware done, testing refresh token flow"
+  }
+}
+```
+
+### holes/{issue-id}.md
+
+Each discovered issue gets its own file with:
+- Severity (blocker / major / minor)
+- Description and reproduction steps
+- Attempt count and history (max 3 before escalation)
+- Current status
+
+### contracts/*.ts
+
+TypeScript interface stubs defining module boundaries. The contract guard hook
+(`scripts/contract-guard.mjs`) verifies written code matches these interfaces.
+
+## Artifact consistency rules
+
+`forge status` and `forge continue` read artifacts consistently per phase:
+
+| Phase         | Reads                                       | Graceful if missing             |
+|---------------|---------------------------------------------|---------------------------------|
+| 0–1 (intake/discovery) | state.json                        | runtime.json (skip lanes)       |
+| 2 (design)    | state.json, spec.md                         | runtime.json                    |
+| 3 (plan)      | state.json, spec.md, code-rules.md, design/, contracts/, plan.md, runtime.json | tasks/ (warn) |
+| 4 (develop)   | state.json, spec.md, code-rules.md, design/, contracts/, plan.md, tasks/, runtime.json | design/ (warn) |
+| 5–7 (QA/fix)  | state.json, spec.md, holes/, runtime.json   | delivery-report/                |
+| 8 (delivery)  | state.json, spec.md, holes/, delivery-report/ | runtime.json                 |
+
+**Repair mode** adds:
+
+| Phase         | Required artifact before advancing           |
+|---------------|----------------------------------------------|
+| reproduce     | (none — this is where evidence starts)       |
+| isolate       | `.forge/evidence/` must exist                |
+| fix           | `.forge/evidence/rca-*.md` must exist        |
+| regress       | (none — this is where regression check starts)|
+| verify        | `.forge/holes/` must exist                   |
+| delivery      | (none — verify gate passed)                  |
+
+If a required artifact is missing, the phase skill should warn clearly
+("Missing .forge/evidence/ — run the reproduce phase first") rather than
+silently proceeding.
+
+## What is NOT in .forge/
+
+- **Source code** — lives in the normal project tree, not inside `.forge/`
+- **Git history** — standard git, with `forge/*` tags marking phase completions
+- **Build output** — standard build directories
+- **Dependencies** — standard package manager files
+
+`.forge/` is metadata about the process, not the product.

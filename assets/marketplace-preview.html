@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Forge Marketplace Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #07111f;
+        --panel: #0f1d31;
+        --panel-2: #13253e;
+        --line: #233754;
+        --text: #f8fbff;
+        --muted: #9cb0c8;
+        --accent: #f59e0b;
+        --accent-2: #1f6feb;
+        --success: #34d399;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "SF Pro Display", Inter, system-ui, sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(31,111,235,.24), transparent 28%),
+          radial-gradient(circle at top right, rgba(245,158,11,.16), transparent 24%),
+          linear-gradient(180deg, #07111f 0%, #0b1628 100%);
+        color: var(--text);
+      }
+
+      .frame {
+        width: 1440px;
+        min-height: 960px;
+        margin: 0 auto;
+        padding: 48px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.2fr .8fr;
+        gap: 28px;
+        margin-bottom: 28px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(19,37,62,.96), rgba(10,21,37,.96));
+        border-radius: 28px;
+        box-shadow: 0 28px 70px rgba(0,0,0,.35);
+      }
+
+      .hero-main {
+        padding: 34px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(245,158,11,.35);
+        background: rgba(245,158,11,.08);
+        color: #ffd48a;
+        font-size: 14px;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 14px;
+        font-size: 58px;
+        line-height: 1.02;
+        letter-spacing: -.04em;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 22px;
+        line-height: 1.5;
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .chip {
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(31,111,235,.14);
+        color: #d7e8ff;
+        border: 1px solid rgba(31,111,235,.3);
+        font-size: 15px;
+      }
+
+      .hero-side {
+        padding: 26px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .metric {
+        padding: 18px 20px;
+        border-radius: 20px;
+        background: rgba(10, 19, 33, .72);
+        border: 1px solid var(--line);
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 28px;
+        margin-bottom: 6px;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 22px;
+      }
+
+      .panel {
+        padding: 24px;
+      }
+
+      .panel h2 {
+        margin: 0 0 14px;
+        font-size: 24px;
+        letter-spacing: -.02em;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        gap: 12px;
+      }
+
+      li {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(8, 18, 32, .78);
+        border: 1px solid rgba(35,55,84,.9);
+        color: #d9e6f6;
+        font-size: 16px;
+      }
+
+      .footer {
+        margin-top: 22px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 22px;
+      }
+
+      .console {
+        padding: 24px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .console pre {
+        margin: 0;
+        white-space: pre-wrap;
+        color: #d6e6ff;
+        line-height: 1.6;
+        font-size: 15px;
+      }
+
+      .timeline {
+        padding: 24px;
+      }
+
+      .steps {
+        display: grid;
+        gap: 14px;
+      }
+
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 999px;
+        background: var(--success);
+        box-shadow: 0 0 0 6px rgba(52,211,153,.12);
+      }
+
+      .muted { color: var(--muted); }
+      .accent { color: #ffd48a; }
+    </style>
+  </head>
+  <body>
+    <main class="frame">
+      <section class="hero">
+        <article class="card hero-main">
+          <div class="eyebrow">Harness Engineering</div>
+          <h1>Forge helps coding agents work like a structured software team.</h1>
+          <p>It runs a virtual software company with guided delivery, session continuity, and runtime guardrails so build and repair work stays coordinated.</p>
+          <div class="chips">
+            <div class="chip">Build + repair flows</div>
+            <div class="chip">Tracked subagents</div>
+            <div class="chip">Runtime guardrails</div>
+            <div class="chip">Session continuity</div>
+            <div class="chip">Virtual software company</div>
+          </div>
+        </article>
+        <aside class="card hero-side">
+          <div class="metric">
+            <strong>Guided phases</strong>
+            <span>Intake → Discovery → Design → Plan → Develop → QA → Security/Fix → Delivery</span>
+          </div>
+          <div class="metric">
+            <strong>Continuity across sessions</strong>
+            <span>Runtime state, tracked agents, and recovery context survive handoffs.</span>
+          </div>
+          <div class="metric">
+            <strong>Evidence and guardrails</strong>
+            <span>Forge keeps specs, contracts, and code rules visible so review stays explicit when changes are ready to ship.</span>
+          </div>
+        </aside>
+      </section>
+
+      <section class="grid">
+        <article class="card panel">
+          <h2>Control plane</h2>
+          <ul>
+            <li>Stop guard blocks premature exit while work is still active</li>
+            <li>Session start and end persist Forge runtime state</li>
+            <li>Subagent lifecycle stays visible in runtime state across handoffs</li>
+          </ul>
+        </article>
+        <article class="card panel">
+          <h2>Quality gates</h2>
+          <ul>
+            <li>Code writes stay gated on required spec, design, rule, or contract inputs</li>
+            <li>Post-write reminders keep contracts and code-rule checks in view</li>
+            <li>Evaluation templates compare harness output against a baseline</li>
+          </ul>
+        </article>
+        <article class="card panel">
+          <h2>Roles</h2>
+          <ul>
+            <li>CEO, PM, Researcher, CTO, Lead Dev, QA, Security, Troubleshooter</li>
+            <li>Progressive disclosure via references keeps prompts lean</li>
+            <li>Same plugin structure can ship to Claude and Codex</li>
+          </ul>
+        </article>
+      </section>
+
+      <section class="footer">
+        <article class="card console">
+<pre>$ forge status
+Phase: develop (#3)
+Pending: 4 tracked tasks
+Active agents: cto, lead-dev, qa
+
+$ forge continue
+[Forge] Picking up from phase 3 — develop
+3 lanes active, 1 blocked (auth waiting on DB schema)
+
+$ forge troubleshoot
+[Forge Failure Loop] Test command failed.
+Capture the first failing assertion, then retry with evidence.</pre>
+        </article>
+        <article class="card timeline">
+          <h2>Delivery posture</h2>
+          <div class="steps">
+            <div class="step"><span class="dot"></span><div><strong>Plan before code</strong> <span class="muted">Native lane decomposition turns design into an execution graph before implementation starts</span></div></div>
+            <div class="step"><span class="dot"></span><div><strong>Implement in lanes</strong> <span class="muted">Task splitting, worktree discipline, living standard review</span></div></div>
+            <div class="step"><span class="dot"></span><div><strong>Verify before ship</strong> <span class="muted">QA, security review, and documented handoff</span></div></div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
