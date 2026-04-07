@@ -10,7 +10,8 @@
 
 import { readFileSync, readdirSync } from 'fs';
 import { join, basename } from 'path';
-import { compactForgeContext, normalizeRuntimeState, summarizePendingWork, selectContinuationTarget } from './lib/forge-session.mjs';
+import { normalizeRuntimeState, selectContinuationTarget } from './lib/forge-session.mjs';
+import { compactForgeContext, summarizePendingWork } from './lib/forge-compact-context.mjs';
 import { selectNextLane, summarizeLaneBriefs, summarizeLaneCounts, normalizeLane, normalizeRuntimeLanes } from './lib/forge-lanes.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 

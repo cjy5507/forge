@@ -736,7 +736,7 @@ function recordAnalysis(options) {
 
 function analysisStatus(options) {
   const state = readForgeState(process.cwd());
-  const runtime = readRuntimeState(process.cwd());
+  const runtime = readRuntimeState(process.cwd(), { state });
   const analysis = runtime.analysis || state?.analysis || {};
   const artifactPath = analysis.artifact_path || '.forge/design/codebase-analysis.md';
   const artifactExists = existsSync(resolve(process.cwd(), artifactPath));

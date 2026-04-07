@@ -3,6 +3,30 @@ import { dirname, join, resolve } from 'path';
 import { withRetry, LockError } from './error-handler.mjs';
 
 const activeLocks = new Set();
+const LOCK_STALE_MS = 5000;
+const LOCK_FUTURE_SKEW_MS = 1000;
+
+function parseLockTimestamp(lockContent) {
+  const parts = String(lockContent || '').trim().split('.');
+  if (parts.length < 2) {
+    return NaN;
+  }
+  return parseInt(parts[1], 10);
+}
+
+function cleanupStaleLock(lockPath) {
+  try {
+    const lockContent = readFileSync(lockPath, 'utf8');
+    const lockTimestamp = parseLockTimestamp(lockContent);
+    if (
+      !Number.isFinite(lockTimestamp)
+      || lockTimestamp > Date.now() + LOCK_FUTURE_SKEW_MS
+      || Date.now() - lockTimestamp > LOCK_STALE_MS
+    ) {
+      try { unlinkSync(lockPath); } catch {}
+    }
+  } catch {}
+}
 
 export function withForgeLock(cwd, callback) {
   const lockPath = join(resolveForgeBaseDir(cwd), '.forge', 'forge.lock');
@@ -14,42 +38,31 @@ export function withForgeLock(cwd, callback) {
   const maxRetries = 5;
   const retryDelay = 50;
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
-      if (!existsSync(forgeDir)) {
-        mkdirSync(forgeDir, { recursive: true });
-      }
-
-      writeFileSync(lockPath, `${process.pid}.${Date.now()}`, { flag: 'wx' });
-      activeLocks.add(lockPath);
-      try {
-        return callback();
-      } finally {
-        activeLocks.delete(lockPath);
-        try { unlinkSync(lockPath); } catch {}
-      }
-    } catch (err) {
-      if (err.code === 'EEXIST') {
-        try {
-          const lockContent = readFileSync(lockPath, 'utf8');
-          const parts = lockContent.split('.');
-          const lockTimestamp = parts.length >= 2 ? parseInt(parts[1], 10) : NaN;
-          if (!Number.isFinite(lockTimestamp) || Date.now() - lockTimestamp > 5000) {
-            try { unlinkSync(lockPath); } catch {}
-          }
-        } catch {}
-        const delay = retryDelay * Math.pow(2, attempt) + Math.random() * retryDelay;
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay | 0);
-        continue;
-      }
-      throw err;
-    }
+  const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
+  if (!existsSync(forgeDir)) {
+    mkdirSync(forgeDir, { recursive: true });
   }
 
-  const error = new Error(`Forge runtime lock acquisition failed after ${maxRetries} retries: ${lockPath}`);
-  error.code = 'ELOCKED';
-  throw error;
+  return withRetry(() => {
+    writeFileSync(lockPath, `${process.pid}.${Date.now()}`, { flag: 'wx' });
+    activeLocks.add(lockPath);
+    try {
+      return callback();
+    } finally {
+      activeLocks.delete(lockPath);
+      try { unlinkSync(lockPath); } catch {}
+    }
+  }, {
+    maxRetries,
+    retryDelay,
+    shouldRetry: err => err?.code === 'EEXIST',
+    onRetry: () => cleanupStaleLock(lockPath),
+    onExhausted: (_err, retries) => {
+      const error = new LockError(`Forge runtime lock acquisition failed after ${retries} retries: ${lockPath}`);
+      error.code = 'ELOCKED';
+      return error;
+    },
+  });
 }
 
 export const DEFAULT_STATS = {
@@ -169,17 +182,35 @@ export function resolveForgeBaseDir(cwd = '.') {
   }
 }
 
-export function readJsonFile(path, fallback = null) {
+export function readJsonFileDetailed(path, fallback = null, { logErrors = true } = {}) {
   if (!existsSync(path)) {
-    return fallback;
+    return {
+      exists: false,
+      value: fallback,
+      error: null,
+    };
   }
 
   try {
-    return JSON.parse(readFileSync(path, 'utf8'));
+    return {
+      exists: true,
+      value: JSON.parse(readFileSync(path, 'utf8')),
+      error: null,
+    };
   } catch (err) {
-    process.stderr.write(`[Forge] warning: failed to parse ${path}: ${err.message}\n`);
-    return fallback;
+    if (logErrors) {
+      process.stderr.write(`[Forge] warning: failed to parse ${path}: ${err.message}\n`);
+    }
+    return {
+      exists: true,
+      value: fallback,
+      error: err,
+    };
   }
+}
+
+export function readJsonFile(path, fallback = null) {
+  return readJsonFileDetailed(path, fallback).value;
 }
 
 export function writeJsonFile(path, value) {

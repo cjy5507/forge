@@ -14,7 +14,9 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { appendRecent } from './lib/forge-io.mjs';
-import { isProjectActive, messageLooksInteractive, readForgeState, selectResumeSkill, summarizePendingWork, updateRuntimeState } from './lib/forge-session.mjs';
+import { readForgeState, selectResumeSkill, updateRuntimeState } from './lib/forge-session.mjs';
+import { isProjectActive, messageLooksInteractive } from './lib/forge-interaction.mjs';
+import { summarizePendingWork } from './lib/forge-compact-context.mjs';
 import { readActiveTier } from './lib/forge-tiers.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';

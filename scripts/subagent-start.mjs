@@ -14,7 +14,8 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { appendRecent, resolveForgeBaseDir } from './lib/forge-io.mjs';
-import { isProjectActive, readForgeState, readRuntimeState, updateRuntimeState } from './lib/forge-session.mjs';
+import { readForgeState, readRuntimeState, updateRuntimeState } from './lib/forge-session.mjs';
+import { isProjectActive } from './lib/forge-interaction.mjs';
 import { readActiveTier, recommendedAgentsFor } from './lib/forge-tiers.mjs';
 import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';

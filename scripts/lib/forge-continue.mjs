@@ -1,5 +1,6 @@
 import { buildStatusModel, renderStatusText } from './forge-status.mjs';
-import { compactForgeContext, normalizeRuntimeState, selectResumeSkill } from './forge-session.mjs';
+import { normalizeRuntimeState, selectResumeSkill } from './forge-session.mjs';
+import { compactForgeContext } from './forge-compact-context.mjs';
 import { describeCrossHostResume } from './forge-host-context.mjs';
 
 export function createSkillDirective(skillName, context, { reason = '', warm = false } = {}) {

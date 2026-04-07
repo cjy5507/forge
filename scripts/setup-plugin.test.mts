@@ -65,7 +65,8 @@ describe('forge setup installer', () => {
     expect(existsSync(join(target, 'commands', 'forge', 'continue.toml'))).toBe(true);
     expect(existsSync(join(target, 'qwen-commands', 'forge', 'continue.md'))).toBe(true);
     expect(existsSync(join(target, '.mcp.json'))).toBe(true);
-    expect(existsSync(join(target, 'hooks', 'hooks.json'))).toBe(true);
+    expect(existsSync(join(target, '.codex-plugin', 'hooks', 'hooks.json'))).toBe(true);
+    expect(existsSync(join(target, 'hooks', 'hooks.json'))).toBe(false);
     expect(existsSync(join(target, '.git'))).toBe(false);
     expect(existsSync(join(target, 'node_modules'))).toBe(false);
     expect(existsSync(join(target, '.forge'))).toBe(false);

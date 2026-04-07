@@ -2,6 +2,7 @@ import { spawnSync } from 'child_process';
 import { basename } from 'path';
 import { describeCrossHostResume } from './forge-host-context.mjs';
 import { readForgeState, readRuntimeState, normalizeRuntimeState } from './forge-session.mjs';
+import { getStateTrustWarnings } from './forge-state-trust.mjs';
 import { resolvePhase } from './forge-phases.mjs';
 import { summarizeLaneCounts, normalizeRuntimeLanes } from './forge-lanes.mjs';
 import { readHoleSummaries, scopeHoleSummariesToProject, summarizeHoles } from './forge-delivery-report.mjs';
@@ -100,12 +101,37 @@ export function buildStatusModel({
   holeSummary = undefined,
   latestTag = undefined,
 } = {}) {
+  const trustWarnings = getStateTrustWarnings(cwd);
   const currentState = state ?? readForgeState(cwd);
   if (!currentState) {
-    return null;
+    if (trustWarnings.length === 0) {
+      return null;
+    }
+
+    return {
+      project: basename(cwd),
+      mode: 'unknown',
+      phase_id: 'warning',
+      phase_name: 'State Warning',
+      phase_index: 0,
+      total_phases: 0,
+      progress_percent: 0,
+      progress_bar: progressBar(0),
+      next_action: {
+        skill: 'continue',
+        summary: 'Repair Forge state files before continuing',
+      },
+      support_summary: '',
+      lanes: { total: 0, done: 0, blocked: 0, details: [] },
+      issues: { blocker: 0, major: 0, minor: 0, total: 0 },
+      tag: '',
+      harness: { tier: 'unknown', sessions: 0, agents: 0, failures: 0, stops: 0 },
+      host_handoff: '',
+      state_trust_warnings: trustWarnings,
+    };
   }
 
-  const currentRuntime = normalizeRuntimeState(runtime ?? readRuntimeState(cwd), { state: currentState });
+  const currentRuntime = normalizeRuntimeState(runtime ?? readRuntimeState(cwd, { state: currentState }), { state: currentState });
   const phase = resolvePhase(currentState);
   const counts = summarizeLaneCounts(currentRuntime);
   const scopedHoles = scopeHoleSummariesToProject(readHoleSummaries(cwd), currentState);
@@ -200,6 +226,11 @@ export function buildStatusModel({
       stops: currentRuntime.stats?.stop_block_count || 0,
     },
     host_handoff: hostHandoff,
+    state_trust_warnings: [
+      ...trustWarnings,
+      ...(currentState._trust_warnings || []),
+      ...(currentRuntime._trust_warnings || []),
+    ].filter(Boolean),
   };
 }
 
@@ -223,6 +254,9 @@ export function renderStatusText(model, { verbose = false } = {}) {
   }
   if (model.host_handoff) {
     lines.push(model.host_handoff);
+  }
+  if (Array.isArray(model.state_trust_warnings) && model.state_trust_warnings.length > 0) {
+    lines.push(`State trust: ${model.state_trust_warnings.join(' | ')}`);
   }
 
   lines.push('');

@@ -276,4 +276,33 @@ describe('forge status helper', () => {
     const text = renderStatusText(model);
     expect(text).toContain('Shared .forge handoff: Claude -> Codex');
   });
+
+  it('surfaces explicit trust warnings when runtime.json is malformed', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'trust-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeFileSync(join(cwd, '.forge', 'runtime.json'), '{not-valid-json');
+
+    const model = buildStatusModel({ cwd });
+    expect(model?.state_trust_warnings?.[0]).toContain('.forge/runtime.json');
+
+    const text = renderStatusText(model);
+    expect(text).toContain('State trust:');
+    expect(text).toContain('.forge/runtime.json');
+  });
+
+  it('returns a warning model when state.json exists but is malformed', () => {
+    const cwd = makeWorkspace();
+    writeFileSync(join(cwd, '.forge', 'state.json'), '{not-valid-json');
+
+    const model = buildStatusModel({ cwd });
+    expect(model?.phase_name).toBe('State Warning');
+    expect(model?.next_action.summary).toContain('Repair Forge state files');
+    expect(model?.state_trust_warnings?.[0]).toContain('.forge/state.json');
+  });
 });

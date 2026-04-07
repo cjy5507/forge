@@ -3,7 +3,8 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { appendRecent, resolveForgeBaseDir } from './lib/forge-io.mjs';
-import { isProjectActive, readForgeState, updateRuntimeState } from './lib/forge-session.mjs';
+import { readForgeState, updateRuntimeState } from './lib/forge-session.mjs';
+import { isProjectActive } from './lib/forge-interaction.mjs';
 import { readActiveTier } from './lib/forge-tiers.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';

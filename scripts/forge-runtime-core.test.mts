@@ -1295,6 +1295,30 @@ describe('lock contention', () => {
     }));
     expect(result.active_tier).toBe('full');
   });
+
+  it('recovers from a future-dated lock and completes successfully', () => {
+    const cwd = makeWorkspace();
+    const lockPath = join(cwd, '.forge', 'forge.lock');
+    writeFileSync(lockPath, `99999.${Date.now() + 60000}`);
+
+    const result = updateRuntimeState(cwd, (current: Record<string, unknown>) => ({
+      ...current,
+      active_tier: 'medium',
+    }));
+    expect(result.active_tier).toBe('medium');
+  });
+
+  it('recovers from a malformed lock and completes successfully', () => {
+    const cwd = makeWorkspace();
+    const lockPath = join(cwd, '.forge', 'forge.lock');
+    writeFileSync(lockPath, 'not-a-valid-lock');
+
+    const result = updateRuntimeState(cwd, (current: Record<string, unknown>) => ({
+      ...current,
+      active_tier: 'medium',
+    }));
+    expect(result.active_tier).toBe('medium');
+  });
 });
 
 describe('deriveSessionGoal (tested via readRuntimeState)', () => {

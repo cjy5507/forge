@@ -6,7 +6,8 @@
 // block returns { continue: true }.
 
 import { runHook } from './lib/hook-runner.mjs';
-import { readForgeState, compactForgeContext, readRuntimeState } from './lib/forge-session.mjs';
+import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
+import { compactForgeContext } from './lib/forge-compact-context.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
 
 runHook(async (input) => {
