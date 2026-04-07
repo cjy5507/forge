@@ -58,6 +58,12 @@ describe('forge setup installer', () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
     expect(existsSync(join(target, '.codex-plugin', 'plugin.json'))).toBe(true);
+    expect(existsSync(join(target, 'gemini-extension.json'))).toBe(true);
+    expect(existsSync(join(target, 'qwen-extension.json'))).toBe(true);
+    expect(existsSync(join(target, 'GEMINI.md'))).toBe(true);
+    expect(existsSync(join(target, 'QWEN.md'))).toBe(true);
+    expect(existsSync(join(target, 'commands', 'forge', 'continue.toml'))).toBe(true);
+    expect(existsSync(join(target, 'qwen-commands', 'forge', 'continue.md'))).toBe(true);
     expect(existsSync(join(target, '.mcp.json'))).toBe(true);
     expect(existsSync(join(target, 'hooks', 'hooks.json'))).toBe(true);
     expect(existsSync(join(target, '.git'))).toBe(false);
@@ -105,5 +111,7 @@ describe('forge setup installer', () => {
     expect(readme).toContain('scripts/setup-plugin.mjs');
     expect(readme).toContain('--scope global');
     expect(readme).toContain('--scope project');
+    expect(readme).toContain('gemini extensions install');
+    expect(readme).toContain('qwen extensions install');
   });
 });

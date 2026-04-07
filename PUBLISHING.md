@@ -6,7 +6,7 @@ Use this checklist before submitting Forge to any public marketplace.
 
 - Plugin manifest has no repo-local install assumptions
 - No absolute filesystem paths appear in plugin docs, tests, or manifests
-- `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` agree on core metadata
+- `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `gemini-extension.json`, and `qwen-extension.json` agree on core metadata and versioning
 - `hooks/hooks.json` points only to relative plugin files
 - `README.md` explains what Forge does and how to validate it
 - `PRIVACY.md` and `TERMS.md` exist for marketplace metadata
@@ -28,11 +28,13 @@ Current Forge asset set:
 
 ## Release sanity checks
 
-### Verified by automated tests (139 tests green)
+### Verified by automated tests
 
-- Plugin manifests parse as valid JSON
+- Claude, Codex, Gemini, and Qwen manifests parse as valid JSON
 - `hooks/hooks.json` is valid JSON and references existing scripts
 - Asset references in the Codex manifest exist on disk
+- Setup copy mode preserves the Gemini and Qwen extension roots
+- Version sync keeps all shipped host manifests aligned to `package.json`
 - MCP configuration is documented and optional auth requirements are noted
 - Hook scripts are present and referenced correctly
 
@@ -47,6 +49,8 @@ These have not been confirmed against a running plugin host and should be tested
 - Failure guidance appears after tool failures in a real session
 - Codex plugin host recognizes and loads the plugin from `.codex-plugin/plugin.json`
 - Claude-started project resumes correctly from Codex with explicit `forge continue`, and the inverse path also works
+- Gemini CLI installs or links the root extension and exposes `/forge:*` commands in a real host
+- Qwen Code installs the root extension and exposes native commands, skills, and agents in a real host
 - Context7 auth flow completes on a fresh install
 
 ## Do not ship if

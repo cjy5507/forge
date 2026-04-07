@@ -76,12 +76,16 @@ function syncRepositoryVersions(root, checkOnly) {
   const codexManifestPath = join(root, '.codex-plugin', 'plugin.json');
   const claudeManifestPath = join(root, '.claude-plugin', 'plugin.json');
   const marketplacePath = join(root, '.claude-plugin', 'marketplace.json');
+  const geminiManifestPath = join(root, 'gemini-extension.json');
+  const qwenManifestPath = join(root, 'qwen-extension.json');
 
   const pkg = readJson(packageJsonPath);
   const packageLock = readJson(packageLockPath);
   const codexManifest = readJson(codexManifestPath);
   const claudeManifest = readJson(claudeManifestPath);
   const marketplace = readJson(marketplacePath);
+  const geminiManifest = readJson(geminiManifestPath);
+  const qwenManifest = readJson(qwenManifestPath);
   const drift = [];
 
   packageLock.version = ensureVersionMatch(packageLock.version, pkg.version, 'package-lock.json version', drift);
@@ -96,6 +100,8 @@ function syncRepositoryVersions(root, checkOnly) {
 
   codexManifest.version = ensureVersionMatch(codexManifest.version, pkg.version, '.codex-plugin/plugin.json version', drift);
   claudeManifest.version = ensureVersionMatch(claudeManifest.version, pkg.version, '.claude-plugin/plugin.json version', drift);
+  geminiManifest.version = ensureVersionMatch(geminiManifest.version, pkg.version, 'gemini-extension.json version', drift);
+  qwenManifest.version = ensureVersionMatch(qwenManifest.version, pkg.version, 'qwen-extension.json version', drift);
 
   marketplace.metadata = marketplace.metadata || {};
   marketplace.metadata.version = ensureVersionMatch(
@@ -124,6 +130,8 @@ function syncRepositoryVersions(root, checkOnly) {
     writeJson(codexManifestPath, codexManifest);
     writeJson(claudeManifestPath, claudeManifest);
     writeJson(marketplacePath, marketplace);
+    writeJson(geminiManifestPath, geminiManifest);
+    writeJson(qwenManifestPath, qwenManifest);
   }
 
   return { version: pkg.version, drift };

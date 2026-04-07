@@ -50,6 +50,14 @@ function seedVersionFixture(root, version, overrides = {}) {
       plugins: [{ name: 'forge', version: overrides.marketplacePluginVersion || '0.0.1' }],
     }, null, 2)}\n`,
   );
+  writeFileSync(
+    join(root, 'gemini-extension.json'),
+    `${JSON.stringify({ name: 'forge', version: overrides.geminiVersion || '0.0.1' }, null, 2)}\n`,
+  );
+  writeFileSync(
+    join(root, 'qwen-extension.json'),
+    `${JSON.stringify({ name: 'forge', version: overrides.qwenVersion || '0.0.1' }, null, 2)}\n`,
+  );
 }
 
 describe('forge version sync', () => {
@@ -73,6 +81,8 @@ describe('forge version sync', () => {
     expect(result.stderr).toContain('Forge version drift detected against 1.2.3');
     expect(result.stderr).toContain('package-lock.json version');
     expect(result.stderr).toContain('.claude-plugin/marketplace.json metadata.version');
+    expect(result.stderr).toContain('gemini-extension.json version');
+    expect(result.stderr).toContain('qwen-extension.json version');
   });
 
   it('rewrites all published version metadata from package.json', () => {
@@ -90,6 +100,8 @@ describe('forge version sync', () => {
     const codexManifest = JSON.parse(readFileSync(join(root, '.codex-plugin', 'plugin.json'), 'utf8'));
     const claudeManifest = JSON.parse(readFileSync(join(root, '.claude-plugin', 'plugin.json'), 'utf8'));
     const marketplace = JSON.parse(readFileSync(join(root, '.claude-plugin', 'marketplace.json'), 'utf8'));
+    const geminiManifest = JSON.parse(readFileSync(join(root, 'gemini-extension.json'), 'utf8'));
+    const qwenManifest = JSON.parse(readFileSync(join(root, 'qwen-extension.json'), 'utf8'));
 
     expect(packageLock.version).toBe('2.4.6');
     expect(packageLock.packages[''].version).toBe('2.4.6');
@@ -97,6 +109,8 @@ describe('forge version sync', () => {
     expect(claudeManifest.version).toBe('2.4.6');
     expect(marketplace.metadata.version).toBe('2.4.6');
     expect(marketplace.plugins[0].version).toBe('2.4.6');
+    expect(geminiManifest.version).toBe('2.4.6');
+    expect(qwenManifest.version).toBe('2.4.6');
   });
 
   it('passes check mode for the repository itself', () => {

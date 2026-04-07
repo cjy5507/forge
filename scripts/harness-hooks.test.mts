@@ -122,9 +122,17 @@ describe('forge harness hooks', () => {
     const codexManifest = JSON.parse(
       readFileSync(join(FORGE_ROOT, '.codex-plugin', 'plugin.json'), 'utf8'),
     );
+    const geminiManifest = JSON.parse(
+      readFileSync(join(FORGE_ROOT, 'gemini-extension.json'), 'utf8'),
+    );
+    const qwenManifest = JSON.parse(
+      readFileSync(join(FORGE_ROOT, 'qwen-extension.json'), 'utf8'),
+    );
 
     expect(claudeManifest.version).toBe(pkg.version);
     expect(codexManifest.version).toBe(pkg.version);
+    expect(geminiManifest.version).toBe(pkg.version);
+    expect(qwenManifest.version).toBe(pkg.version);
     expect(claudeMarketplace.metadata.version).toBe(pkg.version);
     expect(claudeMarketplace.plugins[0].version).toBe(pkg.version);
   });
@@ -183,6 +191,10 @@ describe('forge harness hooks', () => {
       join(FORGE_ROOT, 'README.md'),
       join(FORGE_ROOT, '.claude-plugin', 'plugin.json'),
       join(FORGE_ROOT, '.codex-plugin', 'plugin.json'),
+      join(FORGE_ROOT, 'gemini-extension.json'),
+      join(FORGE_ROOT, 'qwen-extension.json'),
+      join(FORGE_ROOT, 'GEMINI.md'),
+      join(FORGE_ROOT, 'QWEN.md'),
       join(FORGE_ROOT, '.mcp.json'),
       join(FORGE_ROOT, 'PUBLISHING.md'),
       join(FORGE_ROOT, 'RELEASE_CHECKLIST.md'),
@@ -224,6 +236,22 @@ describe('forge harness hooks', () => {
       const content = readFileSync(file);
       expect(content.byteLength).toBeGreaterThan(0);
     }
+  });
+
+  it('publishes Gemini and Qwen extension roots with command surfaces', () => {
+    const geminiManifest = JSON.parse(
+      readFileSync(join(FORGE_ROOT, 'gemini-extension.json'), 'utf8'),
+    );
+    const qwenManifest = JSON.parse(
+      readFileSync(join(FORGE_ROOT, 'qwen-extension.json'), 'utf8'),
+    );
+
+    expect(geminiManifest.contextFileName).toBe('GEMINI.md');
+    expect(qwenManifest.contextFileName).toBe('QWEN.md');
+    expect(qwenManifest.skills).toBe('skills');
+    expect(qwenManifest.agents).toBe('agents');
+    expect(existsSync(join(FORGE_ROOT, 'commands', 'forge', 'continue.toml'))).toBe(true);
+    expect(existsSync(join(FORGE_ROOT, 'qwen-commands', 'forge', 'continue.md'))).toBe(true);
   });
 
   it('returns SessionStart hookSpecificOutput and normalizes state', () => {
