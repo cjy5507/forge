@@ -10,7 +10,8 @@ import { resolveActiveForgePrompt } from './lib/forge-prompt-continue.mjs';
 import { PHASE_SEQUENCE } from './lib/forge-phases.mjs';
 import { detectHostId } from './lib/forge-host-context.mjs';
 import { getRuntimePath } from './lib/forge-io.mjs';
-import { isProjectActive, readForgeState, updateRuntimeHookContext, updateAdaptiveTier } from './lib/forge-session.mjs';
+import { readForgeState, updateRuntimeHookContext, updateAdaptiveTier } from './lib/forge-session.mjs';
+import { isProjectActive } from './lib/forge-interaction.mjs';
 import { updateHudLine } from './lib/forge-hud.mjs';
 
 runHook(async (input) => {
@@ -19,7 +20,7 @@ runHook(async (input) => {
   const hostId = detectHostId(input, process.env);
   const state = readForgeState(cwd);
   const projectActive = Boolean(state && isProjectActive(state));
-  const request = deriveForgeRequest(message);
+  const request = deriveForgeRequest(message, { projectActive });
 
   if (!request.isForgeRequest) {
     if (state && existsSync(getRuntimePath(cwd))) {
@@ -48,6 +49,7 @@ runHook(async (input) => {
         request: {
           explicitSkill: request.explicitSkill,
           naturalMode: request.naturalMode,
+          naturalSkill: request.naturalSkill,
           message,
         },
         projectActive,

@@ -212,7 +212,7 @@ describe('forge harness hooks', () => {
 
   it('uses plugin-root hook commands that Claude can resolve at runtime', () => {
     const hooksConfig = JSON.parse(
-      readFileSync(join(FORGE_ROOT, 'hooks', 'hooks.json'), 'utf8'),
+      readFileSync(join(FORGE_ROOT, '.codex-plugin', 'hooks', 'hooks.json'), 'utf8'),
     );
     const commands = Object.values(hooksConfig.hooks)
       .flat()
@@ -247,11 +247,13 @@ describe('forge harness hooks', () => {
     );
 
     expect(geminiManifest.contextFileName).toBe('GEMINI.md');
+    expect(geminiManifest.hooks).toBeUndefined();
     expect(qwenManifest.contextFileName).toBe('QWEN.md');
     expect(qwenManifest.skills).toBe('skills');
     expect(qwenManifest.agents).toBe('agents');
     expect(existsSync(join(FORGE_ROOT, 'commands', 'forge', 'continue.toml'))).toBe(true);
     expect(existsSync(join(FORGE_ROOT, 'qwen-commands', 'forge', 'continue.md'))).toBe(true);
+    expect(existsSync(join(FORGE_ROOT, 'hooks', 'hooks.json'))).toBe(false);
   });
 
   it('returns SessionStart hookSpecificOutput and normalizes state', () => {
@@ -1400,6 +1402,25 @@ describe('phase-detector hook', () => {
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'continue' });
     expect(output).toEqual({ continue: true, suppressOutput: true });
     expect(existsSync(join(tmpDir, '.forge', 'runtime.json'))).toBe(false);
+  });
+
+  it('routes natural resume text to forge continue when a project is active', () => {
+    writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'continue' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+  });
+
+  it('routes Korean natural status text to forge info when a project is active', () => {
+    writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: '진행 상황 알려줘' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
+  });
+
+  it('routes natural project analysis text to forge analyze when a project is active', () => {
+    writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'impact analysis' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
   });
 
   it('routes generic forge requests to analyze first in repair mode when analysis is missing', () => {

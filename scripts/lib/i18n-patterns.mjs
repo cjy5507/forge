@@ -29,6 +29,29 @@ export const REPAIR_TRIGGERS = {
   zh: [/修复|修復/i, /修改/i, /分析/i, /为什么不行|為什麼不行/i, /错误|錯誤/i],
 };
 
+// ── Active-project Natural Triggers ("continue/status/analyze without saying forge") ──
+
+export const RESUME_TRIGGERS = {
+  en: [/\bcontinue\b/i, /\bresume\b/i, /\bpick up where we left off\b/i, /\bwhere did we leave off\b/i],
+  ko: [/이어서\s*해\s*줘/i, /이어가\s*자/i, /계속해\s*줘/i, /어디까지\s*했/i],
+  ja: [/続けて/i, /再開して/i, /どこまでやった/i],
+  zh: [/继续|繼續/i, /继续做|繼續做/i, /做到哪了|做到哪裡了/i],
+};
+
+export const STATUS_TRIGGERS = {
+  en: [/\bwhat(?:'s|\s+is)\s+next\b/i, /\bshow (?:me )?(?:the )?(?:status|progress)\b/i, /\bwhere are we\b/i, /\bcurrent status\b/i, /\bprogress update\b/i],
+  ko: [/진행\s*상황/i, /상태\s*(?:보여|알려)/i, /현재\s*상태/i, /다음\s*뭐/i],
+  ja: [/進捗/i, /状態を見せて/i, /今の状態/i, /次は何/i],
+  zh: [/进度|進度/i, /状态|狀態/i, /现在什么情况|現在什麼情況/i, /下一步/i],
+};
+
+export const ANALYZE_PROJECT_TRIGGERS = {
+  en: [/\banaly[sz]e\s+(?:this|the|my)?\s*(?:repo|repository|codebase|project)\b/i, /\bimpact analysis\b/i, /\bcodebase analysis\b/i],
+  ko: [/코드베이스\s*분석/i, /영향\s*분석/i, /프로젝트\s*분석/i],
+  ja: [/コードベース分析/i, /影響分析/i, /プロジェクト分析/i],
+  zh: [/代码库分析|程式碼庫分析/i, /影响分析|影響分析/i, /项目分析|專案分析/i],
+};
+
 // ── Task Type Patterns (for detectTaskType) ──
 
 export const TASK_TYPE_PATTERNS = {

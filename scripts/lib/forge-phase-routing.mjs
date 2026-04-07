@@ -3,11 +3,17 @@ import {
   FORGE_TRIGGERS,
   BUILD_TRIGGERS as BUILD_TRIGGERS_I18N,
   REPAIR_TRIGGERS as REPAIR_TRIGGERS_I18N,
+  RESUME_TRIGGERS,
+  STATUS_TRIGGERS,
+  ANALYZE_PROJECT_TRIGGERS,
 } from './i18n-patterns.mjs';
 
 const forgeTriggers = allTriggers(FORGE_TRIGGERS);
 const buildTriggers = allTriggers(BUILD_TRIGGERS_I18N);
 const repairTriggers = allTriggers(REPAIR_TRIGGERS_I18N);
+const resumeTriggers = allTriggers(RESUME_TRIGGERS);
+const statusTriggers = allTriggers(STATUS_TRIGGERS);
+const analyzeProjectTriggers = allTriggers(ANALYZE_PROJECT_TRIGGERS);
 
 const PHASE_TO_SKILL = {
   plan: 'plans',
@@ -18,6 +24,14 @@ const PHASE_TO_SKILL = {
 export function isNaturalForgeRequest(message) {
   if (buildTriggers.some(re => re.test(message))) return 'build';
   if (repairTriggers.some(re => re.test(message))) return 'repair';
+  return null;
+}
+
+export function detectNaturalProjectSkill(message) {
+  const text = String(message || '');
+  if (analyzeProjectTriggers.some(re => re.test(text))) return 'analyze';
+  if (statusTriggers.some(re => re.test(text))) return 'info';
+  if (resumeTriggers.some(re => re.test(text))) return 'continue';
   return null;
 }
 
@@ -59,22 +73,25 @@ export function isGenericForgeRequest(message) {
   ].includes(text);
 }
 
-export function deriveForgeRequest(message) {
+export function deriveForgeRequest(message, { projectActive = false } = {}) {
   const explicitSkill = extractExplicitForgeSkill(message);
   const isExplicitForge = forgeTriggers.some(re => re.test(message));
-  const naturalMode = !isExplicitForge ? isNaturalForgeRequest(message) : null;
+  const naturalMode = !isExplicitForge && !projectActive ? isNaturalForgeRequest(message) : null;
+  const naturalSkill = !isExplicitForge && projectActive ? detectNaturalProjectSkill(message) : null;
 
   return {
     explicitSkill,
     isExplicitForge,
     naturalMode,
-    isForgeRequest: isExplicitForge || naturalMode !== null,
+    naturalSkill,
+    isForgeRequest: isExplicitForge || naturalMode !== null || naturalSkill !== null,
   };
 }
 
 export function resolveTargetSkill({
   explicitSkill = null,
   naturalMode = null,
+  naturalSkill = null,
   projectActive = false,
   phaseId = '',
   runtime = {},
@@ -85,6 +102,7 @@ export function resolveTargetSkill({
   const genericForgeRequest = isGenericForgeRequest(message);
   const resumeSurfaceRequested = (
     explicitSkill === 'continue'
+    || naturalSkill === 'continue'
     || (explicitSkill === 'ignite' && projectActive)
     || (genericForgeRequest && projectActive)
     || (!explicitSkill && (runtime.customer_blockers?.length || 0) > 0 && nextOwner === 'pm')
@@ -92,6 +110,8 @@ export function resolveTargetSkill({
 
   if (explicitSkill) {
     currentSkill = explicitSkill === 'ignite' && projectActive ? 'continue' : explicitSkill;
+  } else if (naturalSkill) {
+    currentSkill = naturalSkill;
   } else if (genericForgeRequest && projectActive) {
     currentSkill = 'continue';
   } else if ((runtime.customer_blockers?.length || 0) > 0 && nextOwner === 'pm') {

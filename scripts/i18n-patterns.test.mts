@@ -5,6 +5,9 @@ import {
   FORGE_TRIGGERS,
   BUILD_TRIGGERS,
   REPAIR_TRIGGERS,
+  RESUME_TRIGGERS,
+  STATUS_TRIGGERS,
+  ANALYZE_PROJECT_TRIGGERS,
   TASK_TYPE_PATTERNS,
   INTERACTIVE_PATTERNS,
   AREA_PATTERNS_I18N,
@@ -12,7 +15,7 @@ import {
   FULL_TIER_PATTERNS,
 } from './lib/i18n-patterns.mjs';
 import { detectTaskType, classifyTierFromMessage } from './lib/forge-tiers.mjs';
-import { messageLooksInteractive } from './lib/forge-session.mjs';
+import { messageLooksInteractive } from './lib/forge-interaction.mjs';
 import { analyzeTask } from './lib/task-decomposer.mjs';
 
 describe('allTriggers', () => {
@@ -144,4 +147,15 @@ describe('build/repair triggers i18n', () => {
   it('Chinese: build', () => expect(buildAll.some(re => re.test('做一个仪表板'))).toBe(true));
   it('Japanese: repair', () => expect(repairAll.some(re => re.test('このバグを直して'))).toBe(true));
   it('Chinese: repair', () => expect(repairAll.some(re => re.test('修复这个问题'))).toBe(true));
+});
+
+describe('active-project natural triggers i18n', () => {
+  const resumeAll = allTriggers(RESUME_TRIGGERS);
+  const statusAll = allTriggers(STATUS_TRIGGERS);
+  const analyzeAll = allTriggers(ANALYZE_PROJECT_TRIGGERS);
+
+  it('Korean: resume', () => expect(resumeAll.some(re => re.test('이어서 해줘'))).toBe(true));
+  it('Japanese: status', () => expect(statusAll.some(re => re.test('今の状態を見せて'))).toBe(true));
+  it('Chinese: status', () => expect(statusAll.some(re => re.test('现在什么情况'))).toBe(true));
+  it('Korean: analyze', () => expect(analyzeAll.some(re => re.test('영향 분석 해줘'))).toBe(true));
 });

@@ -1,6 +1,7 @@
 import { buildContinueDirective } from './forge-continue.mjs';
 import { buildStatusModel, renderStatusText } from './forge-status.mjs';
-import { compactForgeContext, shouldRefreshAnalysis } from './forge-session.mjs';
+import { shouldRefreshAnalysis } from './forge-session.mjs';
+import { compactForgeContext } from './forge-compact-context.mjs';
 import { PHASE_SEQUENCE, resolvePhase } from './forge-phases.mjs';
 import { resolveTargetSkill } from './forge-phase-routing.mjs';
 
@@ -16,6 +17,7 @@ export function resolveActiveForgePrompt({
   const { currentSkill: initialSkill, resumeSurfaceRequested } = resolveTargetSkill({
     explicitSkill: request?.explicitSkill,
     naturalMode: request?.naturalMode,
+    naturalSkill: request?.naturalSkill,
     projectActive,
     phaseId: phase.id,
     runtime,
