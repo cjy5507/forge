@@ -2,16 +2,11 @@
 // Forge Hook: PostToolUseFailure — low-cost failure logging with tier-aware guidance
 
 import { runHook } from './lib/hook-runner.mjs';
-import {
-  appendRecent,
-  isProjectActive,
-  readActiveTier,
-  readForgeState,
-  resolveForgeBaseDir,
-  resolvePhase,
-  resolveRuntimeLaneContext,
-  updateRuntimeState,
-} from './lib/forge-state.mjs';
+import { appendRecent, resolveForgeBaseDir } from './lib/forge-io.mjs';
+import { isProjectActive, readForgeState, updateRuntimeState } from './lib/forge-session.mjs';
+import { readActiveTier } from './lib/forge-tiers.mjs';
+import { resolvePhase } from './lib/forge-phases.mjs';
+import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
 
 function summarizeLaneFailure(input) {

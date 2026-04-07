@@ -3,7 +3,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { writeRuntimeState } from './lib/forge-state.mjs';
+import { writeRuntimeState } from './lib/forge-session.mjs';
 import { syncTraceabilitySnapshot } from './lib/forge-traceability-sync.mjs';
 
 function makeWorkspace() {

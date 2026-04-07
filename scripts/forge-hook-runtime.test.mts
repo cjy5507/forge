@@ -5,7 +5,7 @@ import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
-import { writeRuntimeState } from './lib/forge-state.mjs';
+import { writeRuntimeState } from './lib/forge-session.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const FORGE_ROOT = dirname(THIS_DIR);

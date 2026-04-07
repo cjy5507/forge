@@ -2,16 +2,9 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  validatePhaseTransition,
-  validateStateConsistency,
-  completeForgeProject,
-  cancelForgeProject,
-  isProjectTerminal,
-  readForgeState,
-  writeForgeState,
-  normalizeDeliveryReadiness,
-} from './lib/forge-state.mjs';
+import { validatePhaseTransition } from './lib/forge-phases.mjs';
+import { validateStateConsistency, completeForgeProject, cancelForgeProject, isProjectTerminal, readForgeState, writeForgeState } from './lib/forge-session.mjs';
+import { normalizeDeliveryReadiness } from './lib/forge-io.mjs';
 
 const TEMP_DIRS: string[] = [];
 

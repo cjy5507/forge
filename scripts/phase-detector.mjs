@@ -7,16 +7,11 @@ import { handleHookError } from './lib/error-handler.mjs';
 import { buildContinueDirective, createSkillDirective } from './lib/forge-continue.mjs';
 import { deriveForgeRequest } from './lib/forge-phase-routing.mjs';
 import { resolveActiveForgePrompt } from './lib/forge-prompt-continue.mjs';
-import {
-  PHASE_SEQUENCE,
-  detectHostId,
-  getRuntimePath,
-  isProjectActive,
-  readForgeState,
-  updateHudLine,
-  updateRuntimeHookContext,
-  updateAdaptiveTier,
-} from './lib/forge-state.mjs';
+import { PHASE_SEQUENCE } from './lib/forge-phases.mjs';
+import { detectHostId } from './lib/forge-host-context.mjs';
+import { getRuntimePath } from './lib/forge-io.mjs';
+import { isProjectActive, readForgeState, updateRuntimeHookContext, updateAdaptiveTier } from './lib/forge-session.mjs';
+import { updateHudLine } from './lib/forge-hud.mjs';
 
 runHook(async (input) => {
   const cwd = input?.cwd || '.';

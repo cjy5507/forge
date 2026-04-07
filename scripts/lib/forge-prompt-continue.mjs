@@ -1,11 +1,7 @@
 import { buildContinueDirective } from './forge-continue.mjs';
 import { buildStatusModel, renderStatusText } from './forge-status.mjs';
-import {
-  compactForgeContext,
-  PHASE_SEQUENCE,
-  resolvePhase,
-  shouldRefreshAnalysis,
-} from './forge-state.mjs';
+import { compactForgeContext, shouldRefreshAnalysis } from './forge-session.mjs';
+import { PHASE_SEQUENCE, resolvePhase } from './forge-phases.mjs';
 import { resolveTargetSkill } from './forge-phase-routing.mjs';
 
 export function resolveActiveForgePrompt({

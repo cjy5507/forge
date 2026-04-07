@@ -2,7 +2,7 @@
 
 import { buildContinueContext, selectContinueDirective } from './lib/forge-continue.mjs';
 import { buildStatusModel, renderStatusText } from './lib/forge-status.mjs';
-import { readForgeState, readRuntimeState } from './lib/forge-state.mjs';
+import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS_MS = 24 * ONE_HOUR_MS;

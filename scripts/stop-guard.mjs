@@ -13,17 +13,10 @@
 //   input.stop_hook_active       — set by the host to prevent recursive blocks
 
 import { runHook } from './lib/hook-runner.mjs';
-import {
-  appendRecent,
-  isProjectActive,
-  messageLooksInteractive,
-  readActiveTier,
-  readForgeState,
-  resolvePhase,
-  selectResumeSkill,
-  summarizePendingWork,
-  updateRuntimeState,
-} from './lib/forge-state.mjs';
+import { appendRecent } from './lib/forge-io.mjs';
+import { isProjectActive, messageLooksInteractive, readForgeState, selectResumeSkill, summarizePendingWork, updateRuntimeState } from './lib/forge-session.mjs';
+import { readActiveTier } from './lib/forge-tiers.mjs';
+import { resolvePhase } from './lib/forge-phases.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 
 const CRITICAL_PHASES = new Set(['develop', 'fix', 'qa']);

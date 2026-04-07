@@ -12,7 +12,8 @@ import {
   renderContinueDirective,
   selectContinueDirective,
 } from './lib/forge-continue.mjs';
-import { applyHostContext, writeForgeState, writeRuntimeState } from './lib/forge-state.mjs';
+import { applyHostContext } from './lib/forge-host-context.mjs';
+import { writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
 
 const WORKSPACES = [];
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));

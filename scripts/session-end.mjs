@@ -8,15 +8,10 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { cleanupSessionArtifacts, cleanupForgeBranches, clearHudCustomLine } from './lib/session-cleanup.mjs';
-import {
-  appendRecent,
-  readActiveTier,
-  readForgeState,
-  readRuntimeState,
-  resolvePhase,
-  summarizePendingWork,
-  updateRuntimeState,
-} from './lib/forge-state.mjs';
+import { appendRecent } from './lib/forge-io.mjs';
+import { readActiveTier } from './lib/forge-tiers.mjs';
+import { readForgeState, readRuntimeState, summarizePendingWork, updateRuntimeState } from './lib/forge-session.mjs';
+import { resolvePhase } from './lib/forge-phases.mjs';
 
 runHook(async (input) => {
   const cwd = input?.cwd || '.';

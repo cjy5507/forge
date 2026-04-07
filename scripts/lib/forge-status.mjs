@@ -1,6 +1,9 @@
 import { spawnSync } from 'child_process';
 import { basename } from 'path';
-import { describeCrossHostResume, readForgeState, readRuntimeState, resolvePhase, normalizeRuntimeState, summarizeLaneCounts, normalizeRuntimeLanes } from './forge-state.mjs';
+import { describeCrossHostResume } from './forge-host-context.mjs';
+import { readForgeState, readRuntimeState, normalizeRuntimeState } from './forge-session.mjs';
+import { resolvePhase } from './forge-phases.mjs';
+import { summarizeLaneCounts, normalizeRuntimeLanes } from './forge-lanes.mjs';
 import { readHoleSummaries, scopeHoleSummariesToProject, summarizeHoles } from './forge-delivery-report.mjs';
 
 const PHASE_LABELS = {

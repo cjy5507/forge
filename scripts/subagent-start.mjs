@@ -13,19 +13,12 @@
 //   input.transcript_path — path to the sub-agent's conversation transcript
 
 import { runHook } from './lib/hook-runner.mjs';
-import {
-  appendRecent,
-  isProjectActive,
-  readActiveTier,
-  readForgeState,
-  resolveForgeBaseDir,
-  resolveRuntimeLaneContext,
-  readRuntimeState,
-  recommendedAgentsFor,
-  resolvePhase,
-  updateHudLine,
-  updateRuntimeState,
-} from './lib/forge-state.mjs';
+import { appendRecent, resolveForgeBaseDir } from './lib/forge-io.mjs';
+import { isProjectActive, readForgeState, readRuntimeState, updateRuntimeState } from './lib/forge-session.mjs';
+import { readActiveTier, recommendedAgentsFor } from './lib/forge-tiers.mjs';
+import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
+import { resolvePhase } from './lib/forge-phases.mjs';
+import { updateHudLine } from './lib/forge-hud.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 
 runHook(async (input) => {

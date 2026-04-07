@@ -1,6 +1,6 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { readForgeState, readRuntimeState } from './forge-state.mjs';
+import { readForgeState, readRuntimeState } from './forge-session.mjs';
 import { buildStatusModel } from './forge-status.mjs';
 import { readTraceabilitySnapshot, summarizeTraceability } from './forge-traceability.mjs';
 import { readHoleSummaries, scopeHoleSummariesToProject, summarizeHoles } from './forge-delivery-report.mjs';

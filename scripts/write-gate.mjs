@@ -5,17 +5,11 @@
 import { existsSync, readdirSync } from 'fs';
 import { runHook } from './lib/hook-runner.mjs';
 import { resolve } from 'path';
-import {
-  checkPhaseGate,
-  detectWriteRisk,
-  readActiveTier,
-  readForgeState,
-  readRuntimeState,
-  resolveForgeBaseDir,
-  resolvePhase,
-  resolveRuntimeLaneContext,
-  tierAtLeast,
-} from './lib/forge-state.mjs';
+import { checkPhaseGate, resolvePhase } from './lib/forge-phases.mjs';
+import { detectWriteRisk, readActiveTier, tierAtLeast } from './lib/forge-tiers.mjs';
+import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
+import { resolveForgeBaseDir } from './lib/forge-io.mjs';
+import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
 
 function isCodeWritingPhase(phase) {

@@ -4,25 +4,11 @@ import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
-import {
-  applyHostContext,
-  compactForgeContext,
-  initLaneRecord,
-  markLaneMergeState,
-  markLaneReviewState,
-  readRuntimeState,
-  selectContinuationTarget,
-  selectNextLane,
-  setLaneOwner,
-  setLaneStatus,
-  updateRuntimeState,
-  readForgeState,
-  writeForgeState,
-  writeRuntimeState,
-  inferTierFromState,
-  suggestTierDeescalation,
-  checkPhaseGate,
-} from './lib/forge-state.mjs';
+import { applyHostContext } from './lib/forge-host-context.mjs';
+import { compactForgeContext, initLaneRecord, markLaneMergeState, markLaneReviewState, readRuntimeState, selectContinuationTarget, setLaneOwner, setLaneStatus, updateRuntimeState, readForgeState, writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
+import { selectNextLane } from './lib/forge-lanes.mjs';
+import { inferTierFromState, suggestTierDeescalation } from './lib/forge-tiers.mjs';
+import { checkPhaseGate } from './lib/forge-phases.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const FORGE_ROOT = dirname(THIS_DIR);
@@ -82,7 +68,7 @@ describe('forge runtime core', () => {
 
   it('throws instead of writing without a lock after repeated lock contention', () => {
     const cwd = makeWorkspace();
-    writeFileSync(join(cwd, '.forge', 'runtime.json.lock'), `${process.pid}.${Date.now()}`);
+    writeFileSync(join(cwd, '.forge', 'forge.lock'), `${process.pid}.${Date.now()}`);
 
     expect(() => updateRuntimeState(cwd, current => ({
       ...current,
@@ -1259,7 +1245,7 @@ describe('checkPhaseGate artifact section verification', () => {
 describe('lock contention', () => {
   it('throws ELOCKED when lock file is fresh (not stale)', () => {
     const cwd = makeWorkspace();
-    const lockPath = join(cwd, '.forge', 'runtime.json.lock');
+    const lockPath = join(cwd, '.forge', 'forge.lock');
     // Write a lock with the current timestamp (< 5 seconds ago = not stale)
     writeFileSync(lockPath, `99999.${Date.now()}`);
 
@@ -1279,7 +1265,7 @@ describe('lock contention', () => {
 
   it('recovers from a stale lock (>5 seconds old) and completes successfully', () => {
     const cwd = makeWorkspace();
-    const lockPath = join(cwd, '.forge', 'runtime.json.lock');
+    const lockPath = join(cwd, '.forge', 'forge.lock');
     // Write a lock with a timestamp older than 5 seconds
     const staleTimestamp = Date.now() - 10000;
     writeFileSync(lockPath, `99999.${staleTimestamp}`);

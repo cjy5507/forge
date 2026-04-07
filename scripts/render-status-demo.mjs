@@ -10,18 +10,9 @@
 
 import { readFileSync, readdirSync } from 'fs';
 import { join, basename } from 'path';
-import {
-  compactForgeContext,
-  normalizeRuntimeState,
-  summarizePendingWork,
-  selectNextLane,
-  selectContinuationTarget,
-  summarizeLaneBriefs,
-  summarizeLaneCounts,
-  resolvePhase,
-  normalizeLane,
-  normalizeRuntimeLanes,
-} from './lib/forge-state.mjs';
+import { compactForgeContext, normalizeRuntimeState, summarizePendingWork, selectContinuationTarget } from './lib/forge-session.mjs';
+import { selectNextLane, summarizeLaneBriefs, summarizeLaneCounts, normalizeLane, normalizeRuntimeLanes } from './lib/forge-lanes.mjs';
+import { resolvePhase } from './lib/forge-phases.mjs';
 
 const FIXTURES_DIR = new URL('./fixtures/', import.meta.url).pathname;
 const PHASE_LABELS = {

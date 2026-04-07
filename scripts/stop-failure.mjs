@@ -13,7 +13,8 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { logHookError } from './lib/error-handler.mjs';
-import { appendRecent, updateRuntimeState } from './lib/forge-state.mjs';
+import { appendRecent } from './lib/forge-io.mjs';
+import { updateRuntimeState } from './lib/forge-session.mjs';
 
 runHook(async (input) => {
   const cwd = input?.cwd || '.';

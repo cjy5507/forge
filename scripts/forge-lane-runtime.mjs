@@ -3,27 +3,9 @@
 import { existsSync } from 'fs';
 import { resolve } from 'path';
 import { spawnSync } from 'child_process';
-import {
-  LANE_STATUS_SEQUENCE,
-  initLaneRecord,
-  markLaneMergeState,
-  markLaneReviewState,
-  normalizeRuntimeLanes,
-  recordAnalysisMetadata,
-  recordLaneHandoff,
-  readForgeState,
-  readRuntimeState,
-  resolvePhase,
-  selectNextLane,
-  setCompanyGate,
-  setLaneOwner,
-  setSessionBrief,
-  setLaneStatus,
-  summarizeLaneBriefs,
-  summarizeLaneCounts,
-  writeSessionHandoff,
-  writeRuntimeState,
-} from './lib/forge-state.mjs';
+import { LANE_STATUS_SEQUENCE, normalizeRuntimeLanes, selectNextLane, summarizeLaneBriefs, summarizeLaneCounts } from './lib/forge-lanes.mjs';
+import { initLaneRecord, markLaneMergeState, markLaneReviewState, recordAnalysisMetadata, recordLaneHandoff, readForgeState, readRuntimeState, setCompanyGate, setLaneOwner, setSessionBrief, setLaneStatus, writeSessionHandoff, writeRuntimeState } from './lib/forge-session.mjs';
+import { resolvePhase } from './lib/forge-phases.mjs';
 import { decomposeTask } from './lib/task-decomposer.mjs';
 import { inferRequirementRefsForComponents } from './lib/forge-requirement-mapper.mjs';
 import { syncTraceabilitySnapshot } from './lib/forge-traceability-sync.mjs';

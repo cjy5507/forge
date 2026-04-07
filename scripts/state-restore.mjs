@@ -12,15 +12,10 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { buildContinueDirective } from './lib/forge-continue.mjs';
-import {
-  compactForgeContext,
-  detectHostId,
-  readForgeState,
-  resolvePhase,
-  updateHudLine,
-  updateRuntimeHookContext,
-  writeForgeState,
-} from './lib/forge-state.mjs';
+import { compactForgeContext, readForgeState, updateRuntimeHookContext, writeForgeState } from './lib/forge-session.mjs';
+import { detectHostId } from './lib/forge-host-context.mjs';
+import { resolvePhase } from './lib/forge-phases.mjs';
+import { updateHudLine } from './lib/forge-hud.mjs';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS_MS = 24 * ONE_HOUR_MS;

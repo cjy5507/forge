@@ -12,18 +12,11 @@
 //                                  captured as a handoff note for next session
 
 import { runHook } from './lib/hook-runner.mjs';
-import {
-  appendRecent,
-  markLaneMergeState,
-  markLaneReviewState,
-  recordLaneHandoff,
-  readActiveTier,
-  readForgeState,
-  resolveForgeBaseDir,
-  resolveRuntimeLaneContext,
-  updateHudLine,
-  updateRuntimeState,
-} from './lib/forge-state.mjs';
+import { appendRecent, resolveForgeBaseDir } from './lib/forge-io.mjs';
+import { markLaneMergeState, markLaneReviewState, recordLaneHandoff, readForgeState, updateRuntimeState } from './lib/forge-session.mjs';
+import { readActiveTier } from './lib/forge-tiers.mjs';
+import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
+import { updateHudLine } from './lib/forge-hud.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 
 function inferLaneControlSignals(noteText = '') {

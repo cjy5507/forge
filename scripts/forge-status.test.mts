@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
 
 import { buildStatusModel, renderStatusText } from './lib/forge-status.mjs';
-import { writeForgeState, writeRuntimeState } from './lib/forge-state.mjs';
+import { writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const FORGE_ROOT = dirname(THIS_DIR);

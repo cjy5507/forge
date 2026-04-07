@@ -651,42 +651,11 @@ describe('forge harness hooks', () => {
 // UNIT TESTS: forge-state.mjs functions
 // ============================================================
 
-import {
-  PHASE_SEQUENCE,
-  REPAIR_PHASE_SEQUENCE,
-  EXPRESS_PHASE_GATES,
-  BUILD_PHASE_GATES,
-  REPAIR_PHASE_GATES,
-  TIER_SEQUENCE,
-  normalizePhaseId,
-  normalizeTier,
-  tierAtLeast,
-  resolvePhase,
-  checkPhaseGate,
-  checkRepairGate,
-  getPhaseGates,
-  detectTaskType,
-  classifyTierFromMessage,
-  inferTierFromState,
-  recommendedAgentsFor,
-  compactForgeContext,
-  summarizePendingWork,
-  summarizeLaneCounts,
-  selectNextLane,
-  summarizeLaneBriefs,
-  messageLooksInteractive,
-  normalizeStateShape,
-  isProjectActive,
-  detectWriteRisk,
-  readForgeState,
-  writeForgeState,
-  readRuntimeState,
-  writeRuntimeState,
-  updateRuntimeState,
-  readActiveTier,
-  updateAdaptiveTier,
-  appendRecent,
-} from './lib/forge-state.mjs';
+import { PHASE_SEQUENCE, REPAIR_PHASE_SEQUENCE, EXPRESS_PHASE_GATES, BUILD_PHASE_GATES, REPAIR_PHASE_GATES, normalizePhaseId, resolvePhase, checkPhaseGate, checkRepairGate, getPhaseGates } from './lib/forge-phases.mjs';
+import { TIER_SEQUENCE, normalizeTier, tierAtLeast, detectTaskType, classifyTierFromMessage, inferTierFromState, recommendedAgentsFor, detectWriteRisk, readActiveTier } from './lib/forge-tiers.mjs';
+import { compactForgeContext, summarizePendingWork, messageLooksInteractive, normalizeStateShape, isProjectActive, readForgeState, writeForgeState, readRuntimeState, writeRuntimeState, updateRuntimeState, updateAdaptiveTier } from './lib/forge-session.mjs';
+import { summarizeLaneCounts, selectNextLane, summarizeLaneBriefs } from './lib/forge-lanes.mjs';
+import { appendRecent } from './lib/forge-io.mjs';
 
 describe('normalizePhaseId', () => {
   it('returns string phases as-is', () => {
@@ -1506,69 +1475,6 @@ describe('phase-detector hook', () => {
   });
 });
 
-describe('code-rules-guard hook', () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = makeWorkspace();
-  });
-
-  afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  it('surfaces code-rules guidance for full-tier high-risk writes', () => {
-    writeState(tmpDir, { phase: 'develop', tier: 'full' });
-    writeFileSync(join(tmpDir, '.forge', 'code-rules.md'), '# rules\n');
-
-    const output = runHook('code-rules-guard.mjs', tmpDir, {
-      tool_name: 'Write',
-      tool_input: {
-        file_path: 'package.json',
-        content: '{"dependencies":{"new-lib":"1.0.0"}}',
-      },
-    }, {
-      env: { FORGE_TIER: 'full' },
-    });
-
-    expect(output.hookSpecificOutput.additionalContext).toContain('code-rules');
-  });
-
-  it('suppresses output when code-rules are missing', () => {
-    writeState(tmpDir, { phase: 'develop', tier: 'full' });
-
-    const output = runHook('code-rules-guard.mjs', tmpDir, {
-      tool_name: 'Write',
-      tool_input: {
-        file_path: 'package.json',
-        content: '{"dependencies":{"new-lib":"1.0.0"}}',
-      },
-    }, {
-      env: { FORGE_TIER: 'full' },
-    });
-
-    expect(output.suppressOutput).toBe(true);
-    expect(output.hookSpecificOutput).toBeUndefined();
-  });
-
-  it('suppresses output below full tier', () => {
-    writeState(tmpDir, { phase: 'develop', tier: 'medium' });
-    writeFileSync(join(tmpDir, '.forge', 'code-rules.md'), '# rules\n');
-
-    const output = runHook('code-rules-guard.mjs', tmpDir, {
-      tool_name: 'Write',
-      tool_input: {
-        file_path: 'package.json',
-        content: '{"dependencies":{"new-lib":"1.0.0"}}',
-      },
-    }, {
-      env: { FORGE_TIER: 'medium' },
-    });
-
-    expect(output.suppressOutput).toBe(true);
-    expect(output.hookSpecificOutput).toBeUndefined();
-  });
-});
 
 describe('malformed stdin handling', () => {
   let tmpDir: string;

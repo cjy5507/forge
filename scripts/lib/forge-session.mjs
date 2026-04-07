@@ -20,6 +20,7 @@ import {
   normalizeHostContext,
   normalizeNextAction,
   normalizeStringList,
+  withForgeLock,
 } from './forge-io.mjs';
 import {
   PHASE_SEQUENCE,
@@ -192,50 +193,52 @@ export function readForgeState(cwd = '.') {
 }
 
 export function writeForgeState(cwd = '.', state, { allowRollback = false } = {}) {
-  ensureForgeDir(cwd);
-  const normalized = normalizeStateShape(state);
-  normalized.updated_at = new Date().toISOString();
+  return withForgeLock(cwd, () => {
+    ensureForgeDir(cwd);
+    const normalized = normalizeStateShape(state);
+    normalized.updated_at = new Date().toISOString();
 
-  // Phase transition validation: check forward/backward
-  const previousState = readJsonFile(getStatePath(cwd));
-  if (previousState) {
-    const prevPhase = resolvePhase(previousState);
-    const nextPhase = resolvePhase(normalized);
-    const transition = validatePhaseTransition(prevPhase.id, nextPhase.id, nextPhase.mode, { allowRollback });
-    if (!transition.valid) {
-      normalized._phase_transition_warning = transition.reason;
-      process.stderr.write(`[Forge] warning: ${transition.reason}\n`);
-      // Auto-correct: keep previous phase (degraded mode — don't block, just warn)
-      normalized.phase = prevPhase.id;
-      normalized.phase_id = prevPhase.id;
-      normalized.phase_index = prevPhase.index;
-      normalized.phase_name = prevPhase.label;
+    // Phase transition validation: check forward/backward
+    const previousState = readJsonFile(getStatePath(cwd));
+    if (previousState) {
+      const prevPhase = resolvePhase(previousState);
+      const nextPhase = resolvePhase(normalized);
+      const transition = validatePhaseTransition(prevPhase.id, nextPhase.id, nextPhase.mode, { allowRollback });
+      if (!transition.valid) {
+        normalized._phase_transition_warning = transition.reason;
+        process.stderr.write(`[Forge] warning: ${transition.reason}\n`);
+        // Auto-correct: keep previous phase (degraded mode — don't block, just warn)
+        normalized.phase = prevPhase.id;
+        normalized.phase_id = prevPhase.id;
+        normalized.phase_index = prevPhase.index;
+        normalized.phase_name = prevPhase.label;
+      }
     }
-  }
 
-  // Phase gate validation: check if the new phase's gate requirements are met
-  const phase = resolvePhase(normalized);
-  const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
-  if (!gateResult.canAdvance) {
-    normalized._phase_gate_warning = `Phase ${phase.id} requires missing artifacts: ${gateResult.missing.join(', ')}`;
-  }
-  if (phase.mismatch) {
-    normalized._phase_mismatch_warning = `Phase "${phase.id}" does not belong to ${phase.mode} sequence — using fallback`;
-  }
-
-  // Cross-consistency validation
-  const existingRuntime = readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME);
-  const consistency = validateStateConsistency(normalized, existingRuntime);
-  if (consistency.corrections.length > 0) {
-    for (const c of consistency.corrections) {
-      process.stderr.write(`[Forge] auto-correct: ${c}\n`);
+    // Phase gate validation: check if the new phase's gate requirements are met
+    const phase = resolvePhase(normalized);
+    const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
+    if (!gateResult.canAdvance) {
+      normalized._phase_gate_warning = `Phase ${phase.id} requires missing artifacts: ${gateResult.missing.join(', ')}`;
     }
-    Object.assign(existingRuntime, consistency.runtimeFixes);
-  }
+    if (phase.mismatch) {
+      normalized._phase_mismatch_warning = `Phase "${phase.id}" does not belong to ${phase.mode} sequence — using fallback`;
+    }
 
-  writeJsonFile(getStatePath(cwd), normalized);
-  writeRuntimeState(cwd, existingRuntime);
-  return normalized;
+    // Cross-consistency validation
+    const existingRuntime = readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME);
+    const consistency = validateStateConsistency(normalized, existingRuntime);
+    if (consistency.corrections.length > 0) {
+      for (const c of consistency.corrections) {
+        process.stderr.write(`[Forge] auto-correct: ${c}\n`);
+      }
+      Object.assign(existingRuntime, consistency.runtimeFixes);
+    }
+
+    writeJsonFile(getStatePath(cwd), normalized);
+    writeRuntimeState(cwd, existingRuntime);
+    return normalized;
+  });
 }
 
 export function readRuntimeState(cwd = '.') {
@@ -246,70 +249,29 @@ export function readRuntimeState(cwd = '.') {
 }
 
 export function writeRuntimeState(cwd = '.', runtime, { state = undefined } = {}) {
-  ensureForgeDir(cwd);
-  const next = {
-    ...normalizeRuntimeState(runtime, { state: state !== undefined ? state : readForgeState(cwd) }),
-    updated_at: new Date().toISOString(),
-  };
+  return withForgeLock(cwd, () => {
+    ensureForgeDir(cwd);
+    const next = {
+      ...normalizeRuntimeState(runtime, { state: state !== undefined ? state : readForgeState(cwd) }),
+      updated_at: new Date().toISOString(),
+    };
 
-  writeJsonFile(getRuntimePath(cwd), next);
-  return next;
+    writeJsonFile(getRuntimePath(cwd), next);
+    return next;
+  });
 }
 
 export function updateRuntimeState(cwd = '.', updater) {
-  const runtimePath = getRuntimePath(cwd);
-  const lockPath = `${runtimePath}.lock`;
-  const maxRetries = 5;
-  const retryDelay = 50;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      writeFileSync(lockPath, `${process.pid}.${Date.now()}`, { flag: 'wx' });
-      try {
-        const state = readForgeState(cwd);
-        const current = normalizeRuntimeState(
-          readJsonFile(runtimePath, DEFAULT_RUNTIME),
-          { state },
-        );
-        const next = updater(current);
-        return writeRuntimeState(cwd, next, { state });
-      } finally {
-        try { unlinkSync(lockPath); } catch {}
-      }
-    } catch (err) {
-      if (err.code === 'ENOENT') {
-        // No .forge/ directory — proceed without lock (no project active)
-        const state = readForgeState(cwd);
-        const current = normalizeRuntimeState(
-          readJsonFile(runtimePath, DEFAULT_RUNTIME),
-          { state },
-        );
-        const next = updater(current);
-        return writeRuntimeState(cwd, next, { state });
-      }
-      if (err.code === 'EEXIST') {
-        // Lock held — check staleness (>5s = stale)
-        try {
-          const lockContent = readFileSync(lockPath, 'utf8');
-          const parts = lockContent.split('.');
-          const lockTimestamp = parts.length >= 2 ? parseInt(parts[1], 10) : NaN;
-          if (!Number.isFinite(lockTimestamp) || Date.now() - lockTimestamp > 5000) {
-            try { unlinkSync(lockPath); } catch {}
-          }
-        } catch {}
-        // Synchronous sleep via Atomics.wait — SharedArrayBuffer is always available in Node.js
-        // (unlike browsers which require cross-origin isolation). This avoids busy-wait spinning.
-        const delay = retryDelay * Math.pow(2, attempt) + Math.random() * retryDelay;
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay | 0);
-        continue;
-      }
-      throw err;
-    }
-  }
-
-  const error = new Error(`Forge runtime lock acquisition failed after ${maxRetries} retries: ${lockPath}`);
-  error.code = 'ELOCKED';
-  throw error;
+  return withForgeLock(cwd, () => {
+    const state = readForgeState(cwd);
+    const runtimePath = getRuntimePath(cwd);
+    const current = normalizeRuntimeState(
+      readJsonFile(runtimePath, DEFAULT_RUNTIME),
+      { state },
+    );
+    const next = updater(current);
+    return writeRuntimeState(cwd, next, { state });
+  });
 }
 
 export function updateRuntimeHookContext(cwd = '.', {
