@@ -1,5 +1,56 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'fs';
 import { dirname, join, resolve } from 'path';
+import { withRetry, LockError } from './error-handler.mjs';
+
+const activeLocks = new Set();
+
+export function withForgeLock(cwd, callback) {
+  const lockPath = join(resolveForgeBaseDir(cwd), '.forge', 'forge.lock');
+
+  if (activeLocks.has(lockPath)) {
+    return callback();
+  }
+
+  const maxRetries = 5;
+  const retryDelay = 50;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
+      if (!existsSync(forgeDir)) {
+        mkdirSync(forgeDir, { recursive: true });
+      }
+
+      writeFileSync(lockPath, `${process.pid}.${Date.now()}`, { flag: 'wx' });
+      activeLocks.add(lockPath);
+      try {
+        return callback();
+      } finally {
+        activeLocks.delete(lockPath);
+        try { unlinkSync(lockPath); } catch {}
+      }
+    } catch (err) {
+      if (err.code === 'EEXIST') {
+        try {
+          const lockContent = readFileSync(lockPath, 'utf8');
+          const parts = lockContent.split('.');
+          const lockTimestamp = parts.length >= 2 ? parseInt(parts[1], 10) : NaN;
+          if (!Number.isFinite(lockTimestamp) || Date.now() - lockTimestamp > 5000) {
+            try { unlinkSync(lockPath); } catch {}
+          }
+        } catch {}
+        const delay = retryDelay * Math.pow(2, attempt) + Math.random() * retryDelay;
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay | 0);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  const error = new Error(`Forge runtime lock acquisition failed after ${maxRetries} retries: ${lockPath}`);
+  error.code = 'ELOCKED';
+  throw error;
+}
 
 export const DEFAULT_STATS = {
   started_at: '',

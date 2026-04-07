@@ -24,3 +24,32 @@ export function handleHookError(error, hookName, cwd = '.') {
     },
   }));
 }
+
+export class ForgeError extends Error {
+  constructor(message, code) {
+    super(message);
+    this.name = 'ForgeError';
+    this.code = code;
+  }
+}
+
+export class LockError extends ForgeError {
+  constructor(message) {
+    super(message, 'ELOCKED');
+    this.name = 'LockError';
+  }
+}
+
+export function withRetry(operation, options = {}) {
+  const { maxRetries = 5, retryDelay = 50, shouldRetry = () => true } = options;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return operation();
+    } catch (err) {
+      if (!shouldRetry(err)) throw err;
+      const delay = retryDelay * Math.pow(2, attempt) + Math.random() * retryDelay;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, delay | 0);
+    }
+  }
+  throw new LockError(`Operation failed after ${maxRetries} retries`);
+}
