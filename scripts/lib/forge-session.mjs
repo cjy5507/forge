@@ -165,13 +165,13 @@ export function normalizeStateShape(state = {}) {
     phase_name: phase.label,
     status,
     tier,
-    mode: typeof state.mode === 'string' ? state.mode : 'build',
-    agents_active: Array.isArray(state.agents_active) ? state.agents_active : [],
-    tasks: Array.isArray(state.tasks) ? state.tasks : [],
-    holes: Array.isArray(state.holes) ? state.holes : [],
-    pr_queue: Array.isArray(state.pr_queue) ? state.pr_queue : [],
-    analysis: normalizeAnalysisMeta(state.analysis),
-    stats: mergeStats(state.stats),
+    mode: typeof source.mode === 'string' ? source.mode : 'build',
+    agents_active: Array.isArray(source.agents_active) ? source.agents_active : [],
+    tasks: Array.isArray(source.tasks) ? source.tasks : [],
+    holes: Array.isArray(source.holes) ? source.holes : [],
+    pr_queue: Array.isArray(source.pr_queue) ? source.pr_queue : [],
+    analysis: normalizeAnalysisMeta(source.analysis),
+    stats: mergeStats(source.stats),
   };
 }
 

@@ -88,3 +88,76 @@ export function cleanupForgeBranches(cwd = '.', runtime) {
 
   return cleaned;
 }
+
+/**
+ * Compact runtime state by evicting terminal (done/merged) lanes beyond
+ * a retention limit and pruning oversized recent_* arrays.
+ * Returns the number of entries removed, or 0 if no compaction was needed.
+ */
+export function compactRuntimeState(runtime) {
+  if (!runtime || typeof runtime !== 'object') {
+    return { compacted: false, evictedLanes: 0, prunedEntries: 0 };
+  }
+
+  const TERMINAL_STATUSES = new Set(['done', 'merged']);
+  const MAX_TERMINAL_LANES = 10;
+  const MAX_RECENT = 20;
+  let evictedLanes = 0;
+  let prunedEntries = 0;
+
+  // Evict excess terminal lanes (keep most recent MAX_TERMINAL_LANES)
+  const lanes = runtime.lanes && typeof runtime.lanes === 'object' ? runtime.lanes : {};
+  const terminal = [];
+  const active = [];
+  for (const [id, lane] of Object.entries(lanes)) {
+    const status = String(lane?.status || '').toLowerCase();
+    if (TERMINAL_STATUSES.has(status)) {
+      terminal.push([id, lane]);
+    } else {
+      active.push([id, lane]);
+    }
+  }
+
+  if (terminal.length > MAX_TERMINAL_LANES) {
+    // Sort by last_event_at ascending (oldest first) so we keep the newest
+    terminal.sort((a, b) => {
+      const ta = a[1]?.last_event_at || '';
+      const tb = b[1]?.last_event_at || '';
+      return ta.localeCompare(tb);
+    });
+    const toEvict = terminal.length - MAX_TERMINAL_LANES;
+    const kept = terminal.slice(toEvict);
+    evictedLanes = toEvict;
+    runtime.lanes = Object.fromEntries([...active, ...kept]);
+  }
+
+  // Prune recent_agents
+  if (Array.isArray(runtime.recent_agents) && runtime.recent_agents.length > MAX_RECENT) {
+    prunedEntries += runtime.recent_agents.length - MAX_RECENT;
+    runtime.recent_agents = runtime.recent_agents.slice(0, MAX_RECENT);
+  }
+
+  // Prune recent_failures
+  if (Array.isArray(runtime.recent_failures) && runtime.recent_failures.length > MAX_RECENT) {
+    prunedEntries += runtime.recent_failures.length - MAX_RECENT;
+    runtime.recent_failures = runtime.recent_failures.slice(0, MAX_RECENT);
+  }
+
+  // Clear stale active_agents (agents not in any active lane)
+  if (runtime.active_agents && typeof runtime.active_agents === 'object') {
+    const activeAgentIds = Object.keys(runtime.active_agents);
+    for (const agentId of activeAgentIds) {
+      const agent = runtime.active_agents[agentId];
+      if (agent?.status === 'stopped' || agent?.status === 'failed') {
+        delete runtime.active_agents[agentId];
+        prunedEntries += 1;
+      }
+    }
+  }
+
+  return {
+    compacted: evictedLanes > 0 || prunedEntries > 0,
+    evictedLanes,
+    prunedEntries,
+  };
+}
