@@ -15,6 +15,54 @@ const METRIC_DEFS = [
   { key: 'userCorrections', label: 'User corrections', direction: 'lower' },
 ];
 
+const EVAL_SCENARIOS = Object.freeze([
+  Object.freeze({
+    id: 'phase-gate-enforcement',
+    title: 'Phase Gate Enforcement',
+    description: 'Proof that stricter tiers block invalid phase advancement and surface an actionable blocker.',
+    notes: Object.freeze([
+      'Focus on missing-artifact phase advancement under stricter tiers.',
+      'Expectation: runtime surfaces an explicit internal blocker instead of silently continuing.',
+    ]),
+    evidenceRefs: Object.freeze([
+      'scripts/lib/forge-state-store.mjs',
+      'scripts/forge-state-machine.test.mts',
+      'scripts/harness-hooks.test.mts',
+    ]),
+  }),
+  Object.freeze({
+    id: 'host-degraded-support',
+    title: 'Host Degraded Support',
+    description: 'Proof that host support levels and packaged host surfaces remain explicit and evidence-backed.',
+    notes: Object.freeze([
+      'Focus on Codex, Gemini CLI, and Qwen Code degraded-support semantics.',
+      'Expectation: runtime capability profiles and packaged files describe the same support posture.',
+    ]),
+    evidenceRefs: Object.freeze([
+      'scripts/lib/forge-host-catalog.mjs',
+      'scripts/lib/forge-host-support.mjs',
+      'scripts/setup-plugin.mjs',
+      'scripts/forge-host-support.test.mts',
+      'scripts/setup-plugin.test.mts',
+    ]),
+  }),
+  Object.freeze({
+    id: 'trust-warning-surface',
+    title: 'Trust Warning Surface',
+    description: 'Proof that malformed or contradictory Forge state is surfaced as a degraded but readable runtime view.',
+    notes: Object.freeze([
+      'Focus on parse failures and explicit trust warnings rather than cryptographic guarantees.',
+      'Expectation: malformed state/runtime files remain visible in status and hook outputs.',
+    ]),
+    evidenceRefs: Object.freeze([
+      'scripts/lib/forge-state-trust.mjs',
+      'scripts/lib/forge-status.mjs',
+      'scripts/forge-status.test.mts',
+      'scripts/harness-hooks.test.mts',
+    ]),
+  }),
+]);
+
 function safeReadJson(path) {
   try {
     return JSON.parse(readFileSync(path, 'utf8'));
@@ -41,6 +89,32 @@ function slugify(value = '') {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'eval';
+}
+
+export function listEvalScenarios() {
+  return EVAL_SCENARIOS.map(scenario => ({
+    id: scenario.id,
+    title: scenario.title,
+    description: scenario.description,
+    notes: [...scenario.notes],
+    evidenceRefs: [...scenario.evidenceRefs],
+  }));
+}
+
+export function getEvalScenario(id = '') {
+  const normalized = String(id || '').trim().toLowerCase();
+  const scenario = EVAL_SCENARIOS.find(entry => entry.id === normalized);
+  if (!scenario) {
+    return null;
+  }
+
+  return {
+    id: scenario.id,
+    title: scenario.title,
+    description: scenario.description,
+    notes: [...scenario.notes],
+    evidenceRefs: [...scenario.evidenceRefs],
+  };
 }
 
 function formatMetricValue(value) {
@@ -71,6 +145,7 @@ export function normalizeRunSummary(input = {}, fallbackLabel = 'run') {
 }
 
 export function deriveHarnessRun(cwd = '.', seed = {}) {
+  const scenario = getEvalScenario(seed.scenario);
   const state = readForgeState(cwd) || {};
   const runtime = readRuntimeState(cwd) || {};
   const statusModel = buildStatusModel({ cwd });
@@ -92,11 +167,13 @@ export function deriveHarnessRun(cwd = '.', seed = {}) {
   const firstPassSuccess = completion === 100 && retryCount === 0 && regressions === 0 ? 100 : 0;
 
   const summary = seed.summary || [
+    scenario?.title || '',
     statusModel ? `${statusModel.phase_name} ${statusModel.progress_percent}%` : 'No active Forge status',
     statusModel?.support_summary || '',
   ].filter(Boolean).join(' — ');
 
   const notes = unique([
+    ...(scenario?.notes || []),
     ...(seed.notes || []),
     traceability.total > 0 ? `Traceability coverage ${traceability.coveragePercent}% (${traceability.completedCount}/${traceability.total})` : '',
     holes.blockerCount || holes.majorCount || holes.minorCount
@@ -105,6 +182,7 @@ export function deriveHarnessRun(cwd = '.', seed = {}) {
   ]);
 
   const evidenceRefs = unique([
+    ...(scenario?.evidenceRefs || []),
     ...(seed.evidenceRefs || []),
     '.forge/state.json',
     '.forge/runtime.json',
@@ -132,6 +210,7 @@ export function deriveHarnessRun(cwd = '.', seed = {}) {
     metadata: {
       project: state.project || '',
       phase: state.phase_id || '',
+      scenario: scenario?.id || '',
       deliveryReadiness: runtime.delivery_readiness || '',
       nextAction: statusModel?.next_action?.summary || '',
     },

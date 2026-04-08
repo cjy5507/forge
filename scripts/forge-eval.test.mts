@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 import {
   compareEvalRuns,
   deriveHarnessRun,
+  getEvalScenario,
+  listEvalScenarios,
   normalizeRunSummary,
   renderEvalMarkdown,
   writeEvalArtifacts,
@@ -88,6 +90,48 @@ describe('forge eval', () => {
     expect(run.metrics.userCorrections).toBe(2);
     expect(run.evidenceRefs).toContain('.forge/state.json');
     expect(run.evidenceRefs).toContain('.forge/delivery-report/report.md');
+  });
+
+  it('applies built-in scenario notes and evidence refs to derived harness runs', () => {
+    const cwd = makeWorkspace();
+    workspaces.push(cwd);
+
+    writeFileSync(join(cwd, '.forge', 'state.json'), JSON.stringify({
+      project: 'eval-scenario',
+      phase_id: 'develop',
+      mode: 'build',
+      tier: 'full',
+      stats: {
+        failure_count: 0,
+        rollback_count: 0,
+        stop_block_count: 0,
+        test_runs: 3,
+        test_failures: 0,
+      },
+    }, null, 2));
+    writeFileSync(join(cwd, '.forge', 'runtime.json'), JSON.stringify({
+      delivery_readiness: 'in_progress',
+      next_action: {
+        summary: 'Continue lane phase-gate-enforcement',
+      },
+      stats: {
+        failure_count: 0,
+        rollback_count: 0,
+        stop_block_count: 0,
+        test_runs: 3,
+        test_failures: 0,
+      },
+      lanes: {},
+      customer_blockers: [],
+      internal_blockers: [],
+    }, null, 2));
+
+    const run = deriveHarnessRun(cwd, { scenario: 'phase-gate-enforcement' });
+
+    expect(run.summary).toContain('Phase Gate Enforcement');
+    expect(run.notes.some(note => note.includes('missing-artifact'))).toBe(true);
+    expect(run.evidenceRefs).toContain('scripts/lib/forge-state-store.mjs');
+    expect(run.metadata.scenario).toBe('phase-gate-enforcement');
   });
 
   it('compares baseline and harness metrics with a recommendation', () => {
@@ -211,5 +255,78 @@ describe('forge eval', () => {
     const outputs = writeEvalArtifacts(cwd, report);
     expect(outputs.jsonPath).toContain('.forge/eval/lib-eval.json');
     expect(readFileSync(outputs.markdownPath, 'utf8')).toContain('## Recommendation');
+  });
+
+  it('lists built-in eval scenarios', () => {
+    const scenarios = listEvalScenarios();
+
+    expect(scenarios.map(scenario => scenario.id)).toEqual([
+      'phase-gate-enforcement',
+      'host-degraded-support',
+      'trust-warning-surface',
+    ]);
+    expect(getEvalScenario('host-degraded-support')?.title).toBe('Host Degraded Support');
+  });
+
+  it('prints scenario lists and supports scenario-driven cli runs', () => {
+    const cwd = makeWorkspace();
+    workspaces.push(cwd);
+
+    writeFileSync(join(cwd, '.forge', 'state.json'), JSON.stringify({
+      project: 'scenario-cli',
+      phase_id: 'develop',
+      mode: 'build',
+      tier: 'full',
+      stats: {
+        failure_count: 0,
+        rollback_count: 0,
+        stop_block_count: 0,
+        test_runs: 2,
+        test_failures: 0,
+      },
+    }, null, 2));
+    writeFileSync(join(cwd, '.forge', 'runtime.json'), JSON.stringify({
+      delivery_readiness: 'in_progress',
+      next_action: {
+        summary: 'Continue lane host-capability-contract',
+      },
+      stats: {
+        failure_count: 0,
+        rollback_count: 0,
+        stop_block_count: 0,
+        test_runs: 2,
+        test_failures: 0,
+      },
+      lanes: {},
+      customer_blockers: [],
+      internal_blockers: [],
+    }, null, 2));
+
+    const listResult = spawnSync(process.execPath, [
+      join(FORGE_ROOT, 'scripts', 'forge-eval.mjs'),
+      '--list-scenarios',
+    ], {
+      cwd,
+      encoding: 'utf8',
+    });
+
+    expect(listResult.status).toBe(0);
+    expect(listResult.stdout).toContain('phase-gate-enforcement');
+    expect(listResult.stdout).toContain('host-degraded-support');
+
+    const scenarioResult = spawnSync(process.execPath, [
+      join(FORGE_ROOT, 'scripts', 'forge-eval.mjs'),
+      '--scenario', 'host-degraded-support',
+      '--json',
+    ], {
+      cwd,
+      encoding: 'utf8',
+    });
+
+    expect(scenarioResult.status).toBe(0);
+    const parsed = JSON.parse(scenarioResult.stdout);
+    expect(parsed.task).toBe('Host Degraded Support');
+    expect(parsed.harness.metadata.scenario).toBe('host-degraded-support');
+    expect(parsed.harness.evidenceRefs).toContain('scripts/lib/forge-host-catalog.mjs');
   });
 });
