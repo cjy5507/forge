@@ -327,4 +327,21 @@ describe('forge status helper', () => {
     expect(model?.next_action.summary).toContain('Repair Forge state files');
     expect(model?.state_trust_warnings?.[0]).toContain('.forge/state.json');
   });
+
+  it('surfaces explicit trust warnings when state.json has invalid critical shape', () => {
+    const cwd = makeWorkspace();
+    writeFileSync(join(cwd, '.forge', 'state.json'), JSON.stringify({
+      phase: 5,
+      phase_id: null,
+      status: true,
+      mode: 'build',
+    }, null, 2));
+
+    const model = buildStatusModel({ cwd });
+    expect(model?.state_trust_warnings?.[0]).toContain('Critical fields are invalid in .forge/state.json');
+
+    const text = renderStatusText(model);
+    expect(text).toContain('State trust:');
+    expect(text).toContain('.forge/state.json');
+  });
 });

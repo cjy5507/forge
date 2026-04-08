@@ -210,7 +210,22 @@ describe('forge harness hooks', () => {
     }
   });
 
-  it('uses plugin-root hook commands that Claude can resolve at runtime', () => {
+  it('uses CLAUDE_PLUGIN_ROOT for Claude hook commands', () => {
+    const hooksConfig = JSON.parse(
+      readFileSync(join(FORGE_ROOT, 'hooks', 'hooks.json'), 'utf8'),
+    );
+    const commands = Object.values(hooksConfig.hooks)
+      .flat()
+      .flatMap((entry) => entry.hooks.map((hook) => hook.command));
+
+    for (const command of commands) {
+      expect(command).toContain('${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.mjs');
+      expect(command).not.toContain('./hooks/run-hook.mjs');
+      expect(command).toMatch(/^node "\$\{CLAUDE_PLUGIN_ROOT\}\/hooks\/run-hook\.mjs" [a-z-]+$/);
+    }
+  });
+
+  it('keeps Codex hook commands relative to the installed plugin root', () => {
     const hooksConfig = JSON.parse(
       readFileSync(join(FORGE_ROOT, '.codex-plugin', 'hooks', 'hooks.json'), 'utf8'),
     );

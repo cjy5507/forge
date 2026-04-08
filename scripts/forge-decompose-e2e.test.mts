@@ -88,7 +88,7 @@ function runLaneRuntime(args: string[], cwd: string) {
   const result = spawnSync(
     process.execPath,
     [join(FORGE_ROOT, 'scripts', 'forge-lane-runtime.mjs'), ...args],
-    { cwd, encoding: 'utf8', env: { ...process.env, FORGE_TIER: 'off', FORGE_LLM_TIMEOUT_MS: '3000' } },
+    { cwd, encoding: 'utf8', env: { ...process.env, FORGE_TIER: 'off', FORGE_LLM_TIMEOUT_MS: '3000', FORGE_DECOMPOSER_DISABLE_LLM: '1' } },
   );
   return result;
 }
@@ -197,7 +197,7 @@ describe('task decomposition pipeline', () => {
     );
 
     expect(result.status).toBe(0);
-    // LLM fallback warnings on stderr are expected (graceful degradation)
+    expect(result.stderr).toContain('[Forge] decomposition: using heuristic fallback');
 
     const runtime = readRuntime(cwd);
     expect(runtime.lanes).toBeDefined();

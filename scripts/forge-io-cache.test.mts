@@ -87,4 +87,25 @@ describe('json read cache', () => {
       misses: 1,
     });
   });
+
+  it('strips dangerous JSON keys during reads', () => {
+    const cwd = makeWorkspace();
+    const target = join(cwd, '.forge', 'state.json');
+    writeFileSync(target, JSON.stringify({
+      phase: 'develop',
+      __proto__: { polluted: true },
+      nested: {
+        constructor: { polluted: true },
+        safe: 'ok',
+      },
+    }, null, 2));
+
+    const result = readJsonFileDetailed(target).value;
+
+    expect(result.phase).toBe('develop');
+    expect(result.nested.safe).toBe('ok');
+    expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(result.nested, 'constructor')).toBe(false);
+    expect(Reflect.get({}, 'polluted')).toBeUndefined();
+  });
 });

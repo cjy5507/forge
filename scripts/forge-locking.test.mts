@@ -68,4 +68,14 @@ describe('withForgeLock', () => {
 
     expect(result).toBe('ok');
   });
+
+  it('reclaims a stale lock without leaving the original lock path behind', () => {
+    const cwd = makeWorkspace();
+    const lockPath = join(cwd, '.forge', 'forge.lock');
+    writeFileSync(lockPath, `${process.pid}.${Date.now() - 10000}`);
+
+    withForgeLock(cwd, () => 'ok');
+
+    expect(() => withForgeLock(cwd, () => 'ok-again')).not.toThrow();
+  });
 });

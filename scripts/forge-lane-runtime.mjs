@@ -396,10 +396,35 @@ function resolveCleanupTarget(laneId, lane) {
   return configuredPath || inferredPath || '';
 }
 
+function getDirtyWorktreeEntries(worktreePath) {
+  const fullPath = resolve(worktreePath);
+  const result = spawnSync('git', ['status', '--porcelain'], {
+    cwd: fullPath,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    return null;
+  }
+
+  return String(result.stdout || '')
+    .split('\n')
+    .map(line => line.trimEnd())
+    .filter(Boolean);
+}
+
 function tryRemoveWorktree(worktreePath) {
   if (!worktreePath) return { removed: false, branch: '' };
   const fullPath = resolve(worktreePath);
   if (!existsSync(fullPath)) return { removed: false, branch: '' };
+  const dirtyEntries = getDirtyWorktreeEntries(fullPath);
+  if (dirtyEntries && dirtyEntries.length > 0) {
+    return {
+      removed: false,
+      branch: '',
+      blocked: 'dirty',
+      detail: dirtyEntries[0],
+    };
+  }
   const branch = findWorktreeBranch(fullPath);
   const result = spawnSync('git', ['worktree', 'remove', fullPath], {
     cwd: process.cwd(),
@@ -407,7 +432,12 @@ function tryRemoveWorktree(worktreePath) {
   });
   const removed = result.status === 0;
   const deletedBranch = removed ? tryDeleteBranch(branch) : '';
-  return { removed, branch: deletedBranch };
+  return {
+    removed,
+    branch: deletedBranch,
+    blocked: removed ? '' : 'remove_failed',
+    detail: removed ? '' : String(result.stderr || result.stdout || '').trim(),
+  };
 }
 
 function updateLaneStatus(options) {
@@ -446,6 +476,11 @@ function updateLaneStatus(options) {
   }
   if (cleanup.branch) {
     console.log(`branch deleted: ${cleanup.branch}`);
+  }
+  if (cleanup.blocked === 'dirty') {
+    console.log(`worktree retained: dirty changes present (${cleanup.detail})`);
+  } else if (cleanup.blocked === 'remove_failed' && cleanup.detail) {
+    console.log(`worktree retained: ${cleanup.detail}`);
   }
   if (options.note) {
     console.log(`note: ${options.note}`);

@@ -11,6 +11,7 @@ import { withRetry, LockError } from './error-handler.mjs';
 const activeLocks = new Set();
 const LOCK_STALE_MS = 5000;
 const LOCK_FUTURE_SKEW_MS = 1000;
+const DANGEROUS_JSON_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 let activeJsonReadCache = null;
 const jsonReadCacheStats = {
   hits: 0,
@@ -25,6 +26,10 @@ function parseLockTimestamp(lockContent) {
   return parseInt(parts[1], 10);
 }
 
+function quarantineLockPath(lockPath) {
+  return `${lockPath}.reclaimed.${process.pid}.${Date.now()}`;
+}
+
 function cleanupStaleLock(lockPath) {
   try {
     const lockContent = readFileSync(lockPath, 'utf8');
@@ -34,9 +39,33 @@ function cleanupStaleLock(lockPath) {
       || lockTimestamp > Date.now() + LOCK_FUTURE_SKEW_MS
       || Date.now() - lockTimestamp > LOCK_STALE_MS
     ) {
-      try { unlinkSync(lockPath); } catch {}
+      const reclaimedPath = quarantineLockPath(lockPath);
+      try {
+        renameSync(lockPath, reclaimedPath);
+        try { unlinkSync(reclaimedPath); } catch {}
+      } catch {}
     }
   } catch {}
+}
+
+export function sanitizeJsonValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(entry => sanitizeJsonValue(entry));
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const sanitized = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (DANGEROUS_JSON_KEYS.has(key)) {
+      continue;
+    }
+    sanitized[key] = sanitizeJsonValue(entry);
+  }
+
+  return sanitized;
 }
 
 export function withForgeLock(cwd, callback) {
@@ -234,7 +263,7 @@ function readJsonFileDetailedUncached(path) {
     return {
       path,
       exists: true,
-      value: JSON.parse(readFileSync(path, 'utf8')),
+      value: sanitizeJsonValue(JSON.parse(readFileSync(path, 'utf8'))),
       error: null,
       errorLogged: false,
     };

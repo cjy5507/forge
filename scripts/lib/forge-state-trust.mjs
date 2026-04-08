@@ -8,6 +8,72 @@ import { getPhaseSequence, resolvePhase } from './forge-phases.mjs';
 
 export const STATE_PARSE_WARNING = 'Unable to parse .forge/state.json; Forge is using a degraded fallback view.';
 export const RUNTIME_PARSE_WARNING = 'Unable to parse .forge/runtime.json; Forge is using a degraded runtime fallback.';
+const STATE_PATH = '.forge/state.json';
+const RUNTIME_PATH = '.forge/runtime.json';
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function collectShapeIssues(value, requiredFields) {
+  if (!isRecord(value)) {
+    return ['root'];
+  }
+
+  const issues = [];
+  for (const [field, type] of Object.entries(requiredFields)) {
+    const entry = value[field];
+    const valid = type === 'array'
+      ? Array.isArray(entry)
+      : type === 'object'
+        ? isRecord(entry)
+        : typeof entry === type;
+
+    if (!valid) {
+      issues.push(field);
+    }
+  }
+
+  return issues;
+}
+
+function buildShapeWarning(path, issues) {
+  return `Critical fields are invalid in ${path}: ${issues.join(', ')}`;
+}
+
+export function getStateShapeWarnings(value) {
+  const issues = collectShapeIssues(value, {
+    phase: 'string',
+    phase_id: 'string',
+    phase_name: 'string',
+    mode: 'string',
+    status: 'string',
+    agents_active: 'array',
+    tasks: 'array',
+    holes: 'array',
+    pr_queue: 'array',
+    staleness: 'object',
+  });
+
+  return issues.length > 0 ? [buildShapeWarning(STATE_PATH, issues)] : [];
+}
+
+export function getRuntimeShapeWarnings(value) {
+  const issues = collectShapeIssues(value, {
+    version: 'number',
+    delivery_readiness: 'string',
+    lanes: 'object',
+    active_agents: 'object',
+    recent_agents: 'array',
+    recent_failures: 'array',
+    analysis: 'object',
+    next_action: 'object',
+    host_context: 'object',
+    stats: 'object',
+  });
+
+  return issues.length > 0 ? [buildShapeWarning(RUNTIME_PATH, issues)] : [];
+}
 
 export function getStateTrustWarnings(cwd = '.') {
   const warnings = [];
@@ -19,6 +85,12 @@ export function getStateTrustWarnings(cwd = '.') {
   }
   if (runtimeResult.exists && runtimeResult.error) {
     warnings.push(RUNTIME_PARSE_WARNING);
+  }
+  if (stateResult.exists && !stateResult.error) {
+    warnings.push(...getStateShapeWarnings(stateResult.value));
+  }
+  if (runtimeResult.exists && !runtimeResult.error) {
+    warnings.push(...getRuntimeShapeWarnings(runtimeResult.value));
   }
 
   return warnings;

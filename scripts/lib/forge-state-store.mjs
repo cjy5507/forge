@@ -15,6 +15,8 @@ import { tierAtLeast } from './forge-tiers.mjs';
 import {
   RUNTIME_PARSE_WARNING,
   STATE_PARSE_WARNING,
+  getRuntimeShapeWarnings,
+  getStateShapeWarnings,
   validateStateConsistency,
 } from './forge-state-trust.mjs';
 
@@ -51,10 +53,14 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
     }
 
     const normalized = normalizeStateShape(raw);
-    if (stateResult.error) {
+    const trustWarnings = [
+      ...(stateResult.error ? [STATE_PARSE_WARNING] : []),
+      ...(stateResult.error ? [] : getStateShapeWarnings(raw)),
+    ];
+    if (trustWarnings.length > 0) {
       normalized._trust_warnings = [
         ...(normalized._trust_warnings || []),
-        STATE_PARSE_WARNING,
+        ...trustWarnings,
       ];
     }
     return normalized;
@@ -148,10 +154,14 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
       runtimeResult.value,
       { state: state !== undefined ? state : readForgeState(cwd) },
     );
-    if (runtimeResult.error) {
+    const trustWarnings = [
+      ...(runtimeResult.error ? [RUNTIME_PARSE_WARNING] : []),
+      ...(runtimeResult.error ? [] : getRuntimeShapeWarnings(runtimeResult.value)),
+    ];
+    if (trustWarnings.length > 0) {
       normalized._trust_warnings = [
         ...(normalized._trust_warnings || []),
-        RUNTIME_PARSE_WARNING,
+        ...trustWarnings,
       ];
     }
     return normalized;

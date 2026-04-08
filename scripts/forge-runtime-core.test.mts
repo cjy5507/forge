@@ -394,6 +394,54 @@ describe('forge runtime core', () => {
     expect(branches.stdout.trim()).toBe('');
   });
 
+  it('retains a dirty worktree instead of removing it automatically', () => {
+    const cwd = makeWorkspace();
+    initGitWorkspace(cwd);
+
+    expect(runLaneRuntime([
+      'init-lane',
+      '--lane',
+      'api',
+      '--title',
+      'API lane',
+    ], cwd).status).toBe(0);
+
+    const create = spawnSync(process.execPath, [
+      join(FORGE_ROOT, 'scripts', 'forge-worktree.mjs'),
+      'create',
+      '--lane',
+      'api',
+      '--branch',
+      'forge/api',
+    ], {
+      cwd,
+      encoding: 'utf8',
+    });
+    expect(create.status).toBe(0);
+
+    writeFileSync(join(cwd, '.forge', 'worktrees', 'api', 'dirty.txt'), 'uncommitted\n');
+
+    const done = runLaneRuntime([
+      'update-lane-status',
+      '--lane',
+      'api',
+      '--status',
+      'done',
+      '--note',
+      'done',
+    ], cwd);
+
+    expect(done.status).toBe(0);
+    expect(done.stdout).toContain('worktree retained: dirty changes present');
+
+    const worktreeList = spawnSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd,
+      encoding: 'utf8',
+    });
+    expect(worktreeList.status).toBe(0);
+    expect(worktreeList.stdout).toContain('.forge/worktrees/api');
+  });
+
   it('surfaces merge-ready lanes in next action summaries', () => {
     const cwd = makeWorkspace();
     writeForgeState(cwd, {

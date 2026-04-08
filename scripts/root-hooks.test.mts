@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe('repository-root hooks surface', () => {
-  it('publishes a lifecycle map without CLAUDE_PLUGIN_ROOT dependence', () => {
+  it('publishes a Claude hook lifecycle map that resolves through CLAUDE_PLUGIN_ROOT', () => {
     const config = JSON.parse(readFileSync(join(FORGE_ROOT, 'hooks', 'hooks.json'), 'utf8'));
     const commands = Object.values(config.hooks)
       .flat()
@@ -59,8 +59,8 @@ describe('repository-root hooks surface', () => {
     expect(config.hooks.Stop).toBeDefined();
 
     for (const command of commands) {
-      expect(command).toContain('./hooks/run-hook.mjs');
-      expect(command).not.toContain('CLAUDE_PLUGIN_ROOT');
+      expect(command).toContain('${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.mjs');
+      expect(command).not.toContain('./hooks/run-hook.mjs');
     }
   });
 
@@ -85,5 +85,13 @@ describe('repository-root hooks surface', () => {
 
   it('ships the wrapper alongside hooks.json', () => {
     expect(existsSync(join(FORGE_ROOT, 'hooks', 'run-hook.mjs'))).toBe(true);
+  });
+
+  it('uses expanded timeout budgets for write-heavy Claude hooks', () => {
+    const config = JSON.parse(readFileSync(join(FORGE_ROOT, 'hooks', 'hooks.json'), 'utf8'));
+    expect(config.hooks.PreToolUse[0].hooks[0].timeout).toBe(8);
+    expect(config.hooks.PostToolUse[0].hooks[0].timeout).toBe(8);
+    expect(config.hooks.PostToolUse[0].hooks[1].timeout).toBe(8);
+    expect(config.hooks.Stop[0].hooks[0].timeout).toBe(8);
   });
 });

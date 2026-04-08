@@ -87,6 +87,7 @@ const FRAMEWORK_MAP = [
 
 const VALID_MODEL_HINTS = new Set(['haiku', 'sonnet', 'opus']);
 let claudeAvailability;
+let lastClaudeProbeReason = '';
 
 // ── Scan Phase ──
 
@@ -388,11 +389,13 @@ ${specExcerpt || '(no spec available)'}`;
 function canUseClaude() {
   if (process.env.FORGE_DECOMPOSER_DISABLE_LLM === '1') {
     claudeAvailability = false;
+    lastClaudeProbeReason = 'disabled by FORGE_DECOMPOSER_DISABLE_LLM';
     return false;
   }
 
   if (process.env.CODEX_THREAD_ID && process.env.FORGE_DECOMPOSER_ALLOW_CLAUDE !== '1') {
     claudeAvailability = false;
+    lastClaudeProbeReason = 'blocked in Codex session';
     return false;
   }
 
@@ -407,8 +410,10 @@ function canUseClaude() {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     claudeAvailability = !probe.error && probe.status === 0;
+    lastClaudeProbeReason = claudeAvailability ? 'available' : (probe.error?.message || probe.stderr || `exit ${probe.status}`);
   } catch {
     claudeAvailability = false;
+    lastClaudeProbeReason = 'probe failed';
   }
 
   return claudeAvailability;
@@ -824,6 +829,7 @@ function estimateComplexity(description, areas) {
 export function analyzeTask(description, cwd = '.') {
   let fingerprint = null;
   let llmUsed = false;
+  let fallbackReason = '';
 
   try {
     fingerprint = scanCodebase(cwd);
@@ -845,10 +851,14 @@ export function analyzeTask(description, cwd = '.') {
         llmUsed = true;
       } else {
         console.error(`[task-decomposer] llm-validation: ${validation.errors.join('; ')}`);
+        fallbackReason = 'invalid llm response';
       }
+    } else {
+      fallbackReason = canUseClaude() ? 'llm unavailable or returned no usable output' : lastClaudeProbeReason || 'claude unavailable';
     }
   } catch (err) {
     console.error(`[task-decomposer] llm: ${err.message}`);
+    fallbackReason = err.message || 'llm error';
   }
 
   if (llmResult) {
@@ -865,6 +875,7 @@ export function analyzeTask(description, cwd = '.') {
   }
 
   // Heuristic fallback
+  process.stderr.write(`[Forge] decomposition: using heuristic fallback (${fallbackReason || 'claude unavailable'})\n`);
   const heuristic = heuristicDecompose(description, fingerprint);
   return {
     taskType: heuristic.taskType,
