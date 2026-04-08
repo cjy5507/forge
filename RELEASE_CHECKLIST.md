@@ -7,7 +7,7 @@ These items have been confirmed by running tests or direct inspection.
 - [x] Forge remains generic and not repo-specific
 - [x] No user-specific absolute paths in shipped plugin files
 - [x] Claude and Codex manifests are present and parse as JSON
-- [x] Host-specific hook scripts are wired and `.codex-plugin/hooks/hooks.json` parses as JSON
+- [x] Codex hook wiring uses the repository-root wrapper and `.codex-plugin/hooks/hooks.json` parses as JSON
 - [x] Asset references in the Codex manifest exist on disk
 - [x] Marketplace copy, privacy, terms, and publishing docs exist
 - [x] Marketplace icon, logo, and screenshots exist

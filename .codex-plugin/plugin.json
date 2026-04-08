@@ -1,6 +1,6 @@
 {
   "name": "forge",
-  "version": "0.4.4",
+  "version": "0.5.0",
   "description": "Structured build and repair workflows for coding agents",
   "author": {
     "name": "Forge Contributors",
@@ -19,7 +19,7 @@
   ],
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
-  "_hooksNote": "hooks.json lists events primarily aligned with Claude Code. When a host does not fire a matching event, Forge degrades safely: hook scripts exit 0 with { continue: true } and do not mutate state. Codex still uses the shared .forge runtime, skills, forge-status, next_action, and explicit cross-host `forge continue` surfaces, but full hook lifecycle parity is not yet achieved.",
+  "_hooksNote": "Codex uses the repository-root hook wrapper in ./hooks/run-hook.mjs so the packaged lifecycle map does not depend on Claude-only plugin-root variables. When a host does not fire a matching event, Forge still degrades safely: hook scripts exit 0 with { continue: true } and do not mutate state. Codex keeps the shared .forge runtime, skills, forge-status, next_action, and explicit cross-host `forge continue` surfaces, but full live hook lifecycle parity is still evidence-gated.",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Forge",

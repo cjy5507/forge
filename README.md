@@ -243,7 +243,8 @@ Point Claude Code at the repository root (the folder containing `.claude-plugin/
 npm install -g @openai/codex
 ```
 
-Point the host at the repository root containing `.codex-plugin/plugin.json`.
+Point the host at the repository root containing `.codex-plugin/plugin.json`,
+`hooks/`, and `scripts/`.
 Recommended roots: `~/.forge/plugins/forge` or `./.forge/plugins/forge`.
 </details>
 
@@ -327,13 +328,15 @@ inspection with lower confidence.
 | Host | Status | Notes |
 |------|--------|-------|
 | Claude Code | **Verified** | Full hook lifecycle, subagent routing, lane management |
-| Codex | **Degraded support** | Live smoke verified `forge status`, `forge info`, explicit cross-host `forge continue`, and `forge analyze` on shared runtime/skill surfaces. Claude-style hook lifecycle parity is not yet achieved. |
+| Codex | **Degraded support** | Live smoke verified `forge status`, `forge info`, explicit cross-host `forge continue`, and `forge analyze`; installed-copy hook wrapper smoke is verified, but live event-family parity is not yet achieved. |
 | Gemini CLI | **Degraded support** | Root extension manifest, explicit Forge commands, and shared `.forge` runtime flows are shipped. Session/tool hook parity is not yet claimed. |
 | Qwen Code | **Degraded support** | Native `qwen-extension.json`, `skills/`, `agents/`, and explicit `/forge:*` commands are shipped. Hook lifecycle parity is not yet claimed. |
 
 Forge's file-based state system (`.forge/`, `state.json`, `runtime.json`) is host-agnostic.
 Explicit `forge continue` through shared `.forge/` state works across Claude and Codex; the deeper
 automation layer (hooks, subagent tracking, stop guards) remains Claude-first.
+Codex's packaged hook routing is verified through the repository-root wrapper, but whether a live
+Codex host emits every lifecycle event family remains an evidence-gated claim.
 
 Forge's current trust model is operational, not cryptographic: parse failures and cross-file
 contradictions are surfaced explicitly, but repo-local state is not signed or tamper-proof.

@@ -6,6 +6,8 @@ const UNKNOWN_LABEL = 'Unknown';
 
 const SHARED_PACKAGE_PATHS = Object.freeze([
   '.mcp.json',
+  'hooks/hooks.json',
+  'hooks/run-hook.mjs',
 ]);
 
 const HOST_CATALOG = Object.freeze({
@@ -25,6 +27,7 @@ const HOST_CATALOG = Object.freeze({
       toolHooks: true,
       subagentLifecycle: true,
       stopInterception: true,
+      packagedHookRouting: true,
       workspaceHints: true,
       explicitContinue: true,
       sharedStateResume: true,
@@ -48,6 +51,7 @@ const HOST_CATALOG = Object.freeze({
       toolHooks: false,
       subagentLifecycle: false,
       stopInterception: false,
+      packagedHookRouting: true,
       workspaceHints: false,
       explicitContinue: true,
       sharedStateResume: true,
@@ -78,6 +82,7 @@ const HOST_CATALOG = Object.freeze({
       toolHooks: false,
       subagentLifecycle: false,
       stopInterception: false,
+      packagedHookRouting: false,
       workspaceHints: false,
       explicitContinue: true,
       sharedStateResume: true,
@@ -108,6 +113,7 @@ const HOST_CATALOG = Object.freeze({
       toolHooks: false,
       subagentLifecycle: false,
       stopInterception: false,
+      packagedHookRouting: false,
       workspaceHints: false,
       explicitContinue: true,
       sharedStateResume: true,
@@ -134,6 +140,7 @@ const HOST_CATALOG = Object.freeze({
       toolHooks: false,
       subagentLifecycle: false,
       stopInterception: false,
+      packagedHookRouting: false,
       workspaceHints: false,
       explicitContinue: false,
       sharedStateResume: false,

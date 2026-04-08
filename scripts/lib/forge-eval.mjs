@@ -190,6 +190,7 @@ export function deriveHarnessRun(cwd = '.', seed = {}) {
     traceability.total > 0 ? '.forge/traceability.json' : '',
     existsSync(join(cwd, '.forge', 'delivery-report', 'report.md')) ? '.forge/delivery-report/report.md' : '',
     existsSync(join(cwd, '.forge', 'evidence', '20260406-codex-live-smoke.md')) ? '.forge/evidence/20260406-codex-live-smoke.md' : '',
+    existsSync(join(cwd, '.forge', 'evidence', '20260408-codex-packaged-hook-smoke.md')) ? '.forge/evidence/20260408-codex-packaged-hook-smoke.md' : '',
   ]);
 
   return normalizeRunSummary({

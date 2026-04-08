@@ -219,8 +219,62 @@ describe('forge harness hooks', () => {
       .flatMap((entry) => entry.hooks.map((hook) => hook.command));
 
     for (const command of commands) {
-      expect(command).toContain('${CLAUDE_PLUGIN_ROOT}');
-      expect(command).toMatch(/^node "\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/.+\.mjs"$/);
+      expect(command).toContain('./hooks/run-hook.mjs');
+      expect(command).not.toContain('CLAUDE_PLUGIN_ROOT');
+      expect(command).toMatch(/^node "\.\/hooks\/run-hook\.mjs" [a-z-]+$/);
+    }
+  });
+
+  it('executes the packaged Codex SessionStart hook through the root wrapper', () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'forge-codex-install-'));
+    const setup = spawnSync(process.execPath, [
+      join(FORGE_ROOT, 'scripts', 'setup-plugin.mjs'),
+      '--scope',
+      'project',
+      '--project-root',
+      projectRoot,
+      '--mode',
+      'copy',
+    ], {
+      cwd: FORGE_ROOT,
+      encoding: 'utf8',
+    });
+
+    try {
+      expect(setup.status).toBe(0);
+      expect(setup.stderr).toBe('');
+
+      writeState(projectRoot, {
+        phase: 'develop',
+        phase_id: 'develop',
+        phase_name: 'develop',
+      });
+
+      const installedHook = join(projectRoot, '.forge', 'plugins', 'forge', 'hooks', 'run-hook.mjs');
+      expect(existsSync(installedHook)).toBe(true);
+
+      const result = spawnSync(process.execPath, [installedHook, 'state-restore'], {
+        cwd: projectRoot,
+        input: JSON.stringify({ cwd: projectRoot }),
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          CODEX_THREAD_ID: 'codex-thread-1',
+          FORGE_TIER: 'medium',
+        },
+      });
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe('');
+
+      const output = JSON.parse(result.stdout || '{}');
+      expect(output.hookSpecificOutput.hookEventName).toBe('SessionStart');
+
+      const runtime = JSON.parse(readFileSync(join(projectRoot, '.forge', 'runtime.json'), 'utf8'));
+      expect(runtime.host_context.current_host).toBe('codex');
+      expect(runtime.host_context.last_event_name).toBe('session.start');
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true });
     }
   });
 

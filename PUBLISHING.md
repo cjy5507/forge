@@ -7,7 +7,7 @@ Use this checklist before submitting Forge to any public marketplace.
 - Plugin manifest has no repo-local install assumptions
 - No absolute filesystem paths appear in plugin docs, tests, or manifests
 - `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `gemini-extension.json`, and `qwen-extension.json` agree on core metadata and versioning
-- `.codex-plugin/hooks/hooks.json` points only to relative plugin files
+- `.codex-plugin/hooks/hooks.json` points only to relative plugin files via the repository-root hook wrapper
 - `README.md` explains what Forge does and how to validate it
 - `PRIVACY.md` and `TERMS.md` exist for marketplace metadata
 - `npx --yes vitest run scripts/*.test.mts` passes
@@ -31,12 +31,12 @@ Current Forge asset set:
 ### Verified by automated tests
 
 - Claude, Codex, Gemini, and Qwen manifests parse as valid JSON
-- `.codex-plugin/hooks/hooks.json` is valid JSON and references existing scripts
+- `.codex-plugin/hooks/hooks.json` is valid JSON and routes through an existing root hook wrapper
 - Asset references in the Codex manifest exist on disk
 - Setup copy mode preserves the Gemini and Qwen extension roots
 - Version sync keeps all shipped host manifests aligned to `package.json`
 - MCP configuration is documented and optional auth requirements are noted
-- Codex hook scripts are present and referenced correctly
+- Codex hook wrapper and underlying scripts are present and referenced correctly
 
 ### Pending live-environment verification
 

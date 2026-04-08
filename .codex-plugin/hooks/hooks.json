@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/state-restore.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" state-restore",
             "timeout": 5
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/phase-detector.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" phase-detector",
             "timeout": 3
           }
         ]
@@ -31,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/write-gate.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" write-gate",
             "timeout": 5
           }
         ]
@@ -43,12 +43,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/contract-guard.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" contract-guard",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/code-rules-guard.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" code-rules-guard",
             "timeout": 3
           }
         ]
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/tool-failure.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" tool-failure",
             "timeout": 5
           }
         ]
@@ -72,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/subagent-start.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" subagent-start",
             "timeout": 3
           }
         ]
@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/subagent-stop.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" subagent-stop",
             "timeout": 3
           }
         ]
@@ -96,7 +96,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/context-manager.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" context-manager",
             "timeout": 5
           }
         ]
@@ -108,7 +108,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-guard.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" stop-guard",
             "timeout": 3
           }
         ]
@@ -120,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/stop-failure.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" stop-failure",
             "timeout": 3
           }
         ]
@@ -132,7 +132,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-end.mjs\"",
+            "command": "node \"./hooks/run-hook.mjs\" session-end",
             "timeout": 3
           }
         ]
