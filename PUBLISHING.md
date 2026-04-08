@@ -37,6 +37,7 @@ Current Forge asset set:
 - Version sync keeps all shipped host manifests aligned to `package.json`
 - MCP configuration is documented and optional auth requirements are noted
 - Codex hook wrapper and underlying scripts are present and referenced correctly
+- Codex app-server can discover and install Forge from a repo-local marketplace
 
 ### Pending live-environment verification
 
@@ -47,7 +48,7 @@ These have not been confirmed against a running plugin host and should be tested
 - Stop guard does not trap the user in an infinite loop under real workloads
 - Subagent lifecycle events populate runtime state in a real multi-agent run
 - Failure guidance appears after tool failures in a real session
-- Codex plugin host recognizes and loads the plugin from `.codex-plugin/plugin.json`
+- Codex plugin host emits Forge runtime hooks during normal turn execution
 - Claude-started project resumes correctly from Codex with explicit `forge continue`, and the inverse path also works
 - Gemini CLI installs or links the root extension and exposes `/forge:*` commands in a real host
 - Qwen Code installs the root extension and exposes native commands, skills, and agents in a real host

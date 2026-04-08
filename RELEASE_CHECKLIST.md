@@ -28,6 +28,6 @@ These items have been confirmed by running tests or direct inspection.
 
 These checks have not been run against a live environment. They are planned but not confirmed.
 
-- [ ] End-to-end install flow in a real Codex plugin host
+- [x] Codex app-server plugin discovery/install flow works in a real Codex host path
 - [ ] Context7 auth flow on a fresh install where the user has not previously authenticated
 - [ ] End-to-end install flow in a Claude marketplace UI outside of the development environment

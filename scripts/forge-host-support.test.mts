@@ -16,8 +16,10 @@ describe('forge host support', () => {
     expect(profile.supportLevel).toBe('degraded');
     expect(profile.capabilities.sharedContinue).toBe(true);
     expect(profile.capabilities.sharedStateResume).toBe(true);
+    expect(profile.capabilities.pluginManagerInstall).toBe(true);
     expect(profile.capabilities.packagedHookRouting).toBe(true);
     expect(profile.capabilities.sessionHooks).toBe(false);
+    expect(profile.capabilities.degradedModes).toContain('runtime_hook_execution_not_observed');
     expect(profile.capabilities.degradedModes).toContain('session_hooks_unverified');
   });
 
