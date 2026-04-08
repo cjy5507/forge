@@ -43,10 +43,34 @@ Verified:
 - Codex package commands can route through `./hooks/run-hook.mjs`
 - Installed-copy wrapper execution works under `CODEX_THREAD_ID`
 - Hook output and runtime host context remain coherent after packaged execution
+- Codex app-server can discover Forge from a repo-local marketplace
+- Codex app-server can install and enable `forge@local-test-marketplace`
 
 Not verified:
 
-- Real Codex host emission for every lifecycle event family
+- Live hook execution on the tested Codex runtime paths
 - Subagent lifecycle parity
 - Stop interception parity
 - Full live-host hook lifecycle parity
+
+## Follow-up Live Host Check
+
+Additional live verification was run against Codex CLI `0.118.0`.
+
+Observed:
+
+- `plugin/list` on Codex app-server discovered Forge from a repo-local
+  `.agents/plugins/marketplace.json`
+- `plugin/install` succeeded and `plugin/list` then reported Forge as
+  `installed=true` and `enabled=true`
+- Codex persisted the enablement to `~/.codex/config.toml`
+- Even after install and enablement, `codex exec` did not create
+  `.forge/runtime.json`
+- Even after install and enablement, direct app-server `thread/start` and
+  `turn/start` did not emit observable `hook/started` or `hook/completed`
+  notifications for Forge, and no `.forge/runtime.json` was written
+
+Interpretation:
+
+- Plugin manager integration is real
+- Hook lifecycle integration is still not observed on the tested runtime paths
