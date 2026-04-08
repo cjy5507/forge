@@ -1,6 +1,6 @@
 import {
   DEFAULT_RUNTIME,
-  ensureForgeDir,
+  ensureForgeProjectLayout,
   getRuntimePath,
   getStatePath,
   mergeStats,
@@ -68,7 +68,7 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
 
   function writeRuntimeState(cwd = '.', runtime, { state = undefined } = {}) {
     return withForgeLock(cwd, () => {
-      ensureForgeDir(cwd);
+      ensureForgeProjectLayout(cwd);
       const next = {
         ...normalizeRuntimeState(runtime, { state: state !== undefined ? state : readForgeState(cwd) }),
         updated_at: new Date().toISOString(),
@@ -81,7 +81,7 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
 
   function writeForgeState(cwd = '.', state, { allowRollback = false } = {}) {
     return withForgeLock(cwd, () => {
-      ensureForgeDir(cwd);
+      ensureForgeProjectLayout(cwd);
       const normalized = normalizeStateShape(state);
       normalized.updated_at = new Date().toISOString();
 

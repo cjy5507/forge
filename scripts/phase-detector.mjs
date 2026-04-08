@@ -2,6 +2,7 @@
 // Forge Hook: UserPromptSubmit — detects forge-related messages and updates adaptive tier/runtime
 
 import { existsSync } from 'fs';
+import { basename, resolve } from 'path';
 import { runHook } from './lib/hook-runner.mjs';
 import { handleHookError } from './lib/error-handler.mjs';
 import { buildContinueDirective, createSkillDirective } from './lib/forge-continue.mjs';
@@ -9,16 +10,68 @@ import { deriveForgeRequest } from './lib/forge-phase-routing.mjs';
 import { resolveActiveForgePrompt } from './lib/forge-prompt-continue.mjs';
 import { PHASE_SEQUENCE } from './lib/forge-phases.mjs';
 import { detectHostId } from './lib/forge-host-context.mjs';
-import { getRuntimePath } from './lib/forge-io.mjs';
-import { readForgeState, updateRuntimeHookContext, updateAdaptiveTier } from './lib/forge-session.mjs';
+import { ensureForgeProjectLayout, getRuntimePath, getStatePath } from './lib/forge-io.mjs';
+import { readForgeState, updateRuntimeHookContext, updateAdaptiveTier, writeForgeState } from './lib/forge-session.mjs';
 import { isProjectActive } from './lib/forge-interaction.mjs';
 import { updateHudLine } from './lib/forge-hud.mjs';
+
+function shouldBootstrapForgeProject(request) {
+  if (request.explicitSkill === 'info' || request.explicitSkill === 'continue' || request.explicitSkill === 'cancel') {
+    return false;
+  }
+
+  if (request.naturalSkill === 'info' || request.naturalSkill === 'continue') {
+    return false;
+  }
+
+  return request.explicitSkill === 'ignite' || request.naturalMode !== null || request.isExplicitForge;
+}
+
+function inferBootstrapMode(request) {
+  if (request.naturalMode === 'repair' || request.naturalMode === 'express') {
+    return request.naturalMode;
+  }
+
+  return 'build';
+}
+
+function bootstrapForgeProject(cwd, request) {
+  ensureForgeProjectLayout(cwd);
+
+  const statePath = getStatePath(cwd);
+  if (existsSync(statePath)) {
+    return readForgeState(cwd);
+  }
+
+  const now = new Date().toISOString();
+  return writeForgeState(cwd, {
+    version: '0.1.0',
+    project: basename(resolve(cwd)),
+    phase: 'intake',
+    phase_id: 'intake',
+    phase_name: 'intake',
+    tier: 'medium',
+    mode: inferBootstrapMode(request),
+    status: 'pending',
+    created_at: now,
+    client_name: '',
+    agents_active: [],
+    spec_approved: false,
+    design_approved: false,
+    artifact_versions: {},
+    staleness: {},
+    lessons_brief: [],
+    tasks: [],
+    holes: [],
+    pr_queue: [],
+  });
+}
 
 runHook(async (input) => {
   const cwd = input?.cwd || '.';
   const message = String(input?.message || input?.content || '');
   const hostId = detectHostId(input, process.env);
-  const state = readForgeState(cwd);
+  let state = readForgeState(cwd);
   const projectActive = Boolean(state && isProjectActive(state));
   const request = deriveForgeRequest(message, { projectActive });
 
@@ -77,7 +130,11 @@ runHook(async (input) => {
       return;
     }
   } else {
-    updateAdaptiveTier(cwd, { state: null, message, hostId, eventName: 'prompt.submit' });
+    if (shouldBootstrapForgeProject(request)) {
+      state = bootstrapForgeProject(cwd, request);
+    }
+
+    updateAdaptiveTier(cwd, { state, message, hostId, eventName: 'prompt.submit' });
     // No active project — mode detection still routes through ignite, but with an explicit hint.
     if (request.naturalMode) {
       targetSkill = 'ignite';

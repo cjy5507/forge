@@ -12,6 +12,18 @@ const activeLocks = new Set();
 const LOCK_STALE_MS = 5000;
 const LOCK_FUTURE_SKEW_MS = 1000;
 const DANGEROUS_JSON_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const FORGE_PROJECT_DIRS = [
+  'design',
+  'contracts',
+  'evidence',
+  'holes',
+  'tasks',
+  'worktrees',
+  'knowledge',
+  'delivery-report',
+  'eval',
+  'events',
+];
 let activeJsonReadCache = null;
 const jsonReadCacheStats = {
   hits: 0,
@@ -206,6 +218,14 @@ export function ensureForgeDir(cwd = '.') {
   const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
   if (!existsSync(forgeDir)) {
     mkdirSync(forgeDir, { recursive: true });
+  }
+  return forgeDir;
+}
+
+export function ensureForgeProjectLayout(cwd = '.') {
+  const forgeDir = ensureForgeDir(cwd);
+  for (const dir of FORGE_PROJECT_DIRS) {
+    mkdirSync(join(forgeDir, dir), { recursive: true });
   }
   return forgeDir;
 }

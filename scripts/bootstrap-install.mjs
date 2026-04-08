@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, symlinkSync } from 'fs';
 import { homedir } from 'os';
 import { dirname, join, resolve } from 'path';
 import { spawnSync } from 'child_process';
@@ -127,7 +127,24 @@ function runCommand(command, args, label) {
 function resolveSourceDir(options, checkoutDir) {
   const maybeLocalPath = resolve(options.source);
   if (existsSync(maybeLocalPath)) {
-    return maybeLocalPath;
+    if (options.scope !== 'project') {
+      return maybeLocalPath;
+    }
+
+    if (maybeLocalPath === checkoutDir) {
+      return checkoutDir;
+    }
+
+    if (existsSync(checkoutDir)) {
+      if (!options.force) {
+        throw new Error(`Checkout already exists: ${checkoutDir}. Re-run with --force to replace it.`);
+      }
+      rmSync(checkoutDir, { recursive: true, force: true });
+    }
+
+    mkdirSync(dirname(checkoutDir), { recursive: true });
+    symlinkSync(maybeLocalPath, checkoutDir, process.platform === 'win32' ? 'junction' : 'dir');
+    return checkoutDir;
   }
 
   if (existsSync(checkoutDir)) {

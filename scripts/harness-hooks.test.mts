@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
-import { dirname, join } from 'path';
+import { basename, dirname, join } from 'path';
 import { spawnSync } from 'child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
@@ -458,6 +458,53 @@ describe('forge harness hooks', () => {
     expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:ignite');
     expect(output.hookSpecificOutput.additionalContext).toContain('Requested mode: express');
     expect(output.hookSpecificOutput.additionalContext).toContain('Detected express request from user message.');
+  });
+
+  it('bootstraps the full Forge scaffold on first ignite even when .forge already has plugin content', () => {
+    const cwd = makeWorkspace();
+    mkdirSync(join(cwd, '.forge', 'plugins', 'forge'), { recursive: true });
+    writeFileSync(join(cwd, 'package.json'), '{"name":"demo"}\n');
+
+    const output = runHook('phase-detector.mjs', cwd, { message: 'forge:ignite build me a dashboard' });
+    expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:ignite');
+
+    expect(existsSync(join(cwd, '.forge', 'plugins', 'forge'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'state.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'runtime.json'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'design'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'contracts'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'evidence'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'holes'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'tasks'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'worktrees'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'knowledge'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'delivery-report'))).toBe(true);
+
+    const state = JSON.parse(readFileSync(join(cwd, '.forge', 'state.json'), 'utf8'));
+    expect(state.phase_id).toBe('intake');
+    expect(state.mode).toBe('build');
+    expect(state.project).toBe(basename(cwd));
+    expect(state.artifact_versions).toEqual({});
+    expect(state.staleness).toEqual({});
+    expect(state.lessons_brief).toEqual([]);
+  });
+
+  it('backfills the default Forge directories for existing projects with only state', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, { phase: 'discovery', phase_id: 'discovery', phase_name: 'discovery', status: 'active' });
+
+    const output = runHook('phase-detector.mjs', cwd, { message: 'forge status' });
+    expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
+
+    expect(existsSync(join(cwd, '.forge', 'design'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'contracts'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'evidence'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'holes'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'tasks'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'worktrees'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'knowledge'))).toBe(true);
+    expect(existsSync(join(cwd, '.forge', 'delivery-report'))).toBe(true);
   });
 
   it('auto-dispatches forge info on session restore when the project is already complete', () => {

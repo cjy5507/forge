@@ -30,6 +30,7 @@ describe('forge bootstrap installer', () => {
   it('can bootstrap a project-local install from a local source directory', () => {
     const projectRoot = mkdtempSync(join(tmpdir(), 'forge-bootstrap-project-'));
     tmpDirs.push(projectRoot);
+    const checkout = join(projectRoot, '.forge', 'vendor', 'forge');
     const target = join(projectRoot, '.forge', 'plugins', 'forge');
 
     const result = runBootstrap([
@@ -45,7 +46,9 @@ describe('forge bootstrap installer', () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
     expect(result.stdout).toContain('Forge bootstrap complete');
-    expect(result.stdout).toContain('checkout: skipped');
+    expect(result.stdout).toContain(`checkout: ${checkout}`);
+    expect(existsSync(checkout)).toBe(true);
+    expect(lstatSync(checkout).isSymbolicLink()).toBe(true);
     expect(existsSync(target)).toBe(true);
     expect(lstatSync(target).isSymbolicLink()).toBe(true);
   });
