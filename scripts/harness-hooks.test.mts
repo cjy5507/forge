@@ -253,7 +253,7 @@ describe('forge harness hooks', () => {
     expect(qwenManifest.agents).toBe('agents');
     expect(existsSync(join(FORGE_ROOT, 'commands', 'forge', 'continue.toml'))).toBe(true);
     expect(existsSync(join(FORGE_ROOT, 'qwen-commands', 'forge', 'continue.md'))).toBe(true);
-    expect(existsSync(join(FORGE_ROOT, 'hooks', 'hooks.json'))).toBe(false);
+    expect(existsSync(join(FORGE_ROOT, 'hooks', 'hooks.json'))).toBe(true);
   });
 
   it('returns SessionStart hookSpecificOutput and normalizes state', () => {

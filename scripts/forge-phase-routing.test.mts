@@ -67,4 +67,18 @@ describe('forge phase routing helpers', () => {
     expect(resolved.currentSkill).toBe('continue');
     expect(resolved.resumeSurfaceRequested).toBe(true);
   });
+
+  it('keeps forge plan routed to the plans skill alias', () => {
+    const request = deriveForgeRequest('forge plan', { projectActive: true });
+    const resolved = resolveTargetSkill({
+      explicitSkill: request.explicitSkill,
+      projectActive: true,
+      phaseId: 'plan',
+      runtime: {},
+      message: 'forge plan',
+    });
+
+    expect(request.explicitSkill).toBe('plans');
+    expect(resolved.currentSkill).toBe('plans');
+  });
 });

@@ -9,6 +9,7 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(SCRIPT_DIR);
 const JSON_TARGETS = [
   'package.json',
+  'hooks/hooks.json',
   '.claude-plugin/plugin.json',
   '.codex-plugin/plugin.json',
   '.codex-plugin/hooks/hooks.json',
@@ -40,7 +41,10 @@ function fail(message) {
 }
 
 function runSyntaxChecks() {
-  const targets = walkFiles(join(ROOT, 'scripts')).filter(file => file.endsWith('.mjs'));
+  const targets = [
+    ...walkFiles(join(ROOT, 'scripts')),
+    ...(existsSync(join(ROOT, 'hooks')) ? walkFiles(join(ROOT, 'hooks')) : []),
+  ].filter(file => file.endsWith('.mjs'));
 
   for (const file of targets) {
     const result = spawnSync(process.execPath, ['--check', file], {
