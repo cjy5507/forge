@@ -6,6 +6,7 @@ export function getForgeHostSupportProfile(hostId = '') {
     hostId: profile.hostId,
     displayName: profile.displayName,
     supportLevel: profile.supportLevel,
+    packagePaths: profile.packagePaths,
     capabilities: profile.capabilities,
   };
 }

@@ -51,6 +51,10 @@ import {
   updateAdaptiveTierWith,
 } from './forge-interaction.mjs';
 
+/** @typedef {import('../../types/forge-state').ForgeAnalysisMeta} ForgeAnalysisMeta */
+/** @typedef {import('../../types/forge-state').ForgeRuntime} ForgeRuntime */
+/** @typedef {import('../../types/forge-state').ForgeState} ForgeState */
+
 // ─── Re-export extracted modules for backward compatibility ───────────
 export {
   deriveSessionOwner,
@@ -82,6 +86,12 @@ import { updateHudLine } from './forge-hud.mjs';
 
 // ─── normalizeRuntimeState (central orchestrator) ──────────────────────
 
+/**
+ * Normalize runtime.json into the canonical Forge runtime contract.
+ * @param {Partial<ForgeRuntime>|null|undefined} [runtime]
+ * @param {{ state?: Partial<ForgeState>|null }} [options]
+ * @returns {ForgeRuntime}
+ */
 export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null } = {}) {
   const normalized = {
     ...DEFAULT_RUNTIME,
@@ -134,6 +144,11 @@ export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null 
 
 // ─── State shape normalization ─────────────────────────────────────────
 
+/**
+ * Normalize state.json into the canonical Forge state contract.
+ * @param {Partial<ForgeState>|null|undefined} [state]
+ * @returns {ForgeState}
+ */
 export function normalizeStateShape(state = {}) {
   const phase = resolvePhase(state);
   const status = typeof state.status === 'string' ? state.status : 'pending';
@@ -180,6 +195,11 @@ export {
   recordStateStats,
 };
 
+/**
+ * Persist analysis metadata into both state.json and runtime.json.
+ * @param {string} [cwd]
+ * @param {Partial<ForgeAnalysisMeta>|Record<string, unknown>} [analysis]
+ */
 export function recordAnalysisMetadata(cwd = '.', analysis = {}) {
   const state = readForgeState(cwd);
   const runtime = readRuntimeState(cwd, { state });

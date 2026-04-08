@@ -204,6 +204,28 @@ describe('forge status helper', () => {
     expect(payload.lanes.total).toBe(1);
   });
 
+  it('surfaces host support warnings for degraded hosts', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'host-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      host_context: {
+        current_host: 'codex',
+      },
+    });
+
+    const model = buildStatusModel({ cwd });
+    expect(model?.host_support_warning).toContain('degraded mode');
+
+    const text = renderStatusText(model);
+    expect(text).toContain('Host support: Codex runs in degraded mode');
+  });
+
   it('ignores legacy holes older than the active project window', () => {
     const cwd = makeWorkspace();
     writeForgeState(cwd, {

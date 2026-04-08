@@ -3,11 +3,23 @@
   "version": "0.4.4",
   "private": true,
   "type": "module",
+  "bin": {
+    "forge": "./scripts/forge.mjs",
+    "forge-continue": "./scripts/forge-continue.mjs",
+    "forge-eval": "./scripts/forge-eval.mjs",
+    "forge-health": "./scripts/forge-health.mjs",
+    "forge-lane-runtime": "./scripts/forge-lane-runtime.mjs",
+    "forge-setup": "./scripts/setup-plugin.mjs",
+    "forge-status": "./scripts/forge-status.mjs",
+    "forge-worktree": "./scripts/forge-worktree.mjs"
+  },
   "scripts": {
+    "lint": "node scripts/lint.mjs",
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/sync-version.mjs --check",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",

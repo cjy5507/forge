@@ -1,0 +1,184 @@
+export type ForgeTier = 'off' | 'light' | 'medium' | 'full';
+export type ForgeCompanyMode = 'guided' | 'autonomous_company';
+export type ForgeBriefMode = 'auto' | 'manual';
+export type ForgeDeliveryReadiness =
+  | 'unknown'
+  | 'blocked'
+  | 'in_progress'
+  | 'ready_for_review'
+  | 'delivered'
+  | 'completed'
+  | 'cancelled';
+
+export interface ForgeStats {
+  started_at: string;
+  last_prompt_at: string;
+  last_finished_at: string;
+  session_count: number;
+  agent_calls: number;
+  rollback_count: number;
+  failure_count: number;
+  stop_block_count: number;
+  test_runs: number;
+  test_failures: number;
+}
+
+export interface ForgeAnalysisMeta {
+  last_type: string;
+  last_target: string;
+  artifact_path: string;
+  graph_health: string;
+  confidence: string;
+  risk_level: string;
+  summary: string;
+  updated_at: string;
+  stale: boolean;
+}
+
+export interface ForgeNextAction {
+  kind: string;
+  skill: string;
+  target: string;
+  reason: string;
+  summary: string;
+  updated_at: string;
+}
+
+export interface ForgeHostContext {
+  current_host: string;
+  previous_host: string;
+  last_event_host: string;
+  last_event_name: string;
+  last_resume_host: string;
+  last_resume_at: string;
+}
+
+export interface ForgeBlocker {
+  summary: string;
+  owner: string;
+  severity: string;
+  [key: string]: unknown;
+}
+
+export interface ForgeLaneHandoffNote {
+  at: string;
+  kind: string;
+  note: string;
+}
+
+export interface ForgeActiveAgentRecord {
+  status?: string;
+  type?: string;
+  lane?: string;
+  role?: string;
+  started_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export interface ForgeLaneRecord {
+  id: string;
+  title: string;
+  owner_role: string;
+  owner_agent_id: string;
+  owner_agent_type: string;
+  worktree_path: string;
+  dependencies: string[];
+  status: string;
+  session_handoff_notes: string;
+  review_state: string;
+  merge_state: string;
+  scope: string[];
+  areas: string[];
+  model_hint: string;
+  acceptance_criteria: string[];
+  requirement_refs: string[];
+  acceptance_refs: string[];
+  evidence_refs: string[];
+  last_event_at: string;
+  blocked_reason: string;
+  reviewer: string;
+  task_file: string;
+  handoff_notes: ForgeLaneHandoffNote[];
+}
+
+export interface ForgeStopGuard {
+  block_count: number;
+  last_reason: string;
+  last_message: string;
+}
+
+export interface ForgeRuntimeEvent {
+  name: string;
+  lane: string;
+  at: string;
+}
+
+export interface ForgeRuntime {
+  version: number;
+  active_tier: ForgeTier;
+  detected_locale: string;
+  last_task_type: string;
+  task_graph_version: number;
+  company_mode: ForgeCompanyMode;
+  company_gate_mode: 'auto' | 'manual';
+  company_phase_anchor: string;
+  active_gate: string;
+  active_gate_owner: string;
+  delivery_readiness: ForgeDeliveryReadiness;
+  customer_blockers: ForgeBlocker[];
+  internal_blockers: ForgeBlocker[];
+  current_session_goal: string;
+  session_exit_criteria: string[];
+  next_session_goal: string;
+  next_session_owner: string;
+  session_handoff_summary: string;
+  session_brief_mode: ForgeBriefMode;
+  session_phase_anchor: string;
+  session_gate_anchor: string;
+  session_customer_blocker_count: number;
+  session_internal_blocker_count: number;
+  recommended_agents: string[];
+  lanes: Record<string, ForgeLaneRecord>;
+  active_worktrees: Record<string, string>;
+  next_lane: string;
+  active_agents: Record<string, ForgeActiveAgentRecord>;
+  recent_agents: string[];
+  recent_failures: string[];
+  analysis: ForgeAnalysisMeta;
+  next_action: ForgeNextAction;
+  host_context: ForgeHostContext;
+  stop_guard: ForgeStopGuard;
+  stats: ForgeStats;
+  last_event: ForgeRuntimeEvent | null;
+  updated_at: string;
+}
+
+export interface ForgeState {
+  version: string;
+  project: string;
+  phase: string;
+  phase_id: string;
+  phase_name: string;
+  mode: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  client_name: string;
+  agents_active: string[];
+  spec_approved: boolean;
+  design_approved: boolean;
+  artifact_versions: Record<string, unknown>;
+  staleness: Record<string, unknown>;
+  lessons_brief: string[];
+  analysis: ForgeAnalysisMeta;
+  tasks: string[];
+  holes: string[];
+  pr_queue: string[];
+  tier: ForgeTier;
+  stats: ForgeStats;
+  phase_index: number;
+  _phase_transition_warning?: string;
+  _phase_gate_warning?: string;
+  _phase_mismatch_warning?: string;
+}

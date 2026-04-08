@@ -1,6 +1,7 @@
 import { spawnSync } from 'child_process';
 import { basename } from 'path';
 import { describeCrossHostResume } from './forge-host-context.mjs';
+import { buildHealthReport } from './forge-health.mjs';
 import { readForgeState, readRuntimeState, normalizeRuntimeState } from './forge-session.mjs';
 import { getStateTrustWarnings } from './forge-state-trust.mjs';
 import { resolvePhase } from './forge-phases.mjs';
@@ -132,6 +133,11 @@ export function buildStatusModel({
   }
 
   const currentRuntime = normalizeRuntimeState(runtime ?? readRuntimeState(cwd, { state: currentState }), { state: currentState });
+  const health = buildHealthReport({
+    cwd,
+    state: currentState,
+    runtime: currentRuntime,
+  });
   const phase = resolvePhase(currentState);
   const counts = summarizeLaneCounts(currentRuntime);
   const scopedHoles = scopeHoleSummariesToProject(readHoleSummaries(cwd), currentState);
@@ -225,6 +231,7 @@ export function buildStatusModel({
       failures: currentRuntime.stats?.failure_count || 0,
       stops: currentRuntime.stats?.stop_block_count || 0,
     },
+    host_support_warning: health.warnings[0] || '',
     host_handoff: hostHandoff,
     state_trust_warnings: [
       ...trustWarnings,
@@ -254,6 +261,9 @@ export function renderStatusText(model, { verbose = false } = {}) {
   }
   if (model.host_handoff) {
     lines.push(model.host_handoff);
+  }
+  if (model.host_support_warning) {
+    lines.push(`Host support: ${model.host_support_warning}`);
   }
   if (Array.isArray(model.state_trust_warnings) && model.state_trust_warnings.length > 0) {
     lines.push(`State trust: ${model.state_trust_warnings.join(' | ')}`);

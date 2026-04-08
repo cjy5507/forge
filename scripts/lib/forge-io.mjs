@@ -2,6 +2,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkS
 import { dirname, join, resolve } from 'path';
 import { withRetry, LockError } from './error-handler.mjs';
 
+/** @typedef {import('../../types/forge-state').ForgeAnalysisMeta} ForgeAnalysisMeta */
+/** @typedef {import('../../types/forge-state').ForgeHostContext} ForgeHostContext */
+/** @typedef {import('../../types/forge-state').ForgeNextAction} ForgeNextAction */
+/** @typedef {import('../../types/forge-state').ForgeRuntime} ForgeRuntime */
+/** @typedef {import('../../types/forge-state').ForgeStats} ForgeStats */
+
 const activeLocks = new Set();
 const LOCK_STALE_MS = 5000;
 const LOCK_FUTURE_SKEW_MS = 1000;
@@ -70,6 +76,7 @@ export function withForgeLock(cwd, callback) {
   });
 }
 
+/** @type {ForgeStats} */
 export const DEFAULT_STATS = {
   started_at: '',
   last_prompt_at: '',
@@ -83,6 +90,7 @@ export const DEFAULT_STATS = {
   test_failures: 0,
 };
 
+/** @type {ForgeAnalysisMeta} */
 export const DEFAULT_ANALYSIS = {
   last_type: '',
   last_target: '',
@@ -95,6 +103,7 @@ export const DEFAULT_ANALYSIS = {
   stale: false,
 };
 
+/** @type {ForgeNextAction} */
 export const DEFAULT_NEXT_ACTION = {
   kind: '',
   skill: '',
@@ -104,6 +113,7 @@ export const DEFAULT_NEXT_ACTION = {
   updated_at: '',
 };
 
+/** @type {ForgeHostContext} */
 export const DEFAULT_HOST_CONTEXT = {
   current_host: '',
   previous_host: '',
@@ -113,6 +123,7 @@ export const DEFAULT_HOST_CONTEXT = {
   last_resume_at: '',
 };
 
+/** @type {ForgeRuntime} */
 export const DEFAULT_RUNTIME = {
   version: 3,
   active_tier: 'light',
