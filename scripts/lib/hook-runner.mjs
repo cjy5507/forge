@@ -1,4 +1,5 @@
 import { readStdin } from './stdin.mjs';
+import { withJsonReadCache } from './forge-io.mjs';
 
 /**
  * Standard hook entry point. Reads stdin, calls handler, catches errors gracefully.
@@ -17,7 +18,7 @@ export async function runHook(handler, { name = 'unknown', failClosed = false } 
     return;
   }
   try {
-    await handler(input);
+    await withJsonReadCache(() => handler(input));
   } catch (error) {
     // Log to file only (not stdout) to avoid corrupting hook JSON protocol
     try {

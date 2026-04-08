@@ -3,6 +3,7 @@
 import { existsSync } from 'fs';
 import { resolve } from 'path';
 import { spawnSync } from 'child_process';
+import { withJsonReadCache } from './lib/forge-io.mjs';
 import { LANE_STATUS_SEQUENCE, normalizeRuntimeLanes, selectNextLane, summarizeLaneBriefs, summarizeLaneCounts } from './lib/forge-lanes.mjs';
 import { initLaneRecord, markLaneMergeState, markLaneReviewState, recordAnalysisMetadata, recordLaneHandoff, readForgeState, readRuntimeState, setCompanyGate, setLaneOwner, setSessionBrief, setLaneStatus, writeSessionHandoff, writeRuntimeState } from './lib/forge-session.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
@@ -847,4 +848,6 @@ function main() {
   fail(`Unknown command: ${command}`);
 }
 
-main();
+withJsonReadCache(() => {
+  main();
+});

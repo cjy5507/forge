@@ -5,6 +5,11 @@ import { withRetry, LockError } from './error-handler.mjs';
 const activeLocks = new Set();
 const LOCK_STALE_MS = 5000;
 const LOCK_FUTURE_SKEW_MS = 1000;
+let activeJsonReadCache = null;
+const jsonReadCacheStats = {
+  hits: 0,
+  misses: 0,
+};
 
 function parseLockTimestamp(lockContent) {
   const parts = String(lockContent || '').trim().split('.');
@@ -182,31 +187,108 @@ export function resolveForgeBaseDir(cwd = '.') {
   }
 }
 
-export function readJsonFileDetailed(path, fallback = null, { logErrors = true } = {}) {
+function cloneJsonValue(value) {
+  return value == null ? value : structuredClone(value);
+}
+
+function buildJsonReadCacheKey(path) {
+  return resolve(path);
+}
+
+function materializeJsonRead(entry, fallback, { logErrors = true } = {}) {
+  if (entry?.error && logErrors && !entry.errorLogged) {
+    process.stderr.write(`[Forge] warning: failed to parse ${entry.path}: ${entry.error.message}\n`);
+    entry.errorLogged = true;
+  }
+
+  return {
+    exists: Boolean(entry?.exists),
+    value: !entry?.exists || entry?.error ? fallback : cloneJsonValue(entry?.value),
+    error: entry?.error || null,
+  };
+}
+
+function readJsonFileDetailedUncached(path) {
   if (!existsSync(path)) {
     return {
+      path,
       exists: false,
-      value: fallback,
+      value: null,
       error: null,
+      errorLogged: false,
     };
   }
 
   try {
     return {
+      path,
       exists: true,
       value: JSON.parse(readFileSync(path, 'utf8')),
       error: null,
+      errorLogged: false,
     };
-  } catch (err) {
-    if (logErrors) {
-      process.stderr.write(`[Forge] warning: failed to parse ${path}: ${err.message}\n`);
-    }
+  } catch (error) {
     return {
+      path,
       exists: true,
-      value: fallback,
-      error: err,
+      value: null,
+      error,
+      errorLogged: false,
     };
   }
+}
+
+export function withJsonReadCache(callback) {
+  if (activeJsonReadCache) {
+    return callback();
+  }
+
+  activeJsonReadCache = new Map();
+  try {
+    const result = callback();
+    if (result && typeof result.then === 'function') {
+      return result.finally(() => {
+        activeJsonReadCache = null;
+      });
+    }
+    activeJsonReadCache = null;
+    return result;
+  } catch (error) {
+    activeJsonReadCache = null;
+    throw error;
+  }
+}
+
+export function getJsonReadCacheStats() {
+  return {
+    active: Boolean(activeJsonReadCache),
+    entries: activeJsonReadCache?.size || 0,
+    hits: jsonReadCacheStats.hits,
+    misses: jsonReadCacheStats.misses,
+  };
+}
+
+export function resetJsonReadCacheStats() {
+  jsonReadCacheStats.hits = 0;
+  jsonReadCacheStats.misses = 0;
+}
+
+export function readJsonFileDetailed(path, fallback = null, { logErrors = true } = {}) {
+  if (activeJsonReadCache) {
+    const cacheKey = buildJsonReadCacheKey(path);
+    if (activeJsonReadCache.has(cacheKey)) {
+      jsonReadCacheStats.hits += 1;
+      return materializeJsonRead(activeJsonReadCache.get(cacheKey), fallback, { logErrors });
+    }
+
+    jsonReadCacheStats.misses += 1;
+    const entry = readJsonFileDetailedUncached(path);
+    activeJsonReadCache.set(cacheKey, entry);
+    return materializeJsonRead(entry, fallback, { logErrors });
+  }
+
+  const entry = readJsonFileDetailedUncached(path);
+  return materializeJsonRead(entry, fallback, { logErrors });
 }
 
 export function readJsonFile(path, fallback = null) {
@@ -217,6 +299,16 @@ export function writeJsonFile(path, value) {
   const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
   writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
   renameSync(tmp, path);
+
+  if (activeJsonReadCache) {
+    activeJsonReadCache.set(buildJsonReadCacheKey(path), {
+      path,
+      exists: true,
+      value: cloneJsonValue(value),
+      error: null,
+      errorLogged: false,
+    });
+  }
 }
 
 export function getStatePath(cwd = '.') {

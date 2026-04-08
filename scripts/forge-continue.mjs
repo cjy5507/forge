@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { buildContinueContext, selectContinueDirective } from './lib/forge-continue.mjs';
+import { withJsonReadCache } from './lib/forge-io.mjs';
 import { buildStatusModel, renderStatusText } from './lib/forge-status.mjs';
 import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
 
@@ -87,15 +88,17 @@ if (options.help) {
   process.exit(0);
 }
 
-const payload = buildPayload(process.cwd());
+withJsonReadCache(() => {
+  const payload = buildPayload(process.cwd());
 
-if (options.json) {
-  process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
-} else if (!payload.active) {
-  process.stdout.write(`${payload.message}\n`);
-} else {
-  process.stdout.write(`${payload.status_text}\n\nResume skill: ${payload.message}\n`);
-  if (payload.reason) {
-    process.stdout.write(`Reason: ${payload.reason}\n`);
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+  } else if (!payload.active) {
+    process.stdout.write(`${payload.message}\n`);
+  } else {
+    process.stdout.write(`${payload.status_text}\n\nResume skill: ${payload.message}\n`);
+    if (payload.reason) {
+      process.stdout.write(`Reason: ${payload.reason}\n`);
+    }
   }
-}
+});

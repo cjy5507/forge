@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { withJsonReadCache } from './lib/forge-io.mjs';
 import { buildStatusModel, renderStatusText } from './lib/forge-status.mjs';
 
 function parseArgs(argv) {
@@ -10,13 +11,16 @@ function parseArgs(argv) {
 }
 
 const options = parseArgs(process.argv.slice(2));
-const model = buildStatusModel({ cwd: process.cwd() });
 
-if (options.json) {
-  console.log(JSON.stringify(model || {
-    project: '',
-    next_action: {},
-  }, null, 2));
-} else {
-  process.stdout.write(renderStatusText(model, { verbose: options.verbose }));
-}
+withJsonReadCache(() => {
+  const model = buildStatusModel({ cwd: process.cwd() });
+
+  if (options.json) {
+    console.log(JSON.stringify(model || {
+      project: '',
+      next_action: {},
+    }, null, 2));
+  } else {
+    process.stdout.write(renderStatusText(model, { verbose: options.verbose }));
+  }
+});
