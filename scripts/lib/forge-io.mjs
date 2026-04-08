@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'fs';
 import { dirname, join, resolve } from 'path';
+import { createHash } from 'crypto';
 import { withRetry, LockError } from './error-handler.mjs';
 
 /** @typedef {import('../../types/forge-state').ForgeAnalysisMeta} ForgeAnalysisMeta */
@@ -7,6 +8,7 @@ import { withRetry, LockError } from './error-handler.mjs';
 /** @typedef {import('../../types/forge-state').ForgeNextAction} ForgeNextAction */
 /** @typedef {import('../../types/forge-state').ForgeRuntime} ForgeRuntime */
 /** @typedef {import('../../types/forge-state').ForgeStats} ForgeStats */
+/** @typedef {import('../../types/forge-state').ForgeHarnessPolicy} ForgeHarnessPolicy */
 
 const activeLocks = new Set();
 const LOCK_STALE_MS = 5000;
@@ -164,6 +166,52 @@ export const DEFAULT_HOST_CONTEXT = {
   last_resume_at: '',
 };
 
+export const DEFAULT_TOOLING = {
+  package_manager: '',
+  package_manager_source: '',
+  detected_commands: {
+    lint: '',
+    typecheck: '',
+    test: '',
+    build: '',
+    format: '',
+  },
+  edited_files: [],
+  last_batch_check: {
+    at: '',
+    status: '',
+    summary: '',
+    commands: [],
+  },
+};
+
+/** @type {ForgeHarnessPolicy} */
+export const DEFAULT_HARNESS_POLICY = {
+  strictness_mode: 'guarded',
+  verification_mode: 'targeted',
+  host_posture: 'bounded_degraded',
+  override_policy: 'explicit_only',
+  decision_trace_enabled: true,
+};
+
+export const DEFAULT_DECISION_TRACE = {
+  latest: null,
+  recent: [],
+};
+
+export const DEFAULT_VERIFICATION = {
+  updated_at: '',
+  edited_files: [],
+  selected_checks: [],
+  status: '',
+  summary: '',
+};
+
+export const DEFAULT_RECOVERY = {
+  latest: null,
+  active: [],
+};
+
 /** @type {ForgeRuntime} */
 export const DEFAULT_RUNTIME = {
   version: 3,
@@ -199,6 +247,11 @@ export const DEFAULT_RUNTIME = {
   analysis: { ...DEFAULT_ANALYSIS },
   next_action: { ...DEFAULT_NEXT_ACTION },
   host_context: { ...DEFAULT_HOST_CONTEXT },
+  harness_policy: { ...DEFAULT_HARNESS_POLICY },
+  decision_trace: structuredClone(DEFAULT_DECISION_TRACE),
+  verification: structuredClone(DEFAULT_VERIFICATION),
+  recovery: structuredClone(DEFAULT_RECOVERY),
+  tooling: structuredClone(DEFAULT_TOOLING),
   stop_guard: {
     block_count: 0,
     last_reason: '',
@@ -449,6 +502,120 @@ export function normalizeStringList(values = []) {
     .filter(Boolean);
 }
 
+export function normalizeToolingState(tooling = {}) {
+  const source = tooling && typeof tooling === 'object' ? tooling : {};
+  const detectedCommandsSource = source.detected_commands && typeof source.detected_commands === 'object'
+    ? source.detected_commands
+    : {};
+  const lastBatchCheckSource = source.last_batch_check && typeof source.last_batch_check === 'object'
+    ? source.last_batch_check
+    : {};
+
+  return {
+    ...DEFAULT_TOOLING,
+    package_manager: requireString(source.package_manager),
+    package_manager_source: requireString(source.package_manager_source),
+    detected_commands: {
+      lint: requireString(detectedCommandsSource.lint),
+      typecheck: requireString(detectedCommandsSource.typecheck),
+      test: requireString(detectedCommandsSource.test),
+      build: requireString(detectedCommandsSource.build),
+      format: requireString(detectedCommandsSource.format),
+    },
+    edited_files: normalizeStringList(source.edited_files).slice(-100),
+    last_batch_check: {
+      at: requireString(lastBatchCheckSource.at),
+      status: requireString(lastBatchCheckSource.status),
+      summary: requireString(lastBatchCheckSource.summary),
+      commands: normalizeStringList(lastBatchCheckSource.commands),
+    },
+  };
+}
+
+export function normalizeHarnessPolicy(policy = {}) {
+  const source = policy && typeof policy === 'object' ? policy : {};
+
+  return {
+    ...DEFAULT_HARNESS_POLICY,
+    strictness_mode: requireString(source.strictness_mode, DEFAULT_HARNESS_POLICY.strictness_mode) || DEFAULT_HARNESS_POLICY.strictness_mode,
+    verification_mode: requireString(source.verification_mode, DEFAULT_HARNESS_POLICY.verification_mode) || DEFAULT_HARNESS_POLICY.verification_mode,
+    host_posture: requireString(source.host_posture, DEFAULT_HARNESS_POLICY.host_posture) || DEFAULT_HARNESS_POLICY.host_posture,
+    override_policy: requireString(source.override_policy, DEFAULT_HARNESS_POLICY.override_policy) || DEFAULT_HARNESS_POLICY.override_policy,
+    decision_trace_enabled: source.decision_trace_enabled !== false,
+  };
+}
+
+export function normalizeDecisionTrace(trace = {}) {
+  const source = trace && typeof trace === 'object' ? trace : {};
+  const latest = source.latest && typeof source.latest === 'object'
+    ? source.latest
+    : null;
+  const recent = Array.isArray(source.recent) ? source.recent : [];
+
+  const normalizeEntry = (entry = {}) => ({
+    at: requireString(entry.at),
+    scope: requireString(entry.scope),
+    kind: requireString(entry.kind),
+    target: requireString(entry.target),
+    summary: requireString(entry.summary),
+    inputs: normalizeStringList(entry.inputs),
+    policy_snapshot: requireString(entry.policy_snapshot),
+  });
+
+  return {
+    latest: latest ? normalizeEntry(latest) : null,
+    recent: recent
+      .filter(entry => entry && typeof entry === 'object')
+      .map(normalizeEntry)
+      .slice(0, 20),
+  };
+}
+
+export function normalizeVerificationState(verification = {}) {
+  const source = verification && typeof verification === 'object' ? verification : {};
+  const checks = Array.isArray(source.selected_checks) ? source.selected_checks : [];
+
+  return {
+    ...DEFAULT_VERIFICATION,
+    updated_at: requireString(source.updated_at),
+    edited_files: normalizeStringList(source.edited_files),
+    selected_checks: checks
+      .filter(entry => entry && typeof entry === 'object')
+      .map(entry => ({
+        id: requireString(entry.id),
+        reason: requireString(entry.reason),
+        command: requireString(entry.command),
+      })),
+    status: requireString(source.status),
+    summary: requireString(source.summary),
+  };
+}
+
+export function normalizeRecoveryState(recovery = {}) {
+  const source = recovery && typeof recovery === 'object' ? recovery : {};
+  const normalizeItem = (entry = {}) => ({
+    id: requireString(entry.id),
+    at: requireString(entry.at),
+    category: requireString(entry.category),
+    lane_id: requireString(entry.lane_id),
+    phase_id: requireString(entry.phase_id),
+    command: requireString(entry.command),
+    guidance: requireString(entry.guidance),
+    suggested_command: requireString(entry.suggested_command),
+    retry_count: Number(entry.retry_count || 0),
+    status: requireString(entry.status),
+    summary: requireString(entry.summary),
+  });
+
+  return {
+    ...DEFAULT_RECOVERY,
+    latest: source.latest && typeof source.latest === 'object' ? normalizeItem(source.latest) : null,
+    active: Array.isArray(source.active)
+      ? source.active.filter(entry => entry && typeof entry === 'object').map(normalizeItem).slice(0, 20)
+      : [],
+  };
+}
+
 export function normalizeAnalysisMeta(analysis = {}) {
   const normalized = {
     ...DEFAULT_ANALYSIS,
@@ -510,4 +677,41 @@ export function normalizeNextAction(nextAction = {}) {
 
 export function appendRecent(list, entry, limit = 20) {
   return [entry, ...list].slice(0, limit);
+}
+
+export function stripIntegrityMetadata(value) {
+  if (Array.isArray(value)) {
+    return value.map(entry => stripIntegrityMetadata(entry));
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const cloned = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === '_integrity') {
+      continue;
+    }
+    cloned[key] = stripIntegrityMetadata(entry);
+  }
+  return cloned;
+}
+
+export function computeIntegrityFingerprint(value) {
+  return createHash('sha256')
+    .update(JSON.stringify(stripIntegrityMetadata(value)))
+    .digest('hex');
+}
+
+export function stampIntegrity(value, kind = 'unknown') {
+  return {
+    ...stripIntegrityMetadata(value),
+    _integrity: {
+      fingerprint: computeIntegrityFingerprint(value),
+      kind,
+      recorded_at: new Date().toISOString(),
+      source: 'forge',
+    },
+  };
 }

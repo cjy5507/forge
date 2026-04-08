@@ -73,12 +73,25 @@ describe('forge status helper', () => {
       lanes: { total: 3, done: 1, blocked: 1, details: [] },
       issues: { blocker: 0, major: 1, minor: 2, total: 3 },
       tag: 'forge/v1-design',
-      harness: { tier: 'medium', sessions: 3, agents: 5, failures: 0, stops: 1 },
+      harness: {
+        tier: 'medium',
+        policy: {
+          strictness_mode: 'guarded',
+          verification_mode: 'targeted',
+          host_posture: 'bounded_degraded',
+        },
+        latest_decision: null,
+        sessions: 3,
+        agents: 5,
+        failures: 0,
+        stops: 1,
+      },
     });
 
     expect(text).toContain('Next action: Resume lane api');
     expect(text).toContain('Lanes: 1/3 done, 1 blocked');
     expect(text).toContain('Harness: tier=medium');
+    expect(text).toContain('Policy: guarded/targeted/bounded_degraded');
   });
 
   it('surfaces merge-ready lanes ahead of active implementation in status output', () => {
@@ -343,5 +356,118 @@ describe('forge status helper', () => {
     const text = renderStatusText(model);
     expect(text).toContain('State trust:');
     expect(text).toContain('.forge/state.json');
+  });
+
+  it('surfaces integrity fingerprint mismatches when state files are edited externally', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'integrity-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+
+    const statePath = join(cwd, '.forge', 'state.json');
+    const state = JSON.parse(readFileSync(statePath, 'utf8'));
+    state.project = 'tampered-app';
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+    const model = buildStatusModel({ cwd });
+    expect(model?.state_trust_warnings?.some(warning => warning.includes('fingerprint mismatch'))).toBe(true);
+
+    const text = renderStatusText(model);
+    expect(text).toContain('fingerprint mismatch');
+  });
+
+  it('renders harness policy posture in status output', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'policy-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+      harness_policy: {
+        strictness_mode: 'guarded',
+        verification_mode: 'targeted',
+        host_posture: 'bounded_degraded',
+        override_policy: 'explicit_only',
+        decision_trace_enabled: true,
+      },
+    });
+
+    const model = buildStatusModel({ cwd });
+    const text = renderStatusText(model);
+    expect(text).toContain('Policy: guarded/targeted/bounded_degraded');
+  });
+
+  it('surfaces latest deterministic decision in verbose status output', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'decision-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      decision_trace: {
+        latest: {
+          at: new Date().toISOString(),
+          scope: 'recovery',
+          kind: 'failure_test',
+          target: 'Bash',
+          summary: 'Retry targeted verification after failure',
+          inputs: ['npm test'],
+          policy_snapshot: 'guarded/targeted/bounded_degraded',
+        },
+      },
+    });
+
+    const model = buildStatusModel({ cwd });
+    const text = renderStatusText(model, { verbose: true });
+    expect(text).toContain('Latest decision: Retry targeted verification after failure');
+  });
+
+  it('surfaces verification and recovery state in status output', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'verify-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      verification: {
+        updated_at: new Date().toISOString(),
+        edited_files: ['src/app.ts'],
+        selected_checks: [{ id: 'lint', reason: 'edited source files', command: 'npm run lint' }],
+        status: 'passed',
+        summary: 'Passed: lint.',
+      },
+      recovery: {
+        latest: {
+          id: 'lint::npm run lint',
+          at: new Date().toISOString(),
+          category: 'lint',
+          lane_id: '',
+          phase_id: 'develop',
+          command: 'npm run lint',
+          guidance: 'Lint failed.',
+          suggested_command: 'npm run lint',
+          retry_count: 1,
+          status: 'active',
+          summary: 'Lint failed.',
+        },
+        active: [],
+      },
+    });
+
+    const model = buildStatusModel({ cwd });
+    const text = renderStatusText(model);
+    expect(text).toContain('Verification: passed');
+    expect(text).toContain('Recovery: active');
   });
 });

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 
 const COMMAND_SCRIPTS = new Map([
+  ['analytics', 'forge-analytics.mjs'],
   ['continue', 'forge-continue.mjs'],
   ['eval', 'forge-eval.mjs'],
   ['health', 'forge-health.mjs'],
@@ -35,6 +36,7 @@ function printUsage() {
   process.stdout.write(`Forge CLI
 
 Usage:
+  forge analytics [--json]
   forge status [--json|--verbose]
   forge continue [--json]
   forge health [--json] [--host <id>]

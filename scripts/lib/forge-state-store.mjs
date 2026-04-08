@@ -6,6 +6,7 @@ import {
   mergeStats,
   readJsonFile,
   readJsonFileDetailed,
+  stampIntegrity,
   writeJsonFile,
   withForgeLock,
 } from './forge-io.mjs';
@@ -74,8 +75,9 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
         updated_at: new Date().toISOString(),
       };
 
-      writeJsonFile(getRuntimePath(cwd), next);
-      return next;
+      const stamped = stampIntegrity(next, 'runtime');
+      writeJsonFile(getRuntimePath(cwd), stamped);
+      return stamped;
     });
   }
 
@@ -142,9 +144,10 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
         Object.assign(existingRuntime, consistency.runtimeFixes);
       }
 
-      writeJsonFile(getStatePath(cwd), normalized);
+      const stampedState = stampIntegrity(normalized, 'state');
+      writeJsonFile(getStatePath(cwd), stampedState);
       writeRuntimeState(cwd, existingRuntime);
-      return normalized;
+      return stampedState;
     });
   }
 

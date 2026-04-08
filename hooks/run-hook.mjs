@@ -3,23 +3,11 @@
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
+import { getForgeHookNames, shouldRunForgeHook } from '../scripts/lib/forge-hook-controls.mjs';
 
 const HOOK_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = dirname(HOOK_DIR);
-const ALLOWED_HOOKS = new Set([
-  'code-rules-guard',
-  'context-manager',
-  'contract-guard',
-  'phase-detector',
-  'session-end',
-  'state-restore',
-  'stop-failure',
-  'stop-guard',
-  'subagent-start',
-  'subagent-stop',
-  'tool-failure',
-  'write-gate',
-]);
+const ALLOWED_HOOKS = new Set(getForgeHookNames());
 
 function fail(message) {
   process.stderr.write(`[forge hooks] ${message}\n`);
@@ -38,6 +26,17 @@ const input = process.stdin.isTTY ? '' : await new Promise((resolve) => {
   process.stdin.on('data', chunk => { data += chunk; });
   process.stdin.on('end', () => resolve(data));
 });
+
+if (!shouldRunForgeHook(hookName, process.env)) {
+  process.stdout.write(`${JSON.stringify({
+    continue: true,
+    suppressOutput: true,
+    hookSkipped: true,
+    hookName,
+    activeProfile: process.env.FORGE_HOOK_PROFILE || 'standard',
+  })}\n`);
+  process.exit(0);
+}
 
 const result = spawnSync(process.execPath, [targetScript], {
   cwd: process.cwd(),

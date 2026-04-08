@@ -1,13 +1,17 @@
 import {
+  computeIntegrityFingerprint,
   DEFAULT_RUNTIME,
   getRuntimePath,
   getStatePath,
   readJsonFileDetailed,
+  stripIntegrityMetadata,
 } from './forge-io.mjs';
 import { getPhaseSequence, resolvePhase } from './forge-phases.mjs';
 
 export const STATE_PARSE_WARNING = 'Unable to parse .forge/state.json; Forge is using a degraded fallback view.';
 export const RUNTIME_PARSE_WARNING = 'Unable to parse .forge/runtime.json; Forge is using a degraded runtime fallback.';
+export const STATE_INTEGRITY_WARNING = 'Integrity fingerprint mismatch in .forge/state.json; the file was likely edited outside Forge.';
+export const RUNTIME_INTEGRITY_WARNING = 'Integrity fingerprint mismatch in .forge/runtime.json; the file was likely edited outside Forge.';
 const STATE_PATH = '.forge/state.json';
 const RUNTIME_PATH = '.forge/runtime.json';
 
@@ -39,6 +43,24 @@ function collectShapeIssues(value, requiredFields) {
 
 function buildShapeWarning(path, issues) {
   return `Critical fields are invalid in ${path}: ${issues.join(', ')}`;
+}
+
+function getIntegrityWarning(path, value) {
+  if (!isRecord(value) || !isRecord(value._integrity)) {
+    return '';
+  }
+
+  const fingerprint = typeof value._integrity.fingerprint === 'string' ? value._integrity.fingerprint.trim() : '';
+  if (!fingerprint) {
+    return '';
+  }
+
+  const computed = computeIntegrityFingerprint(stripIntegrityMetadata(value));
+  if (computed === fingerprint) {
+    return '';
+  }
+
+  return path === STATE_PATH ? STATE_INTEGRITY_WARNING : RUNTIME_INTEGRITY_WARNING;
 }
 
 export function getStateShapeWarnings(value) {
@@ -88,9 +110,17 @@ export function getStateTrustWarnings(cwd = '.') {
   }
   if (stateResult.exists && !stateResult.error) {
     warnings.push(...getStateShapeWarnings(stateResult.value));
+    const integrityWarning = getIntegrityWarning(STATE_PATH, stateResult.value);
+    if (integrityWarning) {
+      warnings.push(integrityWarning);
+    }
   }
   if (runtimeResult.exists && !runtimeResult.error) {
     warnings.push(...getRuntimeShapeWarnings(runtimeResult.value));
+    const integrityWarning = getIntegrityWarning(RUNTIME_PATH, runtimeResult.value);
+    if (integrityWarning) {
+      warnings.push(integrityWarning);
+    }
   }
 
   return warnings;

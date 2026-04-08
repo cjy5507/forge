@@ -1,9 +1,10 @@
 # Forge
 
-**A structured build-and-repair harness for long-running coding work.**
+**A deterministic build-and-repair harness OS for long-running coding work.**
 
-Forge gives coding agents phase discipline, ownership, and continuable state —
-so work that spans sessions, days, or interruptions doesn't fall apart.
+Forge gives coding agents phase discipline, ownership, continuable state, and
+guarded verification routing — so work that spans sessions, days, or interruptions
+doesn't fall apart.
 
 ## The problem
 
@@ -12,8 +13,8 @@ what was decided, who owns what, and where things broke. When a session ends,
 context disappears. When it resumes, you re-explain everything.
 
 Forge fixes this by writing project state to files — not chat history — and
-structuring work into phases with explicit gates, so every session picks up
-exactly where the last one stopped.
+structuring work into phases with explicit gates, decision traces, and verification
+surfaces, so every session picks up exactly where the last one stopped.
 
 ## Who this is for
 
@@ -91,6 +92,21 @@ Typical uses:
 - capture a Codex or Claude smoke run as an evidence artifact
 - compare with/without-Forge outcomes for the same task
 - append lightweight product proof to `.forge/events/eval.jsonl`
+
+### `forge analytics` — inspect the artifact trail
+
+Summarizes `.forge/events/`, `.forge/eval/`, `.forge/evidence/`, and
+`.forge/delivery-report/` without changing runtime state.
+
+### Runtime controls
+
+Forge now supports a few lightweight runtime controls inspired by ECC-style
+operational guardrails:
+
+- `FORGE_HOOK_PROFILE=minimal|standard|strict`
+- `FORGE_DISABLED_HOOKS=hook-a,hook-b`
+- `FORGE_STOP_BATCH_CHECKS=0` to disable Stop-time batch validation
+- `FORGE_PACKAGE_MANAGER=npm|pnpm|yarn|bun` to override auto-detection
 
 ### `forge` — start a new project or fix an existing one
 
@@ -178,6 +194,7 @@ forge                  # start a new project or fix an existing one
 forge info             # see current phase, blockers, next steps
 forge continue         # restore state and pick up where you left off
 forge analyze          # produce/update codebase analysis for the current project
+forge analytics        # summarize saved Forge artifacts
 ```
 
 This installs Forge globally at `~/.forge/plugins/forge`.
@@ -215,6 +232,13 @@ Add `--mode copy` to any install command:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cjy5507/forge/main/scripts/bootstrap-install.mjs | node --input-type=module - --scope global --mode copy --force
 ```
+
+Selective copy installs are also supported for host-specific surfaces:
+
+```bash
+node scripts/setup-plugin.mjs --scope project --project-root "$PWD" --mode copy --profile minimal --host codex --dry-run
+node scripts/setup-plugin.mjs --scope project --project-root "$PWD" --mode copy --profile runtime --host gemini --force
+```
 </details>
 
 <details>
@@ -246,6 +270,19 @@ npm install -g @openai/codex
 Point the host at the repository root containing `.codex-plugin/plugin.json`,
 `hooks/`, and `scripts/`.
 Recommended roots: `~/.forge/plugins/forge` or `./.forge/plugins/forge`.
+</details>
+
+<details>
+<summary>Health and Audit</summary>
+
+```bash
+forge health
+forge health --host codex
+forge health --audit --json
+```
+
+`forge health --audit` extends the normal host/degraded-mode report with hook-profile
+coverage and any local install-state metadata created by copy-mode setup.
 </details>
 
 <details>

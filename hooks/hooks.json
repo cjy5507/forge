@@ -50,6 +50,11 @@
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.mjs\" code-rules-guard",
             "timeout": 8
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.mjs\" post-edit-accumulator",
+            "timeout": 5
           }
         ]
       }

@@ -14,12 +14,13 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { appendRecent } from './lib/forge-io.mjs';
-import { readForgeState, selectResumeSkill, updateRuntimeState } from './lib/forge-session.mjs';
+import { readForgeState, readRuntimeState, recordDecisionTrace, recordVerificationState, selectResumeSkill, updateRuntimeState } from './lib/forge-session.mjs';
 import { isProjectActive, messageLooksInteractive } from './lib/forge-interaction.mjs';
 import { summarizePendingWork } from './lib/forge-compact-context.mjs';
 import { readActiveTier } from './lib/forge-tiers.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
+import { buildStopBatchCheckPlan, runStopBatchChecks, summarizeStopBatchResults } from './lib/forge-tooling.mjs';
 
 const CRITICAL_PHASES = new Set(['develop', 'fix', 'qa']);
 
@@ -42,12 +43,6 @@ runHook(async (input) => {
   const phase = resolvePhase(state);
   const isCritical = CRITICAL_PHASES.has(phase.id);
 
-  // For non-critical phases, only full tier gets stop protection
-  if (!isCritical && !tierAtLeast(tier, 'full')) {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
-
   const lastMessage = String(input?.last_assistant_message || '');
   const interactive = messageLooksInteractive(lastMessage);
 
@@ -65,6 +60,129 @@ runHook(async (input) => {
   }));
 
   if (interactive || input?.stop_hook_active === true) {
+    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+    return;
+  }
+
+  const batchChecksEnabled = process.env.FORGE_STOP_BATCH_CHECKS !== '0';
+  if (batchChecksEnabled && tierAtLeast(tier, 'medium')) {
+    const runtimeForBatchChecks = readRuntimeState(cwd, { state });
+    const batchPlan = buildStopBatchCheckPlan({
+      cwd,
+      runtime: runtimeForBatchChecks,
+      state,
+      env: process.env,
+    });
+
+    if (batchPlan.checks.length > 0) {
+      recordVerificationState(cwd, {
+        updated_at: new Date().toISOString(),
+        edited_files: batchPlan.editedFiles,
+        selected_checks: batchPlan.checks.map(check => ({
+          id: check.id,
+          reason: check.reason,
+          command: check.spec?.runner ? [check.spec.runner, ...(check.spec.args || [])].join(' ').trim() : '',
+        })),
+        status: 'planned',
+        summary: `Planned ${batchPlan.checks.length} verification checks.`,
+      });
+
+      const batchResults = runStopBatchChecks(batchPlan, { cwd });
+      const batchSummary = summarizeStopBatchResults(batchResults);
+      const batchCommands = batchResults.map(result => result.command).filter(Boolean);
+      const failedCheck = batchResults.find(result => !result.ok);
+
+      updateRuntimeState(cwd, current => ({
+        ...current,
+        tooling: {
+          ...(current.tooling || {}),
+          edited_files: failedCheck ? (current.tooling?.edited_files || []) : [],
+          last_batch_check: {
+            at: new Date().toISOString(),
+            status: failedCheck ? 'failed' : 'passed',
+            summary: batchSummary,
+            commands: batchCommands,
+          },
+        },
+      }));
+
+      if (failedCheck) {
+        const reason = `[Forge Batch Checks] ${failedCheck.id} failed while validating edited files.
+Command: ${failedCheck.command}
+Reason: ${failedCheck.reason}
+
+${failedCheck.output || batchSummary}`;
+
+        updateRuntimeState(cwd, current => ({
+          ...current,
+          stop_guard: {
+            block_count: (current.stop_guard?.block_count || 0) + 1,
+            last_reason: reason,
+            last_message: lastMessage,
+          },
+          stats: {
+            ...(current.stats || {}),
+            stop_block_count: ((current.stats || {}).stop_block_count || 0) + 1,
+          },
+          last_event: {
+            name: 'StopBlocked',
+            at: new Date().toISOString(),
+          },
+        }));
+
+        recordVerificationState(cwd, {
+          updated_at: new Date().toISOString(),
+          edited_files: batchPlan.editedFiles,
+          selected_checks: batchResults.map(result => ({
+            id: result.id,
+            reason: result.reason,
+            command: result.command,
+          })),
+          status: 'failed',
+          summary: batchSummary,
+        });
+
+        recordDecisionTrace(cwd, {
+          scope: 'stop_guard',
+          kind: 'batch_check_block',
+          target: failedCheck.id,
+          summary: batchSummary,
+          inputs: batchCommands,
+        });
+
+        console.log(JSON.stringify({
+          continue: true,
+          suppressOutput: true,
+          decision: 'block',
+          reason,
+        }));
+        return;
+      }
+
+      recordVerificationState(cwd, {
+        updated_at: new Date().toISOString(),
+        edited_files: batchPlan.editedFiles,
+        selected_checks: batchResults.map(result => ({
+          id: result.id,
+          reason: result.reason,
+          command: result.command,
+        })),
+        status: 'passed',
+        summary: batchSummary,
+      });
+    }
+  }
+
+  // For non-critical phases, only full tier gets stop protection.
+  // Batch checks above still run for medium/full tiers before we exit.
+  if (!isCritical && !tierAtLeast(tier, 'full')) {
+    recordDecisionTrace(cwd, {
+      scope: 'stop_guard',
+      kind: 'allow_noncritical',
+      target: phase.id,
+      summary: `Allowed stop during non-critical phase ${phase.id}`,
+      inputs: [],
+    });
     console.log(JSON.stringify({ continue: true, suppressOutput: true }));
     return;
   }
@@ -90,6 +208,13 @@ runHook(async (input) => {
         at: new Date().toISOString(),
       },
     }));
+    recordDecisionTrace(cwd, {
+      scope: 'stop_guard',
+      kind: 'warn_critical',
+      target: phase.id,
+      summary: warning,
+      inputs: pending,
+    });
     console.log(JSON.stringify({
       continue: true,
       suppressOutput: false,
@@ -126,6 +251,13 @@ To stop, the user can say "forge cancel".${extraReason}`;
       at: new Date().toISOString(),
     },
   }));
+  recordDecisionTrace(cwd, {
+    scope: 'stop_guard',
+    kind: 'block_in_progress',
+    target: phase.id,
+    summary: reason,
+    inputs: pending,
+  });
 
   console.log(JSON.stringify({
     continue: true,
