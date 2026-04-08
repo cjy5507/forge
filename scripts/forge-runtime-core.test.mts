@@ -561,6 +561,11 @@ describe('forge runtime core', () => {
     expect(runtime.current_session_goal.toLowerCase()).toContain('scope');
     expect(runtime.next_session_owner).toBe('pm');
 
+    writeFileSync(
+      join(cwd, '.forge', 'spec.md'),
+      '# Spec\n\n## Overview\nDesign-ready project.\n\n## Constraints\nKeep phase-gate tests valid with the required artifact.\n\nAdditional content to satisfy the minimum file size check.',
+    );
+
     writeForgeState(cwd, {
       project: 'Forge',
       phase: 'design',
@@ -802,6 +807,11 @@ describe('forge runtime core', () => {
     let runtime = readRuntimeState(cwd);
     expect(runtime.active_gate).toBe('spec_readiness');
     expect(runtime.active_gate_owner).toBe('pm');
+
+    writeFileSync(
+      join(cwd, '.forge', 'spec.md'),
+      '# Spec\n\n## Overview\nDesign-ready project.\n\n## Constraints\nKeep company-gate refresh tests valid with the required artifact.\n\nAdditional content to satisfy the minimum file size check.',
+    );
 
     writeForgeState(cwd, {
       project: 'Forge',

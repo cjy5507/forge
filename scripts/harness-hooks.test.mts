@@ -1245,7 +1245,7 @@ describe('state persistence round-trip', () => {
 
     try {
       for (const phase of PHASE_SEQUENCE) {
-        const written = writeForgeState(tmpDir, { phase, mode: 'build', status: 'active' });
+        const written = writeForgeState(tmpDir, { phase, mode: 'build', status: 'active', tier: 'light' });
         const read = readForgeState(tmpDir);
         expect(read.phase_id).toBe(phase);
         // Critical: phase should not shift on round-trip
@@ -1964,6 +1964,35 @@ describe('writeForgeState phase validation', () => {
     };
     const result = writeForgeState(tmpDir, state);
     expect(result._phase_gate_warning).toMatch(/plan\.md/);
+  });
+
+  it('blocks phase advancement and records an internal blocker at full tier', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'plan',
+      phase_id: 'plan',
+      phase_name: 'plan',
+      tier: 'full',
+      status: 'active',
+    }));
+
+    const result = writeForgeState(tmpDir, {
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'full',
+      status: 'active',
+    });
+
+    const runtime = readRuntimeState(tmpDir);
+    expect(result.phase_id).toBe('plan');
+    expect(result._phase_gate_warning).toMatch(/plan\.md/);
+    expect(result._phase_gate_blocked).toMatch(/Blocked phase advance/);
+    expect(runtime.delivery_readiness).toBe('blocked');
+    expect(runtime.internal_blockers[0]?.summary).toMatch(/plan\.md/);
+    expect(runtime.next_action.kind).toBe('internal_blocker');
   });
 
   it('adds _phase_mismatch_warning for mode-phase mismatch', () => {

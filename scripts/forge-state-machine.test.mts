@@ -228,4 +228,33 @@ describe('writeForgeState transition guard', () => {
     const state = readForgeState(cwd);
     expect(state.phase_id).toBe('plan');
   });
+
+  it('blocks forward advancement on full tier when required artifacts are missing', () => {
+    const cwd = makeWorkspace();
+    writeFileSync(join(cwd, '.forge', 'state.json'), JSON.stringify({
+      version: '0.2.0',
+      project: 'test-project',
+      phase: 'plan',
+      phase_id: 'plan',
+      mode: 'build',
+      status: 'active',
+      tier: 'full',
+    }, null, 2));
+
+    writeForgeState(cwd, {
+      version: '0.2.0',
+      project: 'test-project',
+      phase: 'develop',
+      phase_id: 'develop',
+      mode: 'build',
+      status: 'active',
+      tier: 'full',
+    });
+
+    const state = readForgeState(cwd);
+    const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
+    expect(state.phase_id).toBe('plan');
+    expect(state._phase_gate_warning).toMatch(/plan\.md/);
+    expect(runtime.delivery_readiness).toBe('blocked');
+  });
 });
