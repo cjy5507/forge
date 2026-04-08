@@ -377,6 +377,25 @@ function findWorktreeBranch(worktreePath) {
   return '';
 }
 
+function defaultLaneWorktreePath(laneId) {
+  if (!laneId) return '';
+  return resolve('.forge', 'worktrees', laneId);
+}
+
+function resolveCleanupTarget(laneId, lane) {
+  const configuredPath = lane?.worktree_path ? resolve(lane.worktree_path) : '';
+  if (configuredPath && existsSync(configuredPath)) {
+    return configuredPath;
+  }
+
+  const inferredPath = defaultLaneWorktreePath(laneId);
+  if (inferredPath && existsSync(inferredPath)) {
+    return inferredPath;
+  }
+
+  return configuredPath || inferredPath || '';
+}
+
 function tryRemoveWorktree(worktreePath) {
   if (!worktreePath) return { removed: false, branch: '' };
   const fullPath = resolve(worktreePath);
@@ -405,8 +424,9 @@ function updateLaneStatus(options) {
 
   const isDone = options.status === 'done' || options.status === 'merged';
   let cleanup = { removed: false, branch: '' };
-  if (isDone && lane.worktree_path) {
-    cleanup = tryRemoveWorktree(lane.worktree_path);
+  const cleanupPath = isDone ? resolveCleanupTarget(options.lane, lane) : '';
+  if (cleanupPath) {
+    cleanup = tryRemoveWorktree(cleanupPath);
   }
 
   buildRuntime(
@@ -422,7 +442,7 @@ function updateLaneStatus(options) {
   console.log(`lane: ${options.lane}`);
   console.log(`status: ${options.status}`);
   if (cleanup.removed) {
-    console.log(`worktree removed: ${lane.worktree_path}`);
+    console.log(`worktree removed: ${cleanupPath}`);
   }
   if (cleanup.branch) {
     console.log(`branch deleted: ${cleanup.branch}`);

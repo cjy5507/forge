@@ -130,6 +130,10 @@ export function deriveSessionGoal({ state = null, runtime = DEFAULT_RUNTIME } = 
   const readiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
   const phaseId = state ? resolvePhase(state).id : '';
 
+  if (phaseId === 'complete' || readiness === 'delivered') {
+    return 'Project delivered';
+  }
+
   if (customerBlockers.length > 0 && !['develop', 'qa', 'security', 'fix'].includes(phaseId)) {
     return `Resolve customer blocker: ${customerBlockers[0].summary}`;
   }
@@ -155,6 +159,9 @@ export function deriveSessionGoal({ state = null, runtime = DEFAULT_RUNTIME } = 
 export function deriveSessionExitCriteria({ state = null, runtime = DEFAULT_RUNTIME } = {}) {
   const activeGate = requireString(runtime?.active_gate);
   const phaseId = state ? resolvePhase(state).id : '';
+  const readiness = normalizeDeliveryReadiness(runtime?.delivery_readiness);
+
+  if (phaseId === 'complete' || readiness === 'delivered') return [];
 
   if (activeGate === 'design_readiness') return ['architecture approved internally', 'design specs complete', 'technical claims verified'];
   if (activeGate === 'plan_readiness') return ['execution plan written', 'lanes sequenced', 'task briefs linked'];

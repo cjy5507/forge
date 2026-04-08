@@ -21,6 +21,16 @@ function makeWorkspace() {
   return cwd;
 }
 
+function initGitWorkspace(cwd) {
+  expect(spawnSync('git', ['init'], { cwd, encoding: 'utf8' }).status).toBe(0);
+  expect(spawnSync('git', ['config', 'user.name', 'Forge Test'], { cwd, encoding: 'utf8' }).status).toBe(0);
+  expect(spawnSync('git', ['config', 'user.email', 'forge@example.com'], { cwd, encoding: 'utf8' }).status).toBe(0);
+  writeFileSync(join(cwd, '.gitignore'), '.forge/worktrees/\n');
+  writeFileSync(join(cwd, 'README.md'), '# Test Repo\n');
+  expect(spawnSync('git', ['add', '.'], { cwd, encoding: 'utf8' }).status).toBe(0);
+  expect(spawnSync('git', ['commit', '-m', 'init'], { cwd, encoding: 'utf8' }).status).toBe(0);
+}
+
 function readRuntimeFile(cwd) {
   return JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
 }
@@ -329,6 +339,59 @@ describe('forge runtime core', () => {
     const parsed = JSON.parse(summary.stdout);
     expect(parsed.next_lane).toBe('api');
     expect(parsed.briefs).toContain('api:changes');
+  });
+
+  it('cleans up an inferred default worktree path when a done lane has no recorded worktree_path', () => {
+    const cwd = makeWorkspace();
+    initGitWorkspace(cwd);
+
+    expect(runLaneRuntime([
+      'init-lane',
+      '--lane',
+      'api',
+      '--title',
+      'API lane',
+    ], cwd).status).toBe(0);
+
+    const create = spawnSync(process.execPath, [
+      join(FORGE_ROOT, 'scripts', 'forge-worktree.mjs'),
+      'create',
+      '--lane',
+      'api',
+      '--branch',
+      'forge/api',
+    ], {
+      cwd,
+      encoding: 'utf8',
+    });
+    expect(create.status).toBe(0);
+
+    const done = runLaneRuntime([
+      'update-lane-status',
+      '--lane',
+      'api',
+      '--status',
+      'done',
+      '--note',
+      'done',
+    ], cwd);
+
+    expect(done.status).toBe(0);
+    expect(done.stdout).toContain('worktree removed:');
+    expect(done.stdout).toContain('branch deleted: forge/api');
+
+    const worktreeList = spawnSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd,
+      encoding: 'utf8',
+    });
+    expect(worktreeList.status).toBe(0);
+    expect(worktreeList.stdout).not.toContain('.forge/worktrees/api');
+
+    const branches = spawnSync('git', ['branch', '--list', 'forge/api'], {
+      cwd,
+      encoding: 'utf8',
+    });
+    expect(branches.stdout.trim()).toBe('');
   });
 
   it('surfaces merge-ready lanes in next action summaries', () => {
@@ -1390,6 +1453,25 @@ describe('deriveSessionGoal (tested via readRuntimeState)', () => {
     });
     const runtime = readRuntimeState(cwd);
     expect(runtime.current_session_goal.toLowerCase()).toContain('delivery');
+  });
+
+  it('derives delivered session goal from complete state', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'Test',
+      phase: 'complete',
+      phase_id: 'complete',
+      status: 'delivered',
+    }, { allowRollback: true });
+    writeRuntimeState(cwd, {
+      active_gate: 'customer_review',
+      active_gate_owner: 'ceo',
+      delivery_readiness: 'delivered',
+    });
+
+    const runtime = readRuntimeState(cwd);
+    expect(runtime.current_session_goal).toBe('Project delivered');
+    expect(runtime.next_session_goal).toBe('Project delivered');
   });
 });
 
