@@ -34,7 +34,9 @@ import {
 import { deriveNextAction } from './forge-continuation.mjs';
 import { compactForgeContext, summarizePendingWork } from './forge-compact-context.mjs';
 import { validateStateConsistency } from './forge-state-trust.mjs';
+import { writeVerificationArtifact } from './forge-verification.mjs';
 import { createStateStore } from './forge-state-store.mjs';
+import { updateRecoveryLedger } from './forge-recovery.mjs';
 import {
   initLaneRecordWith,
   markLaneMergeStateWith,
@@ -324,8 +326,11 @@ export function recordVerificationState(cwd = '.', verification = {}) {
     },
   }, { state });
 
+  const artifactPath = writeVerificationArtifact(cwd, nextVerification);
+
   return {
     runtime: nextRuntime,
+    artifact_path: artifactPath,
     verification: nextVerification,
   };
 }
@@ -333,40 +338,8 @@ export function recordVerificationState(cwd = '.', verification = {}) {
 export function recordRecoveryState(cwd = '.', recoveryEntry = {}) {
   const state = readForgeState(cwd);
   const runtime = readRuntimeState(cwd, { state });
-  const existing = normalizeRecoveryState(runtime?.recovery || {});
+  const nextRecovery = updateRecoveryLedger(runtime?.recovery || {}, recoveryEntry);
   const now = recoveryEntry.at || new Date().toISOString();
-  const id = recoveryEntry.id || `${recoveryEntry.category || 'failure'}:${recoveryEntry.lane_id || ''}:${recoveryEntry.command || ''}`;
-  const nextRecovery = normalizeRecoveryState({
-    latest: {
-      id,
-      at: now,
-      category: recoveryEntry.category || '',
-      lane_id: recoveryEntry.lane_id || '',
-      phase_id: recoveryEntry.phase_id || '',
-      command: recoveryEntry.command || '',
-      guidance: recoveryEntry.guidance || '',
-      suggested_command: recoveryEntry.suggested_command || '',
-      retry_count: recoveryEntry.retry_count || 0,
-      status: recoveryEntry.status || 'active',
-      summary: recoveryEntry.summary || '',
-    },
-    active: [
-      {
-        id,
-        at: now,
-        category: recoveryEntry.category || '',
-        lane_id: recoveryEntry.lane_id || '',
-        phase_id: recoveryEntry.phase_id || '',
-        command: recoveryEntry.command || '',
-        guidance: recoveryEntry.guidance || '',
-        suggested_command: recoveryEntry.suggested_command || '',
-        retry_count: recoveryEntry.retry_count || 0,
-        status: recoveryEntry.status || 'active',
-        summary: recoveryEntry.summary || '',
-      },
-      ...existing.active.filter(item => item.id !== id),
-    ],
-  });
 
   const nextRuntime = writeRuntimeState(cwd, {
     ...runtime,

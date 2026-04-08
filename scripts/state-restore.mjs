@@ -14,6 +14,7 @@ import { runHook } from './lib/hook-runner.mjs';
 import { buildContinueDirective } from './lib/forge-continue.mjs';
 import { compactForgeContext, readForgeState, updateRuntimeHookContext, writeForgeState } from './lib/forge-session.mjs';
 import { detectHostId } from './lib/forge-host-context.mjs';
+import { applyForgeHostAdapter, describeForgeHostDegradedExecution, getForgeHostAdapterContract } from './lib/forge-host-support.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { updateHudLine } from './lib/forge-hud.mjs';
 import { cleanupSessionArtifacts } from './lib/session-cleanup.mjs';
@@ -49,6 +50,7 @@ function abbreviatedContext(state, runtime) {
 runHook(async (input) => {
   const cwd = input?.cwd || '.';
   const hostId = detectHostId(input, process.env);
+  const hostContract = getForgeHostAdapterContract(hostId);
 
   // Self-heal stale plugin-owned session artifacts in case the host never fired SessionEnd.
   cleanupSessionArtifacts(cwd);
@@ -66,7 +68,7 @@ runHook(async (input) => {
     eventName: 'session.start',
     resumed: true,
     updater(current) {
-      return {
+      return applyForgeHostAdapter({
         ...current,
         active_tier: normalized.tier,
         stats: {
@@ -74,7 +76,7 @@ runHook(async (input) => {
           started_at: (current.stats || {}).started_at || normalized.created_at || new Date().toISOString(),
           session_count: ((current.stats || {}).session_count || 0) + 1,
         },
-      };
+      }, hostId);
     },
     contextBuilder(withHost) {
       const elapsedMs = getStalenessMs(withHost);
@@ -98,13 +100,22 @@ runHook(async (input) => {
   // For fresh and warm sessions, auto-dispatch the best resume skill
   let additionalContext = nextRuntime.last_compact_context;
   if (staleTier === 'fresh' || staleTier === 'warm') {
-    additionalContext = buildContinueDirective({
-      cwd,
-      state: normalized,
-      runtime: nextRuntime,
-      staleTier,
-      context: nextRuntime.last_compact_context,
-    }).additionalContext;
+    if (hostContract.determinismFloor.sharedContinue && hostContract.determinismFloor.sharedStatus) {
+      additionalContext = buildContinueDirective({
+        cwd,
+        state: normalized,
+        runtime: nextRuntime,
+        staleTier,
+        context: nextRuntime.last_compact_context,
+      }).additionalContext;
+    } else {
+      additionalContext = nextRuntime.last_compact_context;
+    }
+  }
+
+  const degradedNote = describeForgeHostDegradedExecution(hostId);
+  if (degradedNote) {
+    additionalContext = `${additionalContext}\n${degradedNote}`.trim();
   }
 
   console.log(JSON.stringify({

@@ -3,6 +3,20 @@
 Forge is a host-agnostic workflow harness with Claude-first automation and shared `.forge/`
 runtime state. Keep changes small, reversible, and test-backed.
 
+## Product bar
+
+Forge is a deterministic harness OS for engineering teams. Core changes should
+improve at least one of:
+
+- determinism
+- verifiability
+- recoverability
+- observability
+- bounded host consistency
+
+If a proposed change mainly adds breadth, convenience, or prompt surface area
+without improving one of the above, it likely does not belong in Forge core.
+
 ## Local checks
 
 Run these before opening a PR:

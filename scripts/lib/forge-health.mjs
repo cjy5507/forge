@@ -1,8 +1,9 @@
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { detectHostId } from './forge-host-context.mjs';
-import { getForgeHostSupportProfile } from './forge-host-support.mjs';
+import { getForgeHostAdapterContract, getForgeHostSupportProfile } from './forge-host-support.mjs';
 import { getForgeInstallStateFileName } from './forge-setup-manifest.mjs';
+import { getVerificationArtifactPath, readVerificationArtifact } from './forge-verification.mjs';
 import { readForgeState, readRuntimeState } from './forge-session.mjs';
 import { getStateTrustWarnings } from './forge-state-trust.mjs';
 import { buildForgeHookProfileSummary, isHookProfileEnabled, normalizeHookProfile, parseDisabledHooks } from './forge-hook-controls.mjs';
@@ -35,6 +36,7 @@ export function buildHealthReport({
   const currentRuntime = runtime ?? readRuntimeState(cwd, { state: currentState });
   const resolvedHostId = resolveHealthHost({ hostId, runtime: currentRuntime, env });
   const profile = getForgeHostSupportProfile(resolvedHostId);
+  const adapterContract = getForgeHostAdapterContract(resolvedHostId);
   const manifestChecks = profile.hostId === 'unknown'
     ? []
     : profile.capabilities.degradedModes.map(mode => ({ mode, active: true }));
@@ -68,6 +70,8 @@ export function buildHealthReport({
       name: profile.displayName || 'Unknown',
       support_level: profile.supportLevel,
       degraded_modes: [...profile.capabilities.degradedModes],
+      determinism_floor: { ...profile.determinismFloor },
+      observed_lifecycle: { ...profile.observedLifecycle },
       missing_package_paths: missingPackagePaths,
     },
     runtime: {
@@ -101,11 +105,14 @@ function buildHealthAudit({ cwd = '.', env = process.env, hostId = '', packagePa
   const hookSummary = buildForgeHookProfileSummary();
   const activeProfile = normalizeHookProfile(env?.FORGE_HOOK_PROFILE);
   const disabledHooks = [...parseDisabledHooks(env?.FORGE_DISABLED_HOOKS)];
+  const adapterContract = getForgeHostAdapterContract(hostId);
   const installStatePath = join(cwd, getForgeInstallStateFileName());
   const installState = readJsonFile(installStatePath, null);
   const hooksConfigExists = existsSync(join(cwd, 'hooks', 'hooks.json'));
   const runtimeState = readRuntimeState(cwd);
   const tooling = runtimeState?.tooling || {};
+  const verificationArtifactPath = getVerificationArtifactPath(cwd);
+  const verificationArtifact = readVerificationArtifact(cwd);
 
   return {
     package_surface: {
@@ -114,6 +121,7 @@ function buildHealthAudit({ cwd = '.', env = process.env, hostId = '', packagePa
       missing_paths: [...missingPackagePaths],
       hooks_config_present: hooksConfigExists,
     },
+    host_adapter: adapterContract,
     hook_runtime: {
       active_profile: activeProfile,
       disabled_hooks: disabledHooks,
@@ -149,6 +157,12 @@ function buildHealthAudit({ cwd = '.', env = process.env, hostId = '', packagePa
     },
     verification: runtimeState?.verification || null,
     recovery: runtimeState?.recovery || null,
+    verification_artifact: {
+      exists: Boolean(verificationArtifact),
+      path: verificationArtifactPath,
+      status: verificationArtifact?.status || '',
+      updated_at: verificationArtifact?.updated_at || '',
+    },
   };
 }
 
@@ -160,6 +174,9 @@ export function renderHealthText(report) {
 
   if (report.host.degraded_modes.length > 0) {
     lines.push(`Degraded modes: ${report.host.degraded_modes.map(formatDegradedMode).join(', ')}`);
+  }
+  if (report.host.observed_lifecycle && !report.host.observed_lifecycle.hookLifecycleObserved) {
+    lines.push('Observed lifecycle: hooks not observed');
   }
   if (report.host.missing_package_paths.length > 0) {
     lines.push(`Missing package paths: ${report.host.missing_package_paths.join(', ')}`);
@@ -192,6 +209,12 @@ export function renderHealthText(report) {
     if (report.audit.tooling.package_manager) {
       lines.push(`Tooling: ${report.audit.tooling.package_manager} (${report.audit.tooling.package_manager_source || 'detected'})`);
     }
+    if (report.audit.verification_artifact.exists) {
+      lines.push(`Verification artifact: ${report.audit.verification_artifact.status || 'present'}`);
+    } else {
+      lines.push('Verification artifact: none');
+    }
+    lines.push(`Determinism floor: continue=${report.audit.host_adapter.determinismFloor.sharedContinue} status=${report.audit.host_adapter.determinismFloor.sharedStatus} analyze=${report.audit.host_adapter.determinismFloor.sharedAnalyze}`);
   }
   if (report.runtime.harness_policy) {
     lines.push(`Policy: ${report.runtime.harness_policy.strictness_mode}/${report.runtime.harness_policy.verification_mode}/${report.runtime.harness_policy.host_posture}`);

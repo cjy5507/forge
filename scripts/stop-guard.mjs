@@ -78,13 +78,14 @@ runHook(async (input) => {
       recordVerificationState(cwd, {
         updated_at: new Date().toISOString(),
         edited_files: batchPlan.editedFiles,
+        lane_refs: batchPlan.laneRefs,
         selected_checks: batchPlan.checks.map(check => ({
           id: check.id,
           reason: check.reason,
           command: check.spec?.runner ? [check.spec.runner, ...(check.spec.args || [])].join(' ').trim() : '',
         })),
         status: 'planned',
-        summary: `Planned ${batchPlan.checks.length} verification checks.`,
+        summary: `Planned ${batchPlan.checks.length} verification checks from ${batchPlan.source}.`,
       });
 
       const batchResults = runStopBatchChecks(batchPlan, { cwd });
@@ -133,6 +134,7 @@ ${failedCheck.output || batchSummary}`;
         recordVerificationState(cwd, {
           updated_at: new Date().toISOString(),
           edited_files: batchPlan.editedFiles,
+          lane_refs: batchPlan.laneRefs,
           selected_checks: batchResults.map(result => ({
             id: result.id,
             reason: result.reason,
@@ -162,6 +164,7 @@ ${failedCheck.output || batchSummary}`;
       recordVerificationState(cwd, {
         updated_at: new Date().toISOString(),
         edited_files: batchPlan.editedFiles,
+        lane_refs: batchPlan.laneRefs,
         selected_checks: batchResults.map(result => ({
           id: result.id,
           reason: result.reason,

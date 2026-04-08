@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { ensureForgeDir } from './forge-io.mjs';
+import { readVerificationArtifact } from './forge-verification.mjs';
 import { readForgeState, readRuntimeState } from './forge-session.mjs';
 
 function listFiles(dirPath, suffix = '') {
@@ -32,6 +33,7 @@ export function buildForgeAnalyticsReport(cwd = '.') {
   const evalMarkdownFiles = listFiles(join(forgeDir, 'eval'), '.md');
   const evidenceFiles = listFiles(join(forgeDir, 'evidence'), '.md');
   const deliveryFiles = listFiles(join(forgeDir, 'delivery-report'), '.md');
+  const verificationArtifact = readVerificationArtifact(cwd);
   const laneCount = Object.keys(runtime?.lanes || {}).length;
 
   return {
@@ -46,6 +48,10 @@ export function buildForgeAnalyticsReport(cwd = '.') {
       eval_markdown: summarizeDirectory('eval', evalMarkdownFiles, cwd),
       evidence: summarizeDirectory('evidence', evidenceFiles, cwd),
       delivery_report: summarizeDirectory('delivery-report', deliveryFiles, cwd),
+      verification: {
+        exists: Boolean(verificationArtifact),
+        status: verificationArtifact?.status || '',
+      },
     },
   };
 }
@@ -60,5 +66,6 @@ export function renderForgeAnalyticsText(report) {
     `Eval Markdown: ${report.artifacts.eval_markdown.count}`,
     `Evidence: ${report.artifacts.evidence.count}`,
     `Delivery reports: ${report.artifacts.delivery_report.count}`,
+    `Verification artifact: ${report.artifacts.verification.exists ? (report.artifacts.verification.status || 'present') : 'none'}`,
   ].join('\n') + '\n';
 }

@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
-import { getForgeHostCapabilities, getForgeHostSupportProfile } from './lib/forge-host-support.mjs';
+import { getForgeHostAdapterContract, getForgeHostCapabilities, getForgeHostDeterminismFloor, getForgeHostSupportProfile } from './lib/forge-host-support.mjs';
 import { listForgeHostCatalogEntries } from './lib/forge-host-catalog.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -21,6 +21,8 @@ describe('forge host support', () => {
     expect(profile.capabilities.sessionHooks).toBe(false);
     expect(profile.capabilities.degradedModes).toContain('runtime_hook_execution_not_observed');
     expect(profile.capabilities.degradedModes).toContain('session_hooks_unverified');
+    expect(profile.determinismFloor.sharedContinue).toBe(true);
+    expect(profile.observedLifecycle.hookLifecycleObserved).toBe(false);
   });
 
   it('upgrades Gemini and Qwen once their explicit extension surfaces are shipped', () => {
@@ -43,6 +45,17 @@ describe('forge host support', () => {
     expect(profile.displayName).toBe('');
     expect(profile.supportLevel).toBe('unknown');
     expect(profile.capabilities.degradedModes).toEqual(['unrecognized_host']);
+  });
+
+  it('exposes a deterministic host adapter contract', () => {
+    const contract = getForgeHostAdapterContract('gemini');
+    const floor = getForgeHostDeterminismFloor('gemini');
+
+    expect(contract.hostId).toBe('gemini');
+    expect(contract.supportLevel).toBe('degraded');
+    expect(contract.hookLifecycleObserved).toBe(false);
+    expect(contract.determinismFloor.sharedContinue).toBe(true);
+    expect(floor.sharedAnalyze).toBe(true);
   });
 
   it('keeps README host support labels aligned with the host catalog', () => {

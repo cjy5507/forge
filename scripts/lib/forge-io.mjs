@@ -202,6 +202,7 @@ export const DEFAULT_DECISION_TRACE = {
 export const DEFAULT_VERIFICATION = {
   updated_at: '',
   edited_files: [],
+  lane_refs: [],
   selected_checks: [],
   status: '',
   summary: '',
@@ -579,6 +580,7 @@ export function normalizeVerificationState(verification = {}) {
     ...DEFAULT_VERIFICATION,
     updated_at: requireString(source.updated_at),
     edited_files: normalizeStringList(source.edited_files),
+    lane_refs: normalizeStringList(source.lane_refs),
     selected_checks: checks
       .filter(entry => entry && typeof entry === 'object')
       .map(entry => ({
@@ -603,8 +605,10 @@ export function normalizeRecoveryState(recovery = {}) {
     guidance: requireString(entry.guidance),
     suggested_command: requireString(entry.suggested_command),
     retry_count: Number(entry.retry_count || 0),
+    max_retry_count: Number(entry.max_retry_count || 0),
     status: requireString(entry.status),
     summary: requireString(entry.summary),
+    escalation_reason: requireString(entry.escalation_reason),
   });
 
   return {

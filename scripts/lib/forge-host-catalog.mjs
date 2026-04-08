@@ -35,6 +35,19 @@ const HOST_CATALOG = Object.freeze({
       renderedBriefInjection: true,
       degradedModes: Object.freeze([]),
     }),
+    determinismFloor: Object.freeze({
+      sharedContinue: true,
+      sharedStatus: true,
+      sharedAnalyze: true,
+      decisionTraceVisibility: true,
+      verificationVisibility: true,
+      recoveryVisibility: true,
+    }),
+    observedLifecycle: Object.freeze({
+      hookLifecycleObserved: true,
+      stopSemanticsObserved: true,
+      subagentLifecycleObserved: true,
+    }),
   }),
   codex: Object.freeze({
     hostId: 'codex',
@@ -66,6 +79,19 @@ const HOST_CATALOG = Object.freeze({
         'stop_interception_unverified',
         'rendered_brief_injection_unverified',
       ]),
+    }),
+    determinismFloor: Object.freeze({
+      sharedContinue: true,
+      sharedStatus: true,
+      sharedAnalyze: true,
+      decisionTraceVisibility: true,
+      verificationVisibility: true,
+      recoveryVisibility: true,
+    }),
+    observedLifecycle: Object.freeze({
+      hookLifecycleObserved: false,
+      stopSemanticsObserved: false,
+      subagentLifecycleObserved: false,
     }),
   }),
   gemini: Object.freeze({
@@ -99,6 +125,19 @@ const HOST_CATALOG = Object.freeze({
         'rendered_brief_injection_unverified',
       ]),
     }),
+    determinismFloor: Object.freeze({
+      sharedContinue: true,
+      sharedStatus: true,
+      sharedAnalyze: true,
+      decisionTraceVisibility: true,
+      verificationVisibility: true,
+      recoveryVisibility: true,
+    }),
+    observedLifecycle: Object.freeze({
+      hookLifecycleObserved: false,
+      stopSemanticsObserved: false,
+      subagentLifecycleObserved: false,
+    }),
   }),
   qwen: Object.freeze({
     hostId: 'qwen',
@@ -131,6 +170,19 @@ const HOST_CATALOG = Object.freeze({
         'rendered_brief_injection_unverified',
       ]),
     }),
+    determinismFloor: Object.freeze({
+      sharedContinue: true,
+      sharedStatus: true,
+      sharedAnalyze: true,
+      decisionTraceVisibility: true,
+      verificationVisibility: true,
+      recoveryVisibility: true,
+    }),
+    observedLifecycle: Object.freeze({
+      hookLifecycleObserved: false,
+      stopSemanticsObserved: false,
+      subagentLifecycleObserved: false,
+    }),
   }),
   unknown: Object.freeze({
     hostId: 'unknown',
@@ -153,6 +205,19 @@ const HOST_CATALOG = Object.freeze({
       renderedBriefInjection: false,
       degradedModes: Object.freeze(['unrecognized_host']),
     }),
+    determinismFloor: Object.freeze({
+      sharedContinue: false,
+      sharedStatus: false,
+      sharedAnalyze: false,
+      decisionTraceVisibility: false,
+      verificationVisibility: false,
+      recoveryVisibility: false,
+    }),
+    observedLifecycle: Object.freeze({
+      hookLifecycleObserved: false,
+      stopSemanticsObserved: false,
+      subagentLifecycleObserved: false,
+    }),
   }),
 });
 
@@ -168,6 +233,8 @@ function cloneCatalogEntry(entry) {
       ...entry.capabilities,
       degradedModes: [...entry.capabilities.degradedModes],
     },
+    determinismFloor: { ...entry.determinismFloor },
+    observedLifecycle: { ...entry.observedLifecycle },
   };
 }
 

@@ -400,11 +400,13 @@ describe('forge harness hooks', () => {
     });
 
     expect(output.hookSpecificOutput.additionalContext).toContain('Shared .forge handoff: Claude -> Codex');
+    expect(output.hookSpecificOutput.additionalContext).toContain('bounded degraded behavior');
 
     const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
     expect(runtime.host_context.current_host).toBe('codex');
     expect(runtime.host_context.previous_host).toBe('claude');
     expect(runtime.host_context.last_resume_host).toBe('codex');
+    expect(runtime.harness_policy.host_posture).toBe('bounded_degraded');
   });
 
   it('auto-dispatches forge analyze on session restore when analysis refresh is required', () => {

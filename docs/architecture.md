@@ -135,6 +135,11 @@ The authoritative runtime capability surface lives in:
 - `.forge/contracts/host-adapter.ts`
 - `.forge/contracts/resume-bridge.ts`
 
+Forge now treats host support as two separate questions:
+
+- **Observed lifecycle:** did we actually observe hooks, stop semantics, and subagent lifecycle on this host?
+- **Determinism floor:** even when lifecycle depth is degraded, does the host still guarantee shared continue/status/analyze and visibility of decision, verification, and recovery state?
+
 ## Evidence surfaces
 
 Forge keeps proof artifacts separate from runtime control state:
@@ -152,3 +157,5 @@ This keeps product claims anchored to durable artifacts instead of only chat out
 - Runtime metadata may enrich context, but must not fork the core routing model
 - Additive schema evolution is preferred over destructive rewrites
 - Degraded paths should remain visible instead of silently bypassing workflow rules
+- Deterministic runtime explanations matter more than breadth of workflow surfaces
+- Verification and recovery should be visible as first-class harness state, not only hook side effects

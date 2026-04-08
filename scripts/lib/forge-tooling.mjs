@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
+import { normalizeRuntimeLanes } from './forge-lanes.mjs';
 
 const SUPPORTED_PACKAGE_MANAGERS = new Set(['npm', 'pnpm', 'yarn', 'bun']);
 const CODE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs']);
@@ -266,6 +267,33 @@ function collectEditedFileSignals(editedFiles = []) {
   };
 }
 
+export function inferVerificationLaneRefs(runtime = {}, editedFiles = []) {
+  const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
+  const normalizedFiles = (Array.isArray(editedFiles) ? editedFiles : []).map(file => String(file || '').toLowerCase());
+  const refs = [];
+
+  for (const lane of lanes) {
+    const tokens = [
+      lane.id,
+      ...(Array.isArray(lane.areas) ? lane.areas : []),
+      ...(Array.isArray(lane.scope) ? lane.scope : []),
+    ]
+      .map(value => String(value || '').trim().toLowerCase())
+      .filter(Boolean);
+
+    if (tokens.length === 0) {
+      continue;
+    }
+
+    const matches = normalizedFiles.some(filePath => tokens.some(token => filePath.includes(token)));
+    if (matches) {
+      refs.push(lane.id);
+    }
+  }
+
+  return [...new Set(refs)];
+}
+
 export function buildStopBatchCheckPlan({ cwd = '.', runtime = {}, state = {}, env = process.env } = {}) {
   const detected = detectProjectCommands(cwd, env);
   const signals = collectEditedFileSignals(runtime?.tooling?.edited_files || []);
@@ -306,9 +334,13 @@ export function buildStopBatchCheckPlan({ cwd = '.', runtime = {}, state = {}, e
   }
 
   return {
+    id: `verification:${phaseId || 'unknown'}:${signals.editedFiles.join(',')}`,
+    source: 'stop_batch',
+    phaseId,
     packageManager: detected.packageManager,
     packageManagerSource: detected.packageManagerSource,
     editedFiles: signals.editedFiles,
+    laneRefs: inferVerificationLaneRefs(runtime, signals.editedFiles),
     checks,
   };
 }

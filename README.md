@@ -98,6 +98,11 @@ Typical uses:
 Summarizes `.forge/events/`, `.forge/eval/`, `.forge/evidence/`, and
 `.forge/delivery-report/` without changing runtime state.
 
+### `forge verification` — inspect the latest verification artifact
+
+Shows the latest durable verification selection/result written by Forge's
+verification flow.
+
 ### Runtime controls
 
 Forge now supports a few lightweight runtime controls inspired by ECC-style
@@ -112,6 +117,20 @@ operational guardrails:
 
 Forge detects whether you're building something new or fixing something broken,
 and routes accordingly.
+
+## Product thesis
+
+Forge is a deterministic harness OS for engineering teams.
+
+That means Forge optimizes first for:
+
+- repeatable routing and gate decisions
+- explicit verification state
+- recoverable failure loops
+- durable artifacts instead of chat-only context
+- honest bounded degraded behavior across hosts
+
+It does not optimize first for giant skill catalogs or toolbox breadth.
 
 ## Build and repair workflows
 
@@ -195,6 +214,7 @@ forge info             # see current phase, blockers, next steps
 forge continue         # restore state and pick up where you left off
 forge analyze          # produce/update codebase analysis for the current project
 forge analytics        # summarize saved Forge artifacts
+forge verification     # inspect the latest verification artifact
 ```
 
 This installs Forge globally at `~/.forge/plugins/forge`.
