@@ -1,5 +1,12 @@
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
 import { describe, expect, it } from 'vitest';
+import { fileURLToPath } from 'url';
 import { getForgeHostCapabilities, getForgeHostSupportProfile } from './lib/forge-host-support.mjs';
+import { listForgeHostCatalogEntries } from './lib/forge-host-catalog.mjs';
+
+const THIS_DIR = dirname(fileURLToPath(import.meta.url));
+const FORGE_ROOT = dirname(THIS_DIR);
 
 describe('forge host support', () => {
   it('declares codex as degraded while preserving shared continue capability', () => {
@@ -33,5 +40,13 @@ describe('forge host support', () => {
     expect(profile.displayName).toBe('');
     expect(profile.supportLevel).toBe('unknown');
     expect(profile.capabilities.degradedModes).toEqual(['unrecognized_host']);
+  });
+
+  it('keeps README host support labels aligned with the host catalog', () => {
+    const readme = readFileSync(join(FORGE_ROOT, 'README.md'), 'utf8');
+
+    for (const entry of listForgeHostCatalogEntries()) {
+      expect(readme).toContain(`| ${entry.docsLabel} | **${entry.statusLabel}** |`);
+    }
   });
 });

@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
+import { getForgePackagedPaths } from './lib/forge-host-catalog.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const FORGE_ROOT = dirname(THIS_DIR);
@@ -57,15 +58,9 @@ describe('forge setup installer', () => {
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
-    expect(existsSync(join(target, '.codex-plugin', 'plugin.json'))).toBe(true);
-    expect(existsSync(join(target, 'gemini-extension.json'))).toBe(true);
-    expect(existsSync(join(target, 'qwen-extension.json'))).toBe(true);
-    expect(existsSync(join(target, 'GEMINI.md'))).toBe(true);
-    expect(existsSync(join(target, 'QWEN.md'))).toBe(true);
-    expect(existsSync(join(target, 'commands', 'forge', 'continue.toml'))).toBe(true);
-    expect(existsSync(join(target, 'qwen-commands', 'forge', 'continue.md'))).toBe(true);
-    expect(existsSync(join(target, '.mcp.json'))).toBe(true);
-    expect(existsSync(join(target, '.codex-plugin', 'hooks', 'hooks.json'))).toBe(true);
+    for (const relativePath of getForgePackagedPaths()) {
+      expect(existsSync(join(target, relativePath))).toBe(true);
+    }
     expect(existsSync(join(target, 'hooks', 'hooks.json'))).toBe(false);
     expect(existsSync(join(target, '.git'))).toBe(false);
     expect(existsSync(join(target, 'node_modules'))).toBe(false);

@@ -2,11 +2,12 @@ import { cpSync, existsSync, mkdirSync, lstatSync, readlinkSync, realpathSync, r
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
+import { getForgeAllowedHiddenTopLevelEntries } from './lib/forge-host-catalog.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SOURCE_ROOT = dirname(SCRIPT_DIR);
 const IGNORED_NAMES = new Set(['.git', 'node_modules', '.forge']);
-const ALLOWED_HIDDEN_TOP_LEVEL_ENTRIES = new Set(['.claude-plugin', '.codex-plugin', '.mcp.json']);
+const ALLOWED_HIDDEN_TOP_LEVEL_ENTRIES = new Set(getForgeAllowedHiddenTopLevelEntries());
 
 function printUsage() {
   console.log(`Forge setup
