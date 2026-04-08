@@ -16,6 +16,7 @@ import { compactForgeContext, readForgeState, updateRuntimeHookContext, writeFor
 import { detectHostId } from './lib/forge-host-context.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { updateHudLine } from './lib/forge-hud.mjs';
+import { cleanupSessionArtifacts } from './lib/session-cleanup.mjs';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS_MS = 24 * ONE_HOUR_MS;
@@ -48,6 +49,10 @@ function abbreviatedContext(state, runtime) {
 runHook(async (input) => {
   const cwd = input?.cwd || '.';
   const hostId = detectHostId(input, process.env);
+
+  // Self-heal stale plugin-owned session artifacts in case the host never fired SessionEnd.
+  cleanupSessionArtifacts(cwd);
+
   const state = readForgeState(cwd);
 
   if (!state) {

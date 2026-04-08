@@ -325,6 +325,23 @@ describe('forge harness hooks', () => {
     expect(normalized.phase_index).toBe(6);
   });
 
+  it('self-heals stale session artifacts on SessionStart', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd, { phase: 'develop', phase_id: 'develop', phase_name: 'develop' });
+    mkdirSync(join(cwd, '.forge', 'session-artifacts'), { recursive: true });
+    mkdirSync(join(cwd, '.forge', 'session-logs'), { recursive: true });
+    mkdirSync(join(cwd, '.forge', 'session-state'), { recursive: true });
+    writeFileSync(join(cwd, '.forge', 'errors.log'), 'previous startup error\n');
+
+    runHook('state-restore.mjs', cwd);
+
+    expect(existsSync(join(cwd, '.forge', 'session-artifacts'))).toBe(false);
+    expect(existsSync(join(cwd, '.forge', 'session-logs'))).toBe(false);
+    expect(existsSync(join(cwd, '.forge', 'session-state'))).toBe(false);
+    expect(existsSync(join(cwd, '.forge', 'errors.log'))).toBe(false);
+    expect(readFileSync(join(cwd, '.forge', 'errors.log.prev'), 'utf8')).toBe('previous startup error\n');
+  });
+
   it('auto-dispatches forge continue for warm active sessions too', () => {
     const cwd = makeWorkspace();
     writeState(cwd, { phase: 'develop', phase_id: 'develop', phase_name: 'develop' });
@@ -406,6 +423,26 @@ describe('forge harness hooks', () => {
     expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
     expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
     expect(output.hookSpecificOutput.additionalContext).toContain('saved analysis is stale');
+  });
+
+  it('surfaces detected build mode for new-project forge requests', () => {
+    const cwd = makeWorkspace();
+
+    const output = runHook('phase-detector.mjs', cwd, { message: 'forge build me a dashboard' });
+    expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:ignite');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Requested mode: build');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Detected build request from user message.');
+  });
+
+  it('surfaces detected express mode for quick-build requests', () => {
+    const cwd = makeWorkspace();
+
+    const output = runHook('phase-detector.mjs', cwd, { message: 'quick build a dashboard' });
+    expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:ignite');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Requested mode: express');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Detected express request from user message.');
   });
 
   it('auto-dispatches forge info on session restore when the project is already complete', () => {

@@ -78,11 +78,15 @@ runHook(async (input) => {
     }
   } else {
     updateAdaptiveTier(cwd, { state: null, message, hostId, eventName: 'prompt.submit' });
-    // No active project — natural language triggers ignite directly
-    if (request.explicitSkill) {
-      targetSkill = request.explicitSkill;
-    } else if (request.naturalMode) {
+    // No active project — mode detection still routes through ignite, but with an explicit hint.
+    if (request.naturalMode) {
       targetSkill = 'ignite';
+      context = `${context}\n[Forge] Requested mode: ${request.naturalMode}`;
+      prebuiltOutput = createSkillDirective(targetSkill, context, {
+        reason: `Detected ${request.naturalMode} request from user message.`,
+      });
+    } else if (request.explicitSkill) {
+      targetSkill = request.explicitSkill;
     }
   }
 

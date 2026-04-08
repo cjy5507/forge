@@ -29,6 +29,15 @@ export const REPAIR_TRIGGERS = {
   zh: [/修复|修復/i, /修改/i, /分析/i, /为什么不行|為什麼不行/i, /错误|錯誤/i],
 };
 
+// ── Express Triggers ("quick/express path") ──
+
+export const EXPRESS_TRIGGERS = {
+  en: [/\bforge\s+express\b/i, /\bquick build\b/i, /\bexpress\b/i],
+  ko: [/빠르게\s*만들어/i, /익스프레스|express/i, /퀵\s*빌드/i],
+  ja: [/クイックビルド/i, /エクスプレス|express/i, /素早く作って/i],
+  zh: [/快速构建|快速構建/i, /快速搭建/i, /express|快建/i],
+};
+
 // ── Active-project Natural Triggers ("continue/status/analyze without saying forge") ──
 
 export const RESUME_TRIGGERS = {

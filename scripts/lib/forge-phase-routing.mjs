@@ -3,6 +3,7 @@ import {
   FORGE_TRIGGERS,
   BUILD_TRIGGERS as BUILD_TRIGGERS_I18N,
   REPAIR_TRIGGERS as REPAIR_TRIGGERS_I18N,
+  EXPRESS_TRIGGERS as EXPRESS_TRIGGERS_I18N,
   RESUME_TRIGGERS,
   STATUS_TRIGGERS,
   ANALYZE_PROJECT_TRIGGERS,
@@ -11,6 +12,7 @@ import {
 const forgeTriggers = allTriggers(FORGE_TRIGGERS);
 const buildTriggers = allTriggers(BUILD_TRIGGERS_I18N);
 const repairTriggers = allTriggers(REPAIR_TRIGGERS_I18N);
+const expressTriggers = allTriggers(EXPRESS_TRIGGERS_I18N);
 const resumeTriggers = allTriggers(RESUME_TRIGGERS);
 const statusTriggers = allTriggers(STATUS_TRIGGERS);
 const analyzeProjectTriggers = allTriggers(ANALYZE_PROJECT_TRIGGERS);
@@ -22,6 +24,7 @@ const PHASE_TO_SKILL = {
 };
 
 export function isNaturalForgeRequest(message) {
+  if (expressTriggers.some(re => re.test(message))) return 'express';
   if (buildTriggers.some(re => re.test(message))) return 'build';
   if (repairTriggers.some(re => re.test(message))) return 'repair';
   return null;
@@ -76,7 +79,7 @@ export function isGenericForgeRequest(message) {
 export function deriveForgeRequest(message, { projectActive = false } = {}) {
   const explicitSkill = extractExplicitForgeSkill(message);
   const isExplicitForge = forgeTriggers.some(re => re.test(message));
-  const naturalMode = !isExplicitForge && !projectActive ? isNaturalForgeRequest(message) : null;
+  const naturalMode = !projectActive ? isNaturalForgeRequest(message) : null;
   const naturalSkill = !isExplicitForge && projectActive ? detectNaturalProjectSkill(message) : null;
 
   return {

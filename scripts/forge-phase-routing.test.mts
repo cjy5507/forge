@@ -18,6 +18,18 @@ describe('forge phase routing helpers', () => {
     expect(request.naturalSkill).toBe('continue');
   });
 
+  it('detects build mode even when forge is explicitly named', () => {
+    const request = deriveForgeRequest('forge build me a dashboard', { projectActive: false });
+    expect(request.isForgeRequest).toBe(true);
+    expect(request.naturalMode).toBe('build');
+  });
+
+  it('detects express mode from quick-build phrasing', () => {
+    const request = deriveForgeRequest('quick build a dashboard', { projectActive: false });
+    expect(request.isForgeRequest).toBe(true);
+    expect(request.naturalMode).toBe('express');
+  });
+
   it('detects natural active-project status and analyze intents', () => {
     expect(detectNaturalProjectSkill('where are we?')).toBe('info');
     expect(detectNaturalProjectSkill('impact analysis')).toBe('analyze');
