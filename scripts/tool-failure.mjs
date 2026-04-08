@@ -3,12 +3,13 @@
 
 import { runHook } from './lib/hook-runner.mjs';
 import { appendRecent, resolveForgeBaseDir } from './lib/forge-io.mjs';
-import { readForgeState, updateRuntimeState } from './lib/forge-session.mjs';
+import { readForgeState, readRuntimeState, recordDecisionTrace, recordRecoveryState, updateRuntimeState } from './lib/forge-session.mjs';
 import { isProjectActive } from './lib/forge-interaction.mjs';
 import { readActiveTier } from './lib/forge-tiers.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
+import { classifyToolFailure } from './lib/forge-tooling.mjs';
 
 function summarizeLaneFailure(input) {
   const toolName = String(input?.tool_name || 'unknown');
@@ -27,38 +28,6 @@ function summarizeLaneFailure(input) {
   return '';
 }
 
-function classifyFailure(input) {
-  const toolName = String(input?.tool_name || 'unknown');
-  const toolInput = JSON.stringify(input?.tool_input || {});
-  const errorText = String(input?.error || input?.tool_error || input?.stderr || 'unknown failure');
-  const combined = `${toolName} ${toolInput} ${errorText}`.toLowerCase();
-
-  if (toolName === 'Bash' && /(vitest|jest|playwright|npm test|pnpm test|yarn test|test)/.test(combined)) {
-    return 'Test command failed. Reproduce one failing target, capture the first real assertion or stack trace, then retry narrowly.';
-  }
-
-  if (toolName === 'Bash' && /(next build|build|tsc|typecheck)/.test(combined)) {
-    return 'Build or typecheck failed. Fix the first compile error, then re-run the smallest proving command.';
-  }
-
-  if (toolName === 'Bash' && /(eslint|lint)/.test(combined)) {
-    return 'Lint failed. Fix reported violations before retrying.';
-  }
-
-  if (toolName === 'Bash' && /(git worktree|rebase|merge)/.test(combined)) {
-    return 'Git/worktree operation failed. Inspect repo state before retrying.';
-  }
-
-  // 'Task' and 'Agent' are Claude Code-specific tool names for sub-agent
-  // delegation.  On other hosts these tool names will not appear, so this
-  // branch simply will not match — the fallthrough default message is safe.
-  if (toolName === 'Task' || toolName === 'Agent') {
-    return 'Delegation failed. Tighten scope and acceptance criteria before retrying.';
-  }
-
-  return 'Tool execution failed. Adjust approach before repeating the same command.';
-}
-
 runHook(async (input) => {
   const envTier = readEnvTier();
   if (envTier === 'off') {
@@ -73,7 +42,8 @@ runHook(async (input) => {
 
   const commandText = String(input?.tool_input?.command || input?.error || '');
   const testLike = /(test|vitest|jest|playwright)/i.test(commandText);
-  const guidance = classifyFailure(input);
+  const classification = classifyToolFailure(input, { cwd: rootCwd, env: process.env });
+  const guidance = classification.guidance;
 
   // Only write to runtime.json if there's an active Forge project
   if (!state || !isProjectActive(state)) {
@@ -82,7 +52,7 @@ runHook(async (input) => {
       suppressOutput: true,
       hookSpecificOutput: {
         hookEventName: 'PostToolUseFailure',
-        additionalContext: `[Forge] ${guidance}`,
+        additionalContext: `[Forge] ${guidance}${classification.suggestedCommand ? ` Retry: ${classification.suggestedCommand}` : ''}`,
       },
     }));
     return;
@@ -98,12 +68,17 @@ runHook(async (input) => {
     tool_name: input?.tool_name || 'unknown',
     tool_input: truncatedInput,
     error: input?.error || input?.tool_error || input?.stderr || 'unknown failure',
+    category: classification.category,
     guidance,
+    suggested_command: classification.suggestedCommand,
   };
 
   // Phase mismatch check — skip lane modifications to prevent orphaned records
   const phase = state ? resolvePhase(state) : null;
   const phaseMismatch = phase?.mismatch ?? false;
+  const currentRuntime = state ? readRuntimeState(rootCwd, { state }) : null;
+  const resolvedLaneContext = currentRuntime ? resolveRuntimeLaneContext(currentRuntime, rootCwd, cwd) : { laneId: '', lane: null };
+  const resolvedLaneId = phaseMismatch ? '' : (resolvedLaneContext.laneId || '');
 
   updateRuntimeState(rootCwd, current => {
     const { laneId, lane } = resolveRuntimeLaneContext(current, rootCwd, cwd);
@@ -151,12 +126,36 @@ runHook(async (input) => {
   const mismatchWarning = phaseMismatch
     ? ` [Warning: phase "${phase.id}" is not in the ${phase.mode} sequence — lane updates skipped]`
     : '';
+  recordDecisionTrace(rootCwd, {
+    scope: 'recovery',
+    kind: `failure_${classification.category}`,
+    target: String(input?.tool_name || 'unknown'),
+    summary: guidance,
+    inputs: [
+      commandText,
+      classification.suggestedCommand,
+    ].filter(Boolean),
+  });
+  recordRecoveryState(rootCwd, {
+    at: entry.at,
+    category: classification.category,
+    lane_id: resolvedLaneId,
+    phase_id: phase?.id || '',
+    command: commandText,
+    guidance,
+    suggested_command: classification.suggestedCommand,
+    retry_count: 1,
+    status: 'active',
+    summary: guidance,
+  });
   console.log(JSON.stringify({
     continue: true,
     suppressOutput: true,
     hookSpecificOutput: {
       hookEventName: 'PostToolUseFailure',
-      additionalContext: (tier === 'light' ? '[Forge] failure logged' : `[Forge Failure Loop] ${guidance}`) + mismatchWarning,
+      additionalContext: (tier === 'light'
+        ? `[Forge] failure logged (${classification.category})`
+        : `[Forge Failure Loop] ${guidance}${classification.suggestedCommand ? ` Retry: ${classification.suggestedCommand}` : ''}`) + mismatchWarning,
     },
   }));
 }, { name: 'tool-failure' });

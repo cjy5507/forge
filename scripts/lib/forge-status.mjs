@@ -226,6 +226,10 @@ export function buildStatusModel({
     tag,
     harness: {
       tier: currentRuntime.active_tier || currentState.tier || 'light',
+      policy: currentRuntime.harness_policy || currentState.harness_policy || {},
+      latest_decision: currentRuntime.decision_trace?.latest || null,
+      verification: currentRuntime.verification || null,
+      recovery: currentRuntime.recovery || null,
       sessions: currentRuntime.stats?.session_count || 0,
       agents: currentRuntime.stats?.agent_calls || 0,
       failures: currentRuntime.stats?.failure_count || 0,
@@ -277,12 +281,25 @@ export function renderStatusText(model, { verbose = false } = {}) {
   }
   lines.push('');
   lines.push(`Harness: tier=${model.harness.tier} sessions=${model.harness.sessions} agents=${model.harness.agents} failures=${model.harness.failures} stops=${model.harness.stops}`);
+  if (model.harness.policy?.strictness_mode) {
+    lines.push(`Policy: ${model.harness.policy.strictness_mode}/${model.harness.policy.verification_mode}/${model.harness.policy.host_posture}`);
+  }
+  if (model.harness.verification?.status) {
+    lines.push(`Verification: ${model.harness.verification.status}${model.harness.verification.summary ? ` — ${model.harness.verification.summary}` : ''}`);
+  }
+  if (model.harness.recovery?.latest?.status) {
+    lines.push(`Recovery: ${model.harness.recovery.latest.status}${model.harness.recovery.latest.summary ? ` — ${model.harness.recovery.latest.summary}` : ''}`);
+  }
 
   if (verbose && model.lanes.details.length > 0) {
     lines.push('');
     for (const detail of model.lanes.details) {
       lines.push(detail);
     }
+  }
+  if (verbose && model.harness.latest_decision?.summary) {
+    lines.push('');
+    lines.push(`Latest decision: ${model.harness.latest_decision.summary}`);
   }
 
   return `${lines.join('\n')}\n`;

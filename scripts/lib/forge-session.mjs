@@ -8,8 +8,13 @@ import {
   normalizeDeliveryReadiness,
   normalizeBlockers,
   normalizeAnalysisMeta,
+  normalizeDecisionTrace,
   normalizeHostContext,
+  normalizeHarnessPolicy,
   normalizeNextAction,
+  normalizeRecoveryState,
+  normalizeToolingState,
+  normalizeVerificationState,
   sanitizeJsonValue,
   normalizeStringList,
 } from './forge-io.mjs';
@@ -124,6 +129,11 @@ export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null 
     analysis: normalizeAnalysisMeta(source.analysis),
     next_action: normalizeNextAction(source.next_action),
     host_context: normalizeHostContext(source.host_context),
+    harness_policy: normalizeHarnessPolicy(source.harness_policy),
+    decision_trace: normalizeDecisionTrace(source.decision_trace),
+    verification: normalizeVerificationState(source.verification),
+    recovery: normalizeRecoveryState(source.recovery),
+    tooling: normalizeToolingState(source.tooling),
     lanes: normalizeRuntimeLanes(source.lanes || {}),
     stop_guard: {
       ...DEFAULT_RUNTIME.stop_guard,
@@ -171,6 +181,7 @@ export function normalizeStateShape(state = {}) {
     holes: Array.isArray(source.holes) ? source.holes : [],
     pr_queue: Array.isArray(source.pr_queue) ? source.pr_queue : [],
     analysis: normalizeAnalysisMeta(source.analysis),
+    harness_policy: normalizeHarnessPolicy(source.harness_policy),
     stats: mergeStats(source.stats),
   };
 }
@@ -233,6 +244,143 @@ export function recordAnalysisMetadata(cwd = '.', analysis = {}) {
     state: nextState,
     runtime: nextRuntime,
     analysis: nextAnalysis,
+  };
+}
+
+/**
+ * Persist a deterministic decision-trace record into runtime.json.
+ * This is additive metadata for explainability and replay inspection.
+ * @param {string} [cwd]
+ * @param {{ scope?: string, kind?: string, target?: string, summary?: string, inputs?: string[], policySnapshot?: string, at?: string }} [decision]
+ */
+export function recordDecisionTrace(cwd = '.', decision = {}) {
+  const state = readForgeState(cwd);
+  const runtime = readRuntimeState(cwd, { state });
+  const harnessPolicy = normalizeHarnessPolicy(runtime?.harness_policy || state?.harness_policy || {});
+  const entry = normalizeDecisionTrace({
+    latest: {
+      at: decision.at || new Date().toISOString(),
+      scope: decision.scope || '',
+      kind: decision.kind || '',
+      target: decision.target || '',
+      summary: decision.summary || '',
+      inputs: Array.isArray(decision.inputs) ? decision.inputs : [],
+      policy_snapshot: decision.policySnapshot || `${harnessPolicy.strictness_mode}/${harnessPolicy.verification_mode}/${harnessPolicy.host_posture}`,
+    },
+    recent: [
+      {
+        at: decision.at || new Date().toISOString(),
+        scope: decision.scope || '',
+        kind: decision.kind || '',
+        target: decision.target || '',
+        summary: decision.summary || '',
+        inputs: Array.isArray(decision.inputs) ? decision.inputs : [],
+        policy_snapshot: decision.policySnapshot || `${harnessPolicy.strictness_mode}/${harnessPolicy.verification_mode}/${harnessPolicy.host_posture}`,
+      },
+      ...(runtime?.decision_trace?.recent || []),
+    ],
+  });
+
+  const nextState = state
+    ? writeForgeState(cwd, {
+      ...state,
+      harness_policy: harnessPolicy,
+    })
+    : null;
+
+  const nextRuntime = writeRuntimeState(cwd, {
+    ...runtime,
+    harness_policy: harnessPolicy,
+    decision_trace: entry,
+    last_event: {
+      name: 'record-decision-trace',
+      lane: '',
+      at: entry.latest?.at || new Date().toISOString(),
+    },
+  }, { state: nextState || state });
+
+  return {
+    state: nextState,
+    runtime: nextRuntime,
+    decision_trace: entry,
+  };
+}
+
+export function recordVerificationState(cwd = '.', verification = {}) {
+  const state = readForgeState(cwd);
+  const runtime = readRuntimeState(cwd, { state });
+  const nextVerification = normalizeVerificationState({
+    ...(runtime?.verification || {}),
+    ...verification,
+  });
+
+  const nextRuntime = writeRuntimeState(cwd, {
+    ...runtime,
+    verification: nextVerification,
+    last_event: {
+      name: 'record-verification-state',
+      lane: '',
+      at: nextVerification.updated_at || new Date().toISOString(),
+    },
+  }, { state });
+
+  return {
+    runtime: nextRuntime,
+    verification: nextVerification,
+  };
+}
+
+export function recordRecoveryState(cwd = '.', recoveryEntry = {}) {
+  const state = readForgeState(cwd);
+  const runtime = readRuntimeState(cwd, { state });
+  const existing = normalizeRecoveryState(runtime?.recovery || {});
+  const now = recoveryEntry.at || new Date().toISOString();
+  const id = recoveryEntry.id || `${recoveryEntry.category || 'failure'}:${recoveryEntry.lane_id || ''}:${recoveryEntry.command || ''}`;
+  const nextRecovery = normalizeRecoveryState({
+    latest: {
+      id,
+      at: now,
+      category: recoveryEntry.category || '',
+      lane_id: recoveryEntry.lane_id || '',
+      phase_id: recoveryEntry.phase_id || '',
+      command: recoveryEntry.command || '',
+      guidance: recoveryEntry.guidance || '',
+      suggested_command: recoveryEntry.suggested_command || '',
+      retry_count: recoveryEntry.retry_count || 0,
+      status: recoveryEntry.status || 'active',
+      summary: recoveryEntry.summary || '',
+    },
+    active: [
+      {
+        id,
+        at: now,
+        category: recoveryEntry.category || '',
+        lane_id: recoveryEntry.lane_id || '',
+        phase_id: recoveryEntry.phase_id || '',
+        command: recoveryEntry.command || '',
+        guidance: recoveryEntry.guidance || '',
+        suggested_command: recoveryEntry.suggested_command || '',
+        retry_count: recoveryEntry.retry_count || 0,
+        status: recoveryEntry.status || 'active',
+        summary: recoveryEntry.summary || '',
+      },
+      ...existing.active.filter(item => item.id !== id),
+    ],
+  });
+
+  const nextRuntime = writeRuntimeState(cwd, {
+    ...runtime,
+    recovery: nextRecovery,
+    last_event: {
+      name: 'record-recovery-state',
+      lane: recoveryEntry.lane_id || '',
+      at: now,
+    },
+  }, { state });
+
+  return {
+    runtime: nextRuntime,
+    recovery: nextRecovery,
   };
 }
 

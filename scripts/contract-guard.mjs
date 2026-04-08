@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Forge Hook: PostToolUse (Write|Edit) — adaptive contract reminder
 
-import { existsSync, readdirSync, readFileSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { spawnSync } from 'child_process';
 import { runHook } from './lib/hook-runner.mjs';
 import { detectWriteRisk, readActiveTier, tierAtLeast } from './lib/forge-tiers.mjs';
 import { readForgeState } from './lib/forge-session.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
+import { detectProjectCommands, runCommandSpec } from './lib/forge-tooling.mjs';
 
 runHook(async (input) => {
   const envTier = readEnvTier();
@@ -44,25 +44,17 @@ runHook(async (input) => {
   let typeError = '';
 
   if (filePath && existsSync(join(cwd, filePath))) {
-    const pkgPath = join(cwd, 'package.json');
     const tsConfigPath = join(cwd, 'tsconfig.json');
     
-    if (existsSync(pkgPath) || existsSync(tsConfigPath)) {
+    if (existsSync(join(cwd, 'package.json')) || existsSync(tsConfigPath)) {
       try {
-        let hasTypecheck = false;
-        if (existsSync(pkgPath)) {
-          const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-          if (pkg.scripts && pkg.scripts.typecheck) {
-            hasTypecheck = true;
-          }
-        }
-
-        const cmd = hasTypecheck ? 'npm' : 'npx';
-        const args = hasTypecheck ? ['run', 'typecheck'] : ['tsc', '--noEmit'];
+        const detected = detectProjectCommands(cwd, process.env);
         
         // Only run tsc if tsconfig exists or typecheck script exists
-        if (hasTypecheck || existsSync(tsConfigPath)) {
-          const result = spawnSync(cmd, args, { cwd, encoding: 'utf8', stdio: 'pipe' });
+        if (detected.commands.typecheck.available || existsSync(tsConfigPath)) {
+          const result = runCommandSpec(detected.commands.typecheck.available
+            ? detected.commands.typecheck
+            : { available: true, kind: 'binary', runner: 'npx', args: ['tsc', '--noEmit'] }, cwd);
           if (result.status !== 0) {
             const output = result.stdout || result.stderr || '';
             // Only report if the error mentions the edited file to avoid blocking on unrelated errors

@@ -2,8 +2,11 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { detectHostId } from './forge-host-context.mjs';
 import { getForgeHostSupportProfile } from './forge-host-support.mjs';
+import { getForgeInstallStateFileName } from './forge-setup-manifest.mjs';
 import { readForgeState, readRuntimeState } from './forge-session.mjs';
 import { getStateTrustWarnings } from './forge-state-trust.mjs';
+import { buildForgeHookProfileSummary, isHookProfileEnabled, normalizeHookProfile, parseDisabledHooks } from './forge-hook-controls.mjs';
+import { readJsonFile } from './forge-io.mjs';
 
 function formatDegradedMode(mode = '') {
   return String(mode || '')
@@ -23,6 +26,7 @@ function resolveHealthHost({ hostId = '', runtime = null, env = process.env } = 
 export function buildHealthReport({
   cwd = '.',
   hostId = '',
+  audit = false,
   env = process.env,
   state = undefined,
   runtime = undefined,
@@ -58,7 +62,7 @@ export function buildHealthReport({
     warnings.push(`Saved analysis is stale: ${analysis.artifact_path}`);
   }
 
-  return {
+  const report = {
     host: {
       id: profile.hostId,
       name: profile.displayName || 'Unknown',
@@ -71,9 +75,80 @@ export function buildHealthReport({
       phase_id: currentState?.phase_id || currentState?.phase || '',
       active_tier: currentRuntime?.active_tier || currentState?.tier || '',
       analysis_stale: Boolean(analysis?.stale),
+      harness_policy: currentRuntime?.harness_policy || currentState?.harness_policy || null,
+      latest_decision: currentRuntime?.decision_trace?.latest || null,
+      verification_status: currentRuntime?.verification?.status || '',
+      recovery_status: currentRuntime?.recovery?.latest?.status || '',
       trust_warnings: trustWarnings,
     },
     warnings,
+  };
+
+  if (audit) {
+    report.audit = buildHealthAudit({
+      cwd,
+      env,
+      hostId: resolvedHostId,
+      packagePaths,
+      missingPackagePaths,
+    });
+  }
+
+  return report;
+}
+
+function buildHealthAudit({ cwd = '.', env = process.env, hostId = '', packagePaths = [], missingPackagePaths = [] } = {}) {
+  const hookSummary = buildForgeHookProfileSummary();
+  const activeProfile = normalizeHookProfile(env?.FORGE_HOOK_PROFILE);
+  const disabledHooks = [...parseDisabledHooks(env?.FORGE_DISABLED_HOOKS)];
+  const installStatePath = join(cwd, getForgeInstallStateFileName());
+  const installState = readJsonFile(installStatePath, null);
+  const hooksConfigExists = existsSync(join(cwd, 'hooks', 'hooks.json'));
+  const runtimeState = readRuntimeState(cwd);
+  const tooling = runtimeState?.tooling || {};
+
+  return {
+    package_surface: {
+      host_id: hostId || 'unknown',
+      expected_paths: packagePaths.length,
+      missing_paths: [...missingPackagePaths],
+      hooks_config_present: hooksConfigExists,
+    },
+    hook_runtime: {
+      active_profile: activeProfile,
+      disabled_hooks: disabledHooks,
+      total_hooks: hookSummary.counts.total,
+      hooks_by_profile: { ...hookSummary.counts.byProfile },
+      available_hooks: hookSummary.hooks.map(hook => ({
+        name: hook.name,
+        profile: hook.profile,
+        event_name: hook.eventName,
+        disabled: disabledHooks.includes(hook.name),
+        active: isHookProfileEnabled(activeProfile, hook.profile),
+      })),
+    },
+    install_state: installState
+      ? {
+        exists: true,
+        path: installStatePath,
+        profile: installState.profile || 'unknown',
+        host: installState.host || 'unknown',
+        selective: Boolean(installState.selective),
+        mode: installState.mode || 'unknown',
+      }
+      : {
+        exists: false,
+        path: installStatePath,
+      },
+    tooling: {
+      package_manager: tooling.package_manager || '',
+      package_manager_source: tooling.package_manager_source || '',
+      edited_file_count: Array.isArray(tooling.edited_files) ? tooling.edited_files.length : 0,
+      last_batch_check_status: tooling.last_batch_check?.status || '',
+      last_batch_check_summary: tooling.last_batch_check?.summary || '',
+    },
+    verification: runtimeState?.verification || null,
+    recovery: runtimeState?.recovery || null,
   };
 }
 
@@ -105,6 +180,30 @@ export function renderHealthText(report) {
     lines.push(`Warnings: ${report.warnings.join(' | ')}`);
   } else {
     lines.push('Warnings: none');
+  }
+
+  if (report.audit) {
+    lines.push(`Audit: hook profile ${report.audit.hook_runtime.active_profile}, ${report.audit.hook_runtime.total_hooks} hooks defined`);
+    if (report.audit.install_state.exists) {
+      lines.push(`Install state: ${report.audit.install_state.profile}/${report.audit.install_state.host} (${report.audit.install_state.mode})`);
+    } else {
+      lines.push('Install state: none');
+    }
+    if (report.audit.tooling.package_manager) {
+      lines.push(`Tooling: ${report.audit.tooling.package_manager} (${report.audit.tooling.package_manager_source || 'detected'})`);
+    }
+  }
+  if (report.runtime.harness_policy) {
+    lines.push(`Policy: ${report.runtime.harness_policy.strictness_mode}/${report.runtime.harness_policy.verification_mode}/${report.runtime.harness_policy.host_posture}`);
+  }
+  if (report.runtime.latest_decision?.summary) {
+    lines.push(`Latest decision: ${report.runtime.latest_decision.summary}`);
+  }
+  if (report.runtime.verification_status) {
+    lines.push(`Verification: ${report.runtime.verification_status}`);
+  }
+  if (report.runtime.recovery_status) {
+    lines.push(`Recovery: ${report.runtime.recovery_status}`);
   }
 
   return `${lines.join('\n')}\n`;

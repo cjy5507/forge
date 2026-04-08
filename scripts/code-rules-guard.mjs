@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Forge Hook: PostToolUse (Write|Edit) — full-tier code-rules reminder
 
-import { existsSync, readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
-import { spawnSync } from 'child_process';
 import { runHook } from './lib/hook-runner.mjs';
 import { detectWriteRisk, readActiveTier, tierAtLeast } from './lib/forge-tiers.mjs';
 import { readForgeState } from './lib/forge-session.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
+import { detectProjectCommands, runCommandSpec } from './lib/forge-tooling.mjs';
 
 runHook(async (input) => {
   const envTier = readEnvTier();
@@ -36,19 +36,16 @@ runHook(async (input) => {
   let validationError = '';
 
   if (filePath && existsSync(join(cwd, filePath))) {
-    const pkgPath = join(cwd, 'package.json');
-    if (existsSync(pkgPath)) {
-      try {
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
-        if (pkg.scripts && pkg.scripts.lint) {
-          const result = spawnSync('npm', ['run', 'lint', '--', filePath], { cwd, encoding: 'utf8', stdio: 'pipe' });
-          if (result.status !== 0) {
-            validationError = result.stdout || result.stderr || 'Linter check failed';
-          }
+    try {
+      const detected = detectProjectCommands(cwd, process.env);
+      if (detected.commands.lint.available) {
+        const result = runCommandSpec(detected.commands.lint, cwd, { extraArgs: [filePath] });
+        if (result.status !== 0) {
+          validationError = result.stdout || result.stderr || 'Linter check failed';
         }
-      } catch (err) {
-        // ignore JSON parse or spawn errors
       }
+    } catch (err) {
+      // ignore JSON parse or spawn errors
     }
   }
 

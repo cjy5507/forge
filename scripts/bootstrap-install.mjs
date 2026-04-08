@@ -9,8 +9,8 @@ function printUsage() {
   console.log(`Forge bootstrap installer
 
 Usage:
-  node scripts/bootstrap-install.mjs --scope global [--mode symlink|copy] [--source <git-url-or-dir>] [--checkout-dir <dir>] [--target <dir>] [--force]
-  node scripts/bootstrap-install.mjs --scope project [--project-root <dir>] [--mode symlink|copy] [--source <git-url-or-dir>] [--checkout-dir <dir>] [--target <dir>] [--force]
+  node scripts/bootstrap-install.mjs --scope global [--mode symlink|copy] [--source <git-url-or-dir>] [--checkout-dir <dir>] [--target <dir>] [--profile <full|runtime|minimal>] [--host <all|claude|codex|gemini|qwen>] [--dry-run] [--force]
+  node scripts/bootstrap-install.mjs --scope project [--project-root <dir>] [--mode symlink|copy] [--source <git-url-or-dir>] [--checkout-dir <dir>] [--target <dir>] [--profile <full|runtime|minimal>] [--host <all|claude|codex|gemini|qwen>] [--dry-run] [--force]
 
 Options:
   --scope         global | project
@@ -19,6 +19,9 @@ Options:
   --checkout-dir  where the Forge repo should be cloned when --source is a git URL
   --project-root  project root used for project scope (default: current working directory)
   --target        explicit plugin install target
+  --profile       setup surface profile passed through to setup-plugin
+  --host          host surface filter passed through to setup-plugin
+  --dry-run       print the resolved setup plan without mutating the target
   --force         replace an existing checkout or target
   --help          show this message
 `);
@@ -28,6 +31,9 @@ function parseArgs(argv) {
   const options = {
     mode: 'symlink',
     force: false,
+    host: 'all',
+    profile: 'full',
+    dryRun: false,
     source: DEFAULT_REPO,
   };
 
@@ -44,6 +50,11 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (arg === '--dry-run') {
+      options.dryRun = true;
+      continue;
+    }
+
     if (
       arg === '--scope'
       || arg === '--mode'
@@ -51,6 +62,8 @@ function parseArgs(argv) {
       || arg === '--checkout-dir'
       || arg === '--project-root'
       || arg === '--target'
+      || arg === '--profile'
+      || arg === '--host'
     ) {
       const value = argv[i + 1];
       if (!value) {
@@ -70,6 +83,10 @@ function parseArgs(argv) {
         options.projectRoot = value;
       } else if (arg === '--target') {
         options.target = value;
+      } else if (arg === '--profile') {
+        options.profile = value;
+      } else if (arg === '--host') {
+        options.host = value;
       }
       continue;
     }
@@ -171,6 +188,18 @@ function runSetup(sourceDir, options, projectRoot) {
     args.push('--target', resolve(options.target));
   }
 
+  if (options.profile) {
+    args.push('--profile', options.profile);
+  }
+
+  if (options.host) {
+    args.push('--host', options.host);
+  }
+
+  if (options.dryRun) {
+    args.push('--dry-run');
+  }
+
   if (options.force) {
     args.push('--force');
   }
@@ -195,6 +224,8 @@ function main() {
   console.log(`scope: ${options.scope}`);
   console.log(`mode: ${options.mode}`);
   console.log(`source: ${options.source}`);
+  console.log(`profile: ${options.profile}`);
+  console.log(`host: ${options.host}`);
   if (sourceDir === checkoutDir) {
     console.log(`checkout: ${checkoutDir}`);
   } else {

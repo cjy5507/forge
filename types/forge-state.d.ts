@@ -108,6 +108,85 @@ export interface ForgeStopGuard {
   last_message: string;
 }
 
+export interface ForgeDetectedCommands {
+  lint: string;
+  typecheck: string;
+  test: string;
+  build: string;
+  format: string;
+}
+
+export interface ForgeLastBatchCheck {
+  at: string;
+  status: string;
+  summary: string;
+  commands: string[];
+}
+
+export interface ForgeToolingState {
+  package_manager: string;
+  package_manager_source: string;
+  detected_commands: ForgeDetectedCommands;
+  edited_files: string[];
+  last_batch_check: ForgeLastBatchCheck;
+}
+
+export interface ForgeHarnessPolicy {
+  strictness_mode: string;
+  verification_mode: string;
+  host_posture: string;
+  override_policy: string;
+  decision_trace_enabled: boolean;
+}
+
+export interface ForgeDecisionTraceEntry {
+  at: string;
+  scope: string;
+  kind: string;
+  target: string;
+  summary: string;
+  inputs: string[];
+  policy_snapshot: string;
+}
+
+export interface ForgeDecisionTrace {
+  latest: ForgeDecisionTraceEntry | null;
+  recent: ForgeDecisionTraceEntry[];
+}
+
+export interface ForgeVerificationCheck {
+  id: string;
+  reason: string;
+  command: string;
+}
+
+export interface ForgeVerificationState {
+  updated_at: string;
+  edited_files: string[];
+  selected_checks: ForgeVerificationCheck[];
+  status: string;
+  summary: string;
+}
+
+export interface ForgeRecoveryItem {
+  id: string;
+  at: string;
+  category: string;
+  lane_id: string;
+  phase_id: string;
+  command: string;
+  guidance: string;
+  suggested_command: string;
+  retry_count: number;
+  status: string;
+  summary: string;
+}
+
+export interface ForgeRecoveryState {
+  latest: ForgeRecoveryItem | null;
+  active: ForgeRecoveryItem[];
+}
+
 export interface ForgeRuntimeEvent {
   name: string;
   lane: string;
@@ -148,6 +227,11 @@ export interface ForgeRuntime {
   analysis: ForgeAnalysisMeta;
   next_action: ForgeNextAction;
   host_context: ForgeHostContext;
+  harness_policy?: ForgeHarnessPolicy;
+  decision_trace?: ForgeDecisionTrace;
+  verification?: ForgeVerificationState;
+  recovery?: ForgeRecoveryState;
+  tooling?: ForgeToolingState;
   stop_guard: ForgeStopGuard;
   stats: ForgeStats;
   last_event: ForgeRuntimeEvent | null;
@@ -172,6 +256,7 @@ export interface ForgeState {
   staleness: Record<string, unknown>;
   lessons_brief: string[];
   analysis: ForgeAnalysisMeta;
+  harness_policy?: ForgeHarnessPolicy;
   tasks: string[];
   holes: string[];
   pr_queue: string[];

@@ -4,6 +4,7 @@ import { buildHealthReport, renderHealthText } from './lib/forge-health.mjs';
 
 function parseArgs(argv) {
   const options = {
+    audit: false,
     json: false,
     host: '',
   };
@@ -12,6 +13,10 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === '--json') {
       options.json = true;
+      continue;
+    }
+    if (arg === '--audit') {
+      options.audit = true;
       continue;
     }
     if (arg === '--help') {
@@ -39,6 +44,7 @@ function printUsage() {
 Usage:
   node scripts/forge-health.mjs
   node scripts/forge-health.mjs --json
+  node scripts/forge-health.mjs --audit
   node scripts/forge-health.mjs --host codex
 `);
 }
@@ -51,6 +57,7 @@ try {
   }
 
   const report = buildHealthReport({
+    audit: options.audit,
     cwd: process.cwd(),
     hostId: options.host,
   });

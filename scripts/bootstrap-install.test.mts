@@ -76,6 +76,34 @@ describe('forge bootstrap installer', () => {
     expect(lstatSync(target).isSymbolicLink()).toBe(false);
   });
 
+  it('passes selective setup options through to setup-plugin', () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'forge-bootstrap-selective-'));
+    tmpDirs.push(projectRoot);
+    const target = join(projectRoot, '.forge', 'plugins', 'forge');
+
+    const result = runBootstrap([
+      '--scope',
+      'project',
+      '--project-root',
+      projectRoot,
+      '--source',
+      FORGE_ROOT,
+      '--mode',
+      'copy',
+      '--profile',
+      'minimal',
+      '--host',
+      'codex',
+      '--force',
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(existsSync(join(target, '.codex-plugin', 'plugin.json'))).toBe(true);
+    expect(existsSync(join(target, '.claude-plugin'))).toBe(false);
+    expect(result.stdout).toContain('profile: minimal');
+    expect(result.stdout).toContain('host: codex');
+  });
+
   it('documents the curl bootstrap flow in the README quick start', () => {
     const readme = readFileSync(join(FORGE_ROOT, 'README.md'), 'utf8');
 

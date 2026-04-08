@@ -50,6 +50,11 @@
             "type": "command",
             "command": "node \"./hooks/run-hook.mjs\" code-rules-guard",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "node \"./hooks/run-hook.mjs\" post-edit-accumulator",
+            "timeout": 3
           }
         ]
       }

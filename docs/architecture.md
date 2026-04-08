@@ -1,6 +1,6 @@
 # Forge Architecture
 
-Forge is a file-backed workflow harness. The durable control plane lives in `.forge/`,
+Forge is a file-backed workflow harness OS. The durable control plane lives in `.forge/`,
 while host-specific surfaces translate CLI or hook events into that shared state instead of
 becoming the source of truth themselves.
 
@@ -91,6 +91,8 @@ What it does today:
 - validate selected state/runtime contradictions
 - normalize malformed or incomplete runtime shape into a degraded but readable state
 - keep phase and lane decisions visible in file-backed artifacts
+- stamp state/runtime integrity fingerprints for external-modification visibility
+- persist deterministic decision traces for key guarded actions
 
 What it does not do today:
 
@@ -105,6 +107,13 @@ That means current trust handling is best described as:
 - degraded-state visibility
 
 It should not be described as strong tamper protection.
+
+What it aims to be:
+
+- deterministic execution control plane
+- guarded verification harness
+- recoverable failure-routing layer
+- bounded degraded behavior across hosts
 
 ## Host support model
 

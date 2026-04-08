@@ -83,6 +83,46 @@ describe('repository-root hooks surface', () => {
     expect(output.hookSpecificOutput.hookEventName).toBe('SessionStart');
   });
 
+  it('skips hooks that are disabled by environment controls', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd);
+
+    const result = spawnSync(process.execPath, [join(FORGE_ROOT, 'hooks', 'run-hook.mjs'), 'state-restore'], {
+      cwd,
+      input: JSON.stringify({ cwd }),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        FORGE_DISABLED_HOOKS: 'state-restore',
+      },
+    });
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout || '{}');
+    expect(output.hookSkipped).toBe(true);
+    expect(output.hookName).toBe('state-restore');
+  });
+
+  it('skips strict hooks when the active profile is minimal', () => {
+    const cwd = makeWorkspace();
+    writeState(cwd);
+
+    const result = spawnSync(process.execPath, [join(FORGE_ROOT, 'hooks', 'run-hook.mjs'), 'context-manager'], {
+      cwd,
+      input: JSON.stringify({ cwd }),
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        FORGE_HOOK_PROFILE: 'minimal',
+      },
+    });
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout || '{}');
+    expect(output.hookSkipped).toBe(true);
+    expect(output.activeProfile).toBe('minimal');
+  });
+
   it('ships the wrapper alongside hooks.json', () => {
     expect(existsSync(join(FORGE_ROOT, 'hooks', 'run-hook.mjs'))).toBe(true);
   });

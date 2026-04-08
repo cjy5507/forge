@@ -6,6 +6,7 @@ import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
 import { getForgePackagedPaths } from './lib/forge-host-catalog.mjs';
+import { getForgeInstallStateFileName } from './lib/forge-setup-manifest.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const FORGE_ROOT = dirname(THIS_DIR);
@@ -68,6 +69,82 @@ describe('forge setup installer', () => {
     expect(lstatSync(target).isSymbolicLink()).toBe(false);
   });
 
+  it('supports selective copy installs for a single host profile', () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-selective-'));
+    tmpDirs.push(projectRoot);
+    const target = join(projectRoot, '.forge', 'plugins', 'forge');
+
+    const result = runSetup([
+      '--scope',
+      'project',
+      '--project-root',
+      projectRoot,
+      '--mode',
+      'copy',
+      '--profile',
+      'minimal',
+      '--host',
+      'codex',
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(existsSync(join(target, '.codex-plugin', 'plugin.json'))).toBe(true);
+    expect(existsSync(join(target, '.claude-plugin'))).toBe(false);
+    expect(existsSync(join(target, 'qwen-commands'))).toBe(false);
+    expect(existsSync(join(target, getForgeInstallStateFileName()))).toBe(true);
+
+    const installState = JSON.parse(readFileSync(join(target, getForgeInstallStateFileName()), 'utf8'));
+    expect(installState.profile).toBe('minimal');
+    expect(installState.host).toBe('codex');
+    expect(installState.selective).toBe(true);
+  });
+
+  it('prints a dry-run plan for selective installs', () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-plan-'));
+    tmpDirs.push(projectRoot);
+    const target = join(projectRoot, '.forge', 'plugins', 'forge');
+
+    const result = runSetup([
+      '--scope',
+      'project',
+      '--project-root',
+      projectRoot,
+      '--mode',
+      'copy',
+      '--profile',
+      'runtime',
+      '--host',
+      'gemini',
+      '--dry-run',
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(existsSync(target)).toBe(false);
+    const plan = JSON.parse(result.stdout);
+    expect(plan.profile).toBe('runtime');
+    expect(plan.host).toBe('gemini');
+    expect(plan.selective).toBe(true);
+  });
+
+  it('rejects selective installs in symlink mode', () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-selective-link-'));
+    tmpDirs.push(projectRoot);
+
+    const result = runSetup([
+      '--scope',
+      'project',
+      '--project-root',
+      projectRoot,
+      '--profile',
+      'minimal',
+      '--host',
+      'codex',
+    ]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Selective setup requires --mode copy');
+  });
+
   it('requires --force when the target already exists', () => {
     const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-force-'));
     tmpDirs.push(projectRoot);
@@ -98,6 +175,8 @@ describe('forge setup installer', () => {
     expect(result.stderr).toBe('');
     expect(result.stdout).toContain('Usage:');
     expect(result.stdout).toContain('--scope global');
+    expect(result.stdout).toContain('--profile');
+    expect(result.stdout).toContain('--host');
   });
 
   it('documents the installer in the README quick start', () => {
