@@ -335,8 +335,14 @@ Forge's file-based state system (`.forge/`, `state.json`, `runtime.json`) is hos
 Explicit `forge continue` through shared `.forge/` state works across Claude and Codex; the deeper
 automation layer (hooks, subagent tracking, stop guards) remains Claude-first.
 
+Forge's current trust model is operational, not cryptographic: parse failures and cross-file
+contradictions are surfaced explicitly, but repo-local state is not signed or tamper-proof.
+See [Architecture guide](./docs/architecture.md) for the current module map, trust model, and
+host support boundaries.
+
 ## Links
 
+- [Architecture guide](./docs/architecture.md)
 - [Phase structure](./docs/phases.md)
 - [Artifact reference](./docs/artifacts.md)
 - [Marketplace copy](./MARKETPLACE.md)
