@@ -14,6 +14,7 @@ import {
   resolveSetupSelection,
   validateSetupSelection,
 } from './lib/forge-setup-manifest.mjs';
+import { registerForgeInCodexMarketplace, shouldRegisterForgeInCodex } from './lib/forge-codex-marketplace.mjs';
 import { writeJsonFile } from './lib/forge-io.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -306,6 +307,17 @@ function main() {
   console.log(`layout: ${describeTarget(targetPath)}`);
   if (installStatePath) {
     console.log(`install-state: ${installStatePath}`);
+  }
+  if (shouldRegisterForgeInCodex(options.host)) {
+    try {
+      const registration = registerForgeInCodexMarketplace({
+        pluginRoot: targetPath,
+      });
+      console.log(`codex-marketplace: ${registration.manifestPath}`);
+      console.log(`codex-plugin-link: ${registration.pluginLinkPath}`);
+    } catch (error) {
+      console.log(`codex-marketplace: skipped (${error.message})`);
+    }
   }
   console.log(`next: point your plugin host at ${targetPath}`);
 }

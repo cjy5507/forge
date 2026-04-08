@@ -6,6 +6,7 @@ import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
 import { getForgePackagedPaths } from './lib/forge-host-catalog.mjs';
+import { getCodexMarketplaceManifestPath, getCodexMarketplacePluginsDir } from './lib/forge-codex-marketplace.mjs';
 import { getForgeInstallStateFileName } from './lib/forge-setup-manifest.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
@@ -16,6 +17,10 @@ function runSetup(args = [], options = {}) {
   return spawnSync(process.execPath, [SETUP_SCRIPT, ...args], {
     cwd: options.cwd || FORGE_ROOT,
     encoding: 'utf8',
+    env: {
+      ...process.env,
+      ...(options.env || {}),
+    },
   });
 }
 
@@ -97,6 +102,65 @@ describe('forge setup installer', () => {
     expect(installState.profile).toBe('minimal');
     expect(installState.host).toBe('codex');
     expect(installState.selective).toBe(true);
+  });
+
+  it('auto-registers Forge in the local Codex marketplace for codex installs', () => {
+    const fakeHome = mkdtempSync(join(tmpdir(), 'forge-codex-home-'));
+    tmpDirs.push(fakeHome);
+    const target = join(fakeHome, '.forge', 'plugins', 'forge');
+
+    const result = runSetup([
+      '--scope',
+      'global',
+      '--mode',
+      'copy',
+      '--profile',
+      'minimal',
+      '--host',
+      'codex',
+      '--force',
+    ], {
+      env: {
+        HOME: fakeHome,
+      },
+    });
+
+    expect(result.status).toBe(0);
+    const manifestPath = getCodexMarketplaceManifestPath(fakeHome);
+    const pluginsDir = getCodexMarketplacePluginsDir(fakeHome);
+    expect(existsSync(manifestPath)).toBe(true);
+    expect(existsSync(join(pluginsDir, 'forge'))).toBe(true);
+    expect(lstatSync(join(pluginsDir, 'forge')).isSymbolicLink()).toBe(true);
+
+    const marketplace = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    expect(marketplace.plugins.some((plugin: any) => plugin.name === 'forge')).toBe(true);
+    expect(result.stdout).toContain('codex-marketplace:');
+    expect(result.stdout).toContain('codex-plugin-link:');
+    expect(existsSync(join(target, '.codex-plugin', 'plugin.json'))).toBe(true);
+  });
+
+  it('does not register Forge in Codex marketplace during dry-run', () => {
+    const fakeHome = mkdtempSync(join(tmpdir(), 'forge-codex-plan-home-'));
+    tmpDirs.push(fakeHome);
+
+    const result = runSetup([
+      '--scope',
+      'global',
+      '--mode',
+      'copy',
+      '--profile',
+      'minimal',
+      '--host',
+      'codex',
+      '--dry-run',
+    ], {
+      env: {
+        HOME: fakeHome,
+      },
+    });
+
+    expect(result.status).toBe(0);
+    expect(existsSync(getCodexMarketplaceManifestPath(fakeHome))).toBe(false);
   });
 
   it('prints a dry-run plan for selective installs', () => {

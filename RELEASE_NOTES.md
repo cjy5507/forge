@@ -1,5 +1,21 @@
 # Forge Release Notes Draft
 
+## v0.6.1
+
+Codex installer UX patch.
+
+### Highlights
+
+- Added best-effort Codex local marketplace registration during Forge setup
+- Added automatic Codex plugin symlink creation for standard local plugin scan paths
+- Kept Forge installation non-failing when Codex marketplace registration cannot be completed
+- Added installer regression coverage for Codex registration behavior
+
+### Notes
+
+- This is a patch release focused on reducing post-install manual setup for Codex users
+- Standard Codex environments should now be much closer to one-command install behavior
+
 ## v0.6.0
 
 Harness OS release.

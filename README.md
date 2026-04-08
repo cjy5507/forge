@@ -290,6 +290,11 @@ npm install -g @openai/codex
 Point the host at the repository root containing `.codex-plugin/plugin.json`,
 `hooks/`, and `scripts/`.
 Recommended roots: `~/.forge/plugins/forge` or `./.forge/plugins/forge`.
+
+Global/bootstrap installs now also auto-register Forge into the local Codex
+plugin marketplace cache so the plugin is discoverable without manual symlink
+or marketplace edits on hosts that use the standard `~/.codex/.tmp/plugins`
+layout.
 </details>
 
 <details>
