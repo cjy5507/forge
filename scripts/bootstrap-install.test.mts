@@ -104,6 +104,31 @@ describe('forge bootstrap installer', () => {
     expect(result.stdout).toContain('host: codex');
   });
 
+  it('auto-switches codex host installs to copy mode when mode is omitted', () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'forge-bootstrap-codex-auto-'));
+    tmpDirs.push(projectRoot);
+    const target = join(projectRoot, '.forge', 'plugins', 'forge');
+
+    const result = runBootstrap([
+      '--scope',
+      'project',
+      '--project-root',
+      projectRoot,
+      '--source',
+      FORGE_ROOT,
+      '--host',
+      'codex',
+      '--force',
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(existsSync(join(target, '.codex-plugin', 'plugin.json'))).toBe(true);
+    expect(lstatSync(target).isSymbolicLink()).toBe(false);
+    expect(result.stdout).toContain('mode: symlink');
+    expect(result.stdout).toContain('Forge installed');
+    expect(result.stdout).toContain('mode: copy');
+  });
+
   it('documents the curl bootstrap flow in the README quick start', () => {
     const readme = readFileSync(join(FORGE_ROOT, 'README.md'), 'utf8');
 

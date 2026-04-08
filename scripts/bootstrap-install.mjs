@@ -30,6 +30,7 @@ Options:
 function parseArgs(argv) {
   const options = {
     mode: 'symlink',
+    modeExplicit: false,
     force: false,
     host: 'all',
     profile: 'full',
@@ -75,6 +76,7 @@ function parseArgs(argv) {
         options.scope = value;
       } else if (arg === '--mode') {
         options.mode = value;
+        options.modeExplicit = true;
       } else if (arg === '--source') {
         options.source = value;
       } else if (arg === '--checkout-dir') {
@@ -178,7 +180,11 @@ function resolveSourceDir(options, checkoutDir) {
 
 function runSetup(sourceDir, options, projectRoot) {
   const setupScript = join(sourceDir, 'scripts', 'setup-plugin.mjs');
-  const args = [setupScript, '--scope', options.scope, '--mode', options.mode];
+  const args = [setupScript, '--scope', options.scope];
+
+  if (options.modeExplicit || options.mode !== 'symlink') {
+    args.push('--mode', options.mode);
+  }
 
   if (options.scope === 'project') {
     args.push('--project-root', projectRoot);

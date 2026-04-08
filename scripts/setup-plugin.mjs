@@ -45,6 +45,7 @@ Options:
 function parseArgs(argv) {
   const options = {
     mode: 'symlink',
+    modeExplicit: false,
     force: false,
     host: 'all',
     profile: 'full',
@@ -80,6 +81,7 @@ function parseArgs(argv) {
         options.scope = value;
       } else if (arg === '--mode') {
         options.mode = value;
+        options.modeExplicit = true;
       } else if (arg === '--target') {
         options.target = value;
       } else if (arg === '--project-root') {
@@ -109,6 +111,10 @@ function parseArgs(argv) {
 
   options.profile = normalizeSetupProfile(options.profile);
   options.host = normalizeSetupHost(options.host);
+
+  if (!options.modeExplicit && isSelectiveSetup({ profile: options.profile, host: options.host })) {
+    options.mode = 'copy';
+  }
 
   return options;
 }

@@ -259,6 +259,10 @@ Selective copy installs are also supported for host-specific surfaces:
 node scripts/setup-plugin.mjs --scope project --project-root "$PWD" --mode copy --profile minimal --host codex --dry-run
 node scripts/setup-plugin.mjs --scope project --project-root "$PWD" --mode copy --profile runtime --host gemini --force
 ```
+
+When a selective host/profile install is requested and `--mode` is omitted,
+Forge automatically switches to `copy` mode so Codex-oriented installs do not
+fail on the default symlink path.
 </details>
 
 <details>

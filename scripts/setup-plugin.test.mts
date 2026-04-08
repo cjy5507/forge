@@ -104,6 +104,27 @@ describe('forge setup installer', () => {
     expect(installState.selective).toBe(true);
   });
 
+  it('auto-switches selective codex installs to copy mode when mode is not explicit', () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-selective-auto-'));
+    tmpDirs.push(projectRoot);
+    const target = join(projectRoot, '.forge', 'plugins', 'forge');
+
+    const result = runSetup([
+      '--scope',
+      'project',
+      '--project-root',
+      projectRoot,
+      '--host',
+      'codex',
+      '--force',
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(existsSync(join(target, '.codex-plugin', 'plugin.json'))).toBe(true);
+    expect(lstatSync(target).isSymbolicLink()).toBe(false);
+    expect(result.stdout).toContain('mode: copy');
+  });
+
   it('auto-registers Forge in the local Codex marketplace for codex installs', () => {
     const fakeHome = mkdtempSync(join(tmpdir(), 'forge-codex-home-'));
     tmpDirs.push(fakeHome);
@@ -190,7 +211,7 @@ describe('forge setup installer', () => {
     expect(plan.selective).toBe(true);
   });
 
-  it('rejects selective installs in symlink mode', () => {
+  it('rejects selective installs in explicit symlink mode', () => {
     const projectRoot = mkdtempSync(join(tmpdir(), 'forge-project-selective-link-'));
     tmpDirs.push(projectRoot);
 
@@ -199,6 +220,8 @@ describe('forge setup installer', () => {
       'project',
       '--project-root',
       projectRoot,
+      '--mode',
+      'symlink',
       '--profile',
       'minimal',
       '--host',

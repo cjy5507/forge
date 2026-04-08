@@ -1,5 +1,21 @@
 # Forge Release Notes Draft
 
+## v0.6.2
+
+Codex selective-install UX hotfix.
+
+### Highlights
+
+- Automatically switches selective host/profile installs to `copy` mode when `--mode` is omitted
+- Fixes the common `--host codex` bootstrap path so it no longer fails on the default symlink mode
+- Keeps explicit `--mode symlink` behavior strict, so invalid selective symlink installs still fail clearly
+- Installer regression coverage increased to 491 passing tests across the full suite
+
+### Notes
+
+- This release removes a real usability footgun for Codex installs
+- The goal is that `--host codex` feels like a normal install path, not a hidden selective-install edge case
+
 ## v0.6.1
 
 Codex installer UX patch.
