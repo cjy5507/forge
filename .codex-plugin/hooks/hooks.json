@@ -1,5 +1,5 @@
 {
-  "description": "Forge automated guardrails \u2014 evidence checking, contract enforcement, context management",
+  "description": "Forge automated guardrails — evidence checking, contract enforcement, context management",
   "hooks": {
     "SessionStart": [
       {
