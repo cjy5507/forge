@@ -1,5 +1,25 @@
 # Forge Release Notes Draft
 
+## v0.6.0
+
+Harness OS release.
+
+### Highlights
+
+- Promoted Forge from a phase-only workflow harness into a more explicit deterministic harness OS
+- Added `harness_policy`, `decision_trace`, `verification`, and `recovery` runtime surfaces
+- Added integrity fingerprint stamping and trust-visibility warnings for state/runtime drift
+- Added Stop-time verification planning, durable verification artifact output, and `forge verification`
+- Added recovery ledger with retry/escalation behavior and `forge recovery`
+- Added host adapter contract surfaces with deterministic floor and observed lifecycle reporting
+- Added health/status/analytics surfacing for policy posture, latest decisions, verification, and recovery
+- 487 automated tests passing
+
+### Notes
+
+- This release strengthens determinism, verifiability, recoverability, and bounded host behavior rather than broadening the toolbox surface
+- Claude remains the deepest lifecycle host; degraded hosts now expose a clearer deterministic floor and explicit bounded degraded behavior
+
 ## v0.3.9
 
 Explicit cross-host continue release.

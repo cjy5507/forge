@@ -1,6 +1,6 @@
 {
   "name": "forge",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "mcpServers": {
     "context7": {
       "type": "url",
