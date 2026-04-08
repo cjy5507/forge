@@ -6,7 +6,7 @@ import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
 import { buildForgeAnalyticsReport } from './lib/forge-analytics.mjs';
-import { writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
+import { recordVerificationState, writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const FORGE_ROOT = dirname(THIS_DIR);
@@ -48,6 +48,13 @@ describe('forge analytics surface', () => {
     writeFileSync(join(cwd, '.forge', 'eval', 'latest.md'), '# Eval\n');
     writeFileSync(join(cwd, '.forge', 'evidence', 'rca.md'), '# Evidence\n');
     writeFileSync(join(cwd, '.forge', 'delivery-report', 'report.md'), '# Report\n');
+    recordVerificationState(cwd, {
+      updated_at: new Date().toISOString(),
+      edited_files: ['src/app.ts'],
+      selected_checks: [{ id: 'lint', reason: 'edited source files', command: 'npm run lint' }],
+      status: 'passed',
+      summary: 'Passed: lint.',
+    });
 
     const report = buildForgeAnalyticsReport(cwd);
     expect(report.project.name).toBe('analytics-app');
@@ -55,6 +62,8 @@ describe('forge analytics surface', () => {
     expect(report.artifacts.events.count).toBe(1);
     expect(report.artifacts.eval_json.count).toBe(1);
     expect(report.artifacts.evidence.count).toBe(1);
+    expect(report.artifacts.verification.exists).toBe(true);
+    expect(report.artifacts.verification.status).toBe('passed');
   });
 
   it('prints structured json from the CLI', () => {

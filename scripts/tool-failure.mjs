@@ -10,6 +10,7 @@ import { resolvePhase } from './lib/forge-phases.mjs';
 import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
 import { classifyToolFailure } from './lib/forge-tooling.mjs';
+import { renderRecoverySummary } from './lib/forge-recovery.mjs';
 
 function summarizeLaneFailure(input) {
   const toolName = String(input?.tool_name || 'unknown');
@@ -136,7 +137,7 @@ runHook(async (input) => {
       classification.suggestedCommand,
     ].filter(Boolean),
   });
-  recordRecoveryState(rootCwd, {
+  const recovery = recordRecoveryState(rootCwd, {
     at: entry.at,
     category: classification.category,
     lane_id: resolvedLaneId,
@@ -148,6 +149,7 @@ runHook(async (input) => {
     status: 'active',
     summary: guidance,
   });
+  const recoverySummary = renderRecoverySummary(recovery.recovery.latest);
   console.log(JSON.stringify({
     continue: true,
     suppressOutput: true,
@@ -155,7 +157,7 @@ runHook(async (input) => {
       hookEventName: 'PostToolUseFailure',
       additionalContext: (tier === 'light'
         ? `[Forge] failure logged (${classification.category})`
-        : `[Forge Failure Loop] ${guidance}${classification.suggestedCommand ? ` Retry: ${classification.suggestedCommand}` : ''}`) + mismatchWarning,
+        : `[Forge Failure Loop] ${guidance}${classification.suggestedCommand ? ` Retry: ${classification.suggestedCommand}` : ''}${recoverySummary ? ` State: ${recoverySummary}` : ''}`) + mismatchWarning,
     },
   }));
 }, { name: 'tool-failure' });

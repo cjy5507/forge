@@ -27,3 +27,13 @@ describes what the field actually means — "which lane should be picked up next
 
 **Not changing**: The word "resume" as a generic English verb in prose descriptions
 (e.g., "resume from Phase 2") is fine — it's only the API field name that needed consistency.
+
+## Harness OS
+
+**Decision**: Forge is described as a deterministic harness OS, not a general coding toolkit.
+
+This terminology is intentional:
+
+- `harness` means Forge governs execution, verification, and recovery
+- `OS` means Forge owns durable runtime coordination surfaces
+- `deterministic` means important decisions should be explainable from persisted state

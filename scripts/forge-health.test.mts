@@ -46,6 +46,8 @@ describe('forge health surface', () => {
     expect(report.host.id).toBe('codex');
     expect(report.host.support_level).toBe('degraded');
     expect(report.warnings[0]).toContain('degraded mode');
+    expect(report.host.determinism_floor.sharedContinue).toBe(true);
+    expect(report.host.observed_lifecycle.hookLifecycleObserved).toBe(false);
   });
 
   it('prints structured json from the CLI', () => {
@@ -87,6 +89,9 @@ describe('forge health surface', () => {
     expect(report.audit.hook_runtime.active_profile).toBe('minimal');
     expect(report.audit.hook_runtime.disabled_hooks).toContain('context-manager');
     expect(report.audit.hook_runtime.total_hooks).toBeGreaterThan(0);
+    expect(report.audit.verification_artifact.exists).toBe(false);
+    expect(report.audit.host_adapter.hostId).toBe('codex');
+    expect(report.audit.host_adapter.hookLifecycleObserved).toBe(false);
   });
 
   it('surfaces harness policy and latest decision details', () => {
@@ -147,6 +152,31 @@ describe('forge health surface', () => {
     expect(report.runtime.latest_decision.summary).toContain('Blocked stop');
     expect(report.runtime.verification_status).toBe('passed');
     expect(report.runtime.recovery_status).toBe('active');
+  });
+
+  it('surfaces verification artifact details in audit output', () => {
+    const cwd = makeWorkspace();
+    mkdirSync(join(cwd, '.forge', 'evidence'), { recursive: true });
+    writeRuntimeState(cwd, {
+      verification: {
+        updated_at: new Date().toISOString(),
+        edited_files: ['src/app.ts'],
+        selected_checks: [{ id: 'lint', reason: 'edited source files', command: 'npm run lint' }],
+        status: 'passed',
+        summary: 'Passed: lint.',
+      },
+    });
+    writeJsonFile(join(cwd, '.forge', 'evidence', 'verification-latest.json'), {
+      updated_at: new Date().toISOString(),
+      edited_files: ['src/app.ts'],
+      selected_checks: [{ id: 'lint', reason: 'edited source files', command: 'npm run lint' }],
+      status: 'passed',
+      summary: 'Passed: lint.',
+    });
+
+    const report = buildHealthReport({ cwd, audit: true });
+    expect(report.audit.verification_artifact.exists).toBe(true);
+    expect(report.audit.verification_artifact.status).toBe('passed');
   });
 
   it('prints audit data from the CLI when requested', () => {

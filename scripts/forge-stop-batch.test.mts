@@ -109,6 +109,14 @@ describe('forge stop batch checks', () => {
       tooling: {
         edited_files: ['src/app.ts'],
       },
+      lanes: {
+        app: {
+          id: 'app',
+          title: 'App lane',
+          status: 'in_progress',
+          areas: ['src'],
+        },
+      },
     });
     writeFileSync(join(cwd, 'package.json'), JSON.stringify({
       scripts: {
@@ -126,7 +134,10 @@ describe('forge stop batch checks', () => {
     const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
     expect(runtime.decision_trace.latest.kind).toBe('batch_check_block');
     expect(runtime.verification.status).toBe('failed');
+    expect(runtime.verification.lane_refs).toContain('app');
     expect(runtime.verification.selected_checks[0].id).toBe('lint');
+    const artifact = JSON.parse(readFileSync(join(cwd, '.forge', 'evidence', 'verification-latest.json'), 'utf8'));
+    expect(artifact.status).toBe('failed');
   });
 
   it('clears edited files when batch checks pass', () => {
@@ -156,6 +167,14 @@ describe('forge stop batch checks', () => {
       tooling: {
         edited_files: ['src/app.ts'],
       },
+      lanes: {
+        app: {
+          id: 'app',
+          title: 'App lane',
+          status: 'in_progress',
+          areas: ['src'],
+        },
+      },
     });
     writeFileSync(join(cwd, 'package.json'), JSON.stringify({
       scripts: {
@@ -173,6 +192,9 @@ describe('forge stop batch checks', () => {
     expect(runtime.tooling.last_batch_check.status).toBe('passed');
     expect(runtime.decision_trace.latest.kind).toBe('allow_noncritical');
     expect(runtime.verification.status).toBe('passed');
+    expect(runtime.verification.lane_refs).toContain('app');
+    const artifact = JSON.parse(readFileSync(join(cwd, '.forge', 'evidence', 'verification-latest.json'), 'utf8'));
+    expect(artifact.status).toBe('passed');
   });
 
   it('records failure categories and retry commands in tool-failure', () => {
@@ -217,5 +239,47 @@ describe('forge stop batch checks', () => {
     expect(runtime.decision_trace.latest.kind).toBe('failure_lint');
     expect(runtime.recovery.latest.category).toBe('lint');
     expect(runtime.recovery.latest.status).toBe('active');
+  });
+
+  it('escalates repeated recovery failures after the retry limit', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'batch-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      mode: 'build',
+      status: 'active',
+      created_at: '',
+      updated_at: '',
+      client_name: '',
+      agents_active: [],
+      spec_approved: true,
+      design_approved: true,
+      tasks: [],
+      holes: [],
+      pr_queue: [],
+      version: '0.1.0',
+      tier: 'full',
+      stats: undefined,
+      phase_index: 4,
+    });
+    writeFileSync(join(cwd, 'package.json'), JSON.stringify({
+      scripts: {
+        lint: 'eslint .',
+      },
+    }));
+
+    for (let index = 0; index < 3; index += 1) {
+      runHook('tool-failure.mjs', cwd, {
+        tool_name: 'Bash',
+        tool_input: { command: 'npm run lint' },
+        error: 'Lint failed',
+      }, { FORGE_TIER: 'full' });
+    }
+
+    const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
+    expect(runtime.recovery.latest.retry_count).toBe(3);
+    expect(runtime.recovery.latest.status).toBe('escalated');
   });
 });

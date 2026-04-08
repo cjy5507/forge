@@ -2,8 +2,10 @@
 
 import { buildContinueContext, selectContinueDirective } from './lib/forge-continue.mjs';
 import { withJsonReadCache } from './lib/forge-io.mjs';
+import { describeForgeHostDegradedExecution, getForgeHostAdapterContract } from './lib/forge-host-support.mjs';
 import { buildStatusModel, renderStatusText } from './lib/forge-status.mjs';
 import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
+import { detectHostId } from './lib/forge-host-context.mjs';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS_MS = 24 * ONE_HOUR_MS;
@@ -55,6 +57,8 @@ function buildPayload(cwd = '.') {
   }
 
   const runtime = readRuntimeState(cwd);
+  const hostId = runtime?.host_context?.current_host || detectHostId({}, process.env) || 'unknown';
+  const hostContract = getForgeHostAdapterContract(hostId);
   const selected = selectContinueDirective({ cwd, state, runtime });
   const context = buildContinueContext({
     cwd,
@@ -73,6 +77,9 @@ function buildPayload(cwd = '.') {
     project: state.project || '',
     phase_id: state.phase_id || state.phase || '',
     mode: state.mode || 'build',
+    host_id: hostId,
+    host_contract: hostContract,
+    degraded_execution_note: describeForgeHostDegradedExecution(hostId),
     skill: selected.skill,
     reason: selected.reason,
     stale_tier: getStaleTier(selected.runtime),
@@ -99,6 +106,9 @@ withJsonReadCache(() => {
     process.stdout.write(`${payload.status_text}\n\nResume skill: ${payload.message}\n`);
     if (payload.reason) {
       process.stdout.write(`Reason: ${payload.reason}\n`);
+    }
+    if (payload.degraded_execution_note) {
+      process.stdout.write(`Host note: ${payload.degraded_execution_note}\n`);
     }
   }
 });

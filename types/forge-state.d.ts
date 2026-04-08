@@ -163,6 +163,7 @@ export interface ForgeVerificationCheck {
 export interface ForgeVerificationState {
   updated_at: string;
   edited_files: string[];
+  lane_refs: string[];
   selected_checks: ForgeVerificationCheck[];
   status: string;
   summary: string;
@@ -178,8 +179,10 @@ export interface ForgeRecoveryItem {
   guidance: string;
   suggested_command: string;
   retry_count: number;
+  max_retry_count: number;
   status: string;
   summary: string;
+  escalation_reason: string;
 }
 
 export interface ForgeRecoveryState {

@@ -12,8 +12,10 @@ const COMMAND_SCRIPTS = new Map([
   ['eval', 'forge-eval.mjs'],
   ['health', 'forge-health.mjs'],
   ['info', 'forge-status.mjs'],
+  ['recovery', 'forge-recovery.mjs'],
   ['setup', 'setup-plugin.mjs'],
   ['status', 'forge-status.mjs'],
+  ['verification', 'forge-verification.mjs'],
   ['worktree', 'forge-worktree.mjs'],
 ]);
 
@@ -38,6 +40,8 @@ function printUsage() {
 Usage:
   forge analytics [--json]
   forge status [--json|--verbose]
+  forge verification [--json]
+  forge recovery [--json]
   forge continue [--json]
   forge health [--json] [--host <id>]
   forge lane summarize [--json]

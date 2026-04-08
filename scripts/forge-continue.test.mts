@@ -235,4 +235,32 @@ describe('forge continue surface', () => {
     expect(payload.skill).toBe('info');
     expect(payload.message).toBe('forge:info');
   });
+
+  it('surfaces degraded host execution notes for codex resumes', () => {
+    const cwd = makeWorkspace();
+    const state = writeForgeState(cwd, {
+      project: 'codex-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      host_context: {
+        current_host: 'codex',
+      },
+    }, { state });
+
+    const result = spawnSync(process.execPath, [join(FORGE_ROOT, 'scripts', 'forge-continue.mjs')], {
+      cwd,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        CODEX_THREAD_ID: 'thread-1',
+      },
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Host note: codex runs with bounded degraded behavior');
+  });
 });
