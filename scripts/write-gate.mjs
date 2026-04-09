@@ -12,6 +12,54 @@ import { resolveForgeBaseDir } from './lib/forge-io.mjs';
 import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
 
+// Linter/formatter/tsconfig files must not be weakened by agents to make
+// code pass. Fix the code to satisfy the config instead. Override with
+// FORGE_ALLOW_CONFIG_EDIT=1 when intentionally changing project policy.
+const PROTECTED_CONFIG_PATTERNS = [
+  /(^|\/)\.eslintrc(\.[^/]+)?$/,
+  /(^|\/)eslint\.config\.(c|m)?[jt]s$/,
+  /(^|\/)\.prettierrc(\.[^/]+)?$/,
+  /(^|\/)prettier\.config\.(c|m)?[jt]s$/,
+  /(^|\/)biome\.jsonc?$/,
+  /(^|\/)tsconfig(\.[^/]+)?\.json$/,
+  /(^|\/)jsconfig(\.[^/]+)?\.json$/,
+  /(^|\/)vitest\.config\.(c|m)?[jt]s$/,
+  /(^|\/)vite\.config\.(c|m)?[jt]s$/,
+  /(^|\/)\.markdownlint(\.[^/]+)?$/,
+  /(^|\/)\.editorconfig$/,
+];
+
+function isProtectedConfig(filePath) {
+  if (!filePath) return false;
+  const normalized = String(filePath).replace(/\\/g, '/');
+  return PROTECTED_CONFIG_PATTERNS.some(re => re.test(normalized));
+}
+
+// Orphan detection: `.forge/` exists but state.json is missing AND at
+// least one of the artifact directories has content. This is a corrupt
+// post-cancel state where the write-gate would otherwise fail-open.
+const ORPHAN_ARTIFACT_DIRS = ['contracts', 'design', 'tasks', 'evidence', 'holes'];
+
+function hasOrphanArtifacts(cwd) {
+  try {
+    const forgeDir = resolve(resolveForgeBaseDir(cwd), '.forge');
+    if (!existsSync(forgeDir)) return { orphaned: false, reason: 'no-forge-dir' };
+    for (const dir of ORPHAN_ARTIFACT_DIRS) {
+      const path = resolve(forgeDir, dir);
+      if (!existsSync(path)) continue;
+      try {
+        const entries = readdirSync(path).filter(name => !name.startsWith('.'));
+        if (entries.length > 0) {
+          return { orphaned: true, reason: `.forge/${dir}/ non-empty (${entries.length} entries)` };
+        }
+      } catch { /* unreadable dir, skip */ }
+    }
+    return { orphaned: false, reason: 'clean' };
+  } catch {
+    return { orphaned: false, reason: 'error' };
+  }
+}
+
 function isCodeWritingPhase(phase) {
   if (!phase || typeof phase !== 'object') {
     return false;
@@ -85,16 +133,6 @@ function resolveIntentLane(runtime, cwd) {
 
 runHook(async (input) => {
   const cwd = input?.cwd || '.';
-  const state = readForgeState(cwd);
-
-  if (!state) {
-    console.log(JSON.stringify({ continue: true, suppressOutput: true }));
-    return;
-  }
-
-  const phase = resolvePhase(state);
-  const tier = readActiveTier(cwd, state, input);
-  const risk = detectWriteRisk(input);
   const filePath = String(
     input?.tool_input?.file_path ||
     input?.tool_input?.path ||
@@ -102,6 +140,72 @@ runHook(async (input) => {
     input?.tool_input?.file ||
     '',
   );
+  const risk = detectWriteRisk(input);
+
+  // ── Config protection (state-independent, highest priority) ──
+  // Runs BEFORE state load so it also protects non-Forge sessions.
+  // Weakening linter/tsconfig is never the fix. Skip for .forge/ state
+  // files and when FORGE_ALLOW_CONFIG_EDIT=1 or FORGE_TIER=off.
+  if (
+    !isForgeStateFile(filePath, cwd) &&
+    isProtectedConfig(filePath) &&
+    process.env.FORGE_ALLOW_CONFIG_EDIT !== '1' &&
+    readEnvTier() !== 'off'
+  ) {
+    console.log(JSON.stringify({
+      continue: true,
+      suppressOutput: true,
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: `Forge config guard: "${filePath}" is a linter/formatter/tsconfig file. Do not weaken project standards to make code pass — fix the code to satisfy the existing config. If you are intentionally changing project policy, rerun with FORGE_ALLOW_CONFIG_EDIT=1.`,
+      },
+    }));
+    return;
+  }
+
+  // ── Load state ──
+  const state = readForgeState(cwd);
+
+  // ── Orphan detection (state missing) ──
+  // Clean non-Forge repos pass through. Corrupt post-cancel states with
+  // leftover artifacts get risk-based warn/deny instead of silent fail-open.
+  if (!state) {
+    if (isForgeStateFile(filePath, cwd) || process.env.FORGE_IGNORE_ORPHAN_STATE === '1') {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+    const orphan = hasOrphanArtifacts(cwd);
+    if (!orphan.orphaned) {
+      console.log(JSON.stringify({ continue: true, suppressOutput: true }));
+      return;
+    }
+    const reason = `Forge orphan guard: .forge/state.json is missing but artifacts remain (${orphan.reason}). This is a corrupt post-cancel state. Recreate state.json via forge:ignite, or set FORGE_IGNORE_ORPHAN_STATE=1 to override.`;
+    if (risk.level === 'high') {
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: true,
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: reason,
+        },
+      }));
+      return;
+    }
+    console.log(JSON.stringify({
+      continue: true,
+      suppressOutput: true,
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        additionalContext: `[Forge] orphan warning: ${reason}`,
+      },
+    }));
+    return;
+  }
+
+  const phase = resolvePhase(state);
+  const tier = readActiveTier(cwd, state, input);
   const runtime = readRuntimeState(cwd);
 
   // ── Phase checks (TIER-INDEPENDENT) ──

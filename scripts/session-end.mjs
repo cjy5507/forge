@@ -12,6 +12,7 @@ import { appendRecent } from './lib/forge-io.mjs';
 import { readActiveTier } from './lib/forge-tiers.mjs';
 import { readForgeState, readRuntimeState, summarizePendingWork, updateRuntimeState } from './lib/forge-session.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
+import { finalizeSessionCost } from './lib/forge-cost.mjs';
 
 runHook(async (input) => {
   const cwd = input?.cwd || '.';
@@ -46,6 +47,12 @@ runHook(async (input) => {
     compactRuntimeState(next);
     return next;
   });
+
+  try {
+    finalizeSessionCost(cwd);
+  } catch {
+    // Non-fatal: cost finalization must never break session cleanup.
+  }
 
   cleanupSessionArtifacts(cwd);
   cleanupForgeBranches(cwd, readRuntimeState(cwd));

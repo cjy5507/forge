@@ -3,6 +3,7 @@ import { join } from 'path';
 import { ensureForgeDir } from './forge-io.mjs';
 import { readVerificationArtifact } from './forge-verification.mjs';
 import { readForgeState, readRuntimeState } from './forge-session.mjs';
+import { readCostSamples, summarizeCost } from './forge-cost.mjs';
 
 function listFiles(dirPath, suffix = '') {
   if (!existsSync(dirPath)) {
@@ -35,6 +36,7 @@ export function buildForgeAnalyticsReport(cwd = '.') {
   const deliveryFiles = listFiles(join(forgeDir, 'delivery-report'), '.md');
   const verificationArtifact = readVerificationArtifact(cwd);
   const laneCount = Object.keys(runtime?.lanes || {}).length;
+  const cost = summarizeCost(readCostSamples(cwd));
 
   return {
     project: {
@@ -53,6 +55,7 @@ export function buildForgeAnalyticsReport(cwd = '.') {
         status: verificationArtifact?.status || '',
       },
     },
+    cost,
   };
 }
 
@@ -67,5 +70,6 @@ export function renderForgeAnalyticsText(report) {
     `Evidence: ${report.artifacts.evidence.count}`,
     `Delivery reports: ${report.artifacts.delivery_report.count}`,
     `Verification artifact: ${report.artifacts.verification.exists ? (report.artifacts.verification.status || 'present') : 'none'}`,
+    `Cost samples: ${report.cost?.sample_count ?? 0} (${report.cost?.has_measured_tokens ? 'measured' : 'estimate'}, ${report.cost?.total_estimated_units ?? 0} units)`,
   ].join('\n') + '\n';
 }

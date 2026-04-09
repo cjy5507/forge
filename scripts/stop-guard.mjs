@@ -21,6 +21,7 @@ import { readActiveTier } from './lib/forge-tiers.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 import { buildStopBatchCheckPlan, runStopBatchChecks, summarizeStopBatchResults } from './lib/forge-tooling.mjs';
+import { appendCostSample, estimatePhaseCost, probeStopHookUsage, recordHookInputKeys } from './lib/forge-cost.mjs';
 
 const CRITICAL_PHASES = new Set(['develop', 'fix', 'qa']);
 
@@ -174,6 +175,35 @@ ${failedCheck.output || batchSummary}`;
         summary: batchSummary,
       });
     }
+  }
+
+  // ── Cost sampling (observation only, never blocks) ──
+  // Records one sample per Stop using probed token usage if available,
+  // otherwise a tier-weighted duration estimate. Fully non-fatal.
+  try {
+    recordHookInputKeys(cwd, input);
+    const prevStopAt = runtime?.cost?.last_stop_at || runtime?.stats?.started_at || '';
+    const nowIso = new Date().toISOString();
+    const prevMs = prevStopAt ? Date.parse(prevStopAt) : NaN;
+    const durationMs = Number.isFinite(prevMs) ? Math.max(0, Date.now() - prevMs) : 0;
+
+    const measured = probeStopHookUsage(input);
+    const sample = measured
+      ? { phase_id: phase.id, tier, duration_ms: durationMs, ...measured }
+      : estimatePhaseCost({ tier, phaseId: phase.id, durationMs });
+
+    appendCostSample(cwd, sample);
+
+    updateRuntimeState(cwd, current => ({
+      ...current,
+      cost: {
+        ...(current.cost || {}),
+        last_stop_at: nowIso,
+        last_sample_source: sample.source,
+      },
+    }));
+  } catch {
+    // Non-fatal: cost sampling must never break a Stop hook.
   }
 
   // For non-critical phases, only full tier gets stop protection.
