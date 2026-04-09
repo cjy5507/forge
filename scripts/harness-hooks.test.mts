@@ -46,10 +46,19 @@ function runHook(scriptName, cwd, payload = {}, options = {}) {
     cwd,
     input: JSON.stringify({ cwd, ...payload }),
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      ...(options.env || {}),
-    },
+    env: (() => {
+      const base = { ...process.env };
+      delete base.CLAUDE_PLUGIN_ROOT;
+      delete base.CODEX_THREAD_ID;
+      delete base.CODEX_SESSION_ID;
+      const overrides = options.env || {};
+      const wantsCodex = 'CODEX_THREAD_ID' in overrides || 'CODEX_SESSION_ID' in overrides;
+      return {
+        ...base,
+        ...(wantsCodex ? {} : { CLAUDE_PLUGIN_ROOT: FORGE_ROOT }),
+        ...overrides,
+      };
+    })(),
   });
 
   expect(result.status).toBe(0);
@@ -67,10 +76,19 @@ function runHookRaw(scriptName, cwd, payload = {}, options = {}) {
     cwd,
     input: JSON.stringify({ cwd, ...payload }),
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      ...(options.env || {}),
-    },
+    env: (() => {
+      const base = { ...process.env };
+      delete base.CLAUDE_PLUGIN_ROOT;
+      delete base.CODEX_THREAD_ID;
+      delete base.CODEX_SESSION_ID;
+      const overrides = options.env || {};
+      const wantsCodex = 'CODEX_THREAD_ID' in overrides || 'CODEX_SESSION_ID' in overrides;
+      return {
+        ...base,
+        ...(wantsCodex ? {} : { CLAUDE_PLUGIN_ROOT: FORGE_ROOT }),
+        ...overrides,
+      };
+    })(),
   });
 
   return {
@@ -86,10 +104,19 @@ function runHookRawInput(scriptName, cwd, input, options = {}) {
     cwd,
     input,
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      ...(options.env || {}),
-    },
+    env: (() => {
+      const base = { ...process.env };
+      delete base.CLAUDE_PLUGIN_ROOT;
+      delete base.CODEX_THREAD_ID;
+      delete base.CODEX_SESSION_ID;
+      const overrides = options.env || {};
+      const wantsCodex = 'CODEX_THREAD_ID' in overrides || 'CODEX_SESSION_ID' in overrides;
+      return {
+        ...base,
+        ...(wantsCodex ? {} : { CLAUDE_PLUGIN_ROOT: FORGE_ROOT }),
+        ...overrides,
+      };
+    })(),
   });
 
   return {
