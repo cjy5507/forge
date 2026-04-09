@@ -222,6 +222,9 @@ For project-local or other install options, see [Installation details](#installa
 
 ## Installation details
 
+**Prerequisite:** Node.js 18+ is required for Forge's own scripts and for all four host
+CLIs (Claude Code, Codex, Gemini CLI, Qwen Code). Check with `node --version`.
+
 <details>
 <summary>Global install (manual)</summary>
 
@@ -297,7 +300,9 @@ Or with HTTPS:
 ```
 
 Point Claude Code at the repository root (the folder containing `.claude-plugin/plugin.json`,
-`skills/`, `scripts/`, and `hooks/`), not at `.claude-plugin/` alone.
+`skills/`, `commands/`, `agents/`, `scripts/`, and `hooks/`), not at `.claude-plugin/` alone.
+The `commands/forge/*.toml` files are what expose `/forge:analyze`, `/forge:continue`, and
+`/forge:info` as slash commands inside Claude Code.
 </details>
 
 <details>
@@ -325,6 +330,11 @@ Global/bootstrap installs now also auto-register Forge into the local Codex
 plugin marketplace cache so the plugin is discoverable without manual symlink
 or marketplace edits on hosts that use the standard `~/.codex/.tmp/plugins`
 layout.
+
+**Note for contributors:** Forge ships two hook manifests — `hooks/hooks.json`
+(Claude, uses `${CLAUDE_PLUGIN_ROOT}`) and `.codex-plugin/hooks/hooks.json`
+(Codex, uses relative paths). Both reference the same `hooks/run-hook.mjs`
+runtime, so any edit to hook lifecycle events must be mirrored in both files.
 </details>
 
 <details>
@@ -382,6 +392,9 @@ gemini extensions update forge
 ```
 
 Gemini looks for `gemini-extension.json` at the extension root, so point it at the repository root.
+Forge's `gemini-extension.json` is intentionally minimal (MCP + `contextFileName` only); Gemini
+discovers `skills/`, `agents/`, and `commands/` by filesystem convention rather than manifest
+declaration, which is why it looks thinner than `qwen-extension.json`.
 Forge currently supports explicit shared-state flows through Gemini commands such as `/forge:continue`
 and `/forge:info`; Claude-style hook lifecycle parity is not claimed.
 </details>

@@ -1,5 +1,24 @@
 # Forge Release Notes Draft
 
+## v0.7.0
+
+Multilingual UX and installation clarity release.
+
+### Highlights
+
+- Added multilingual UX-opening and behavioral harness flows (KO/JA/ZH alongside EN)
+- Added behavioral audit runtime (`scripts/lib/forge-behavioral-audit.mjs`) with regression coverage
+- README installation details now list host-CLI npm install steps for Claude Code, Codex, Gemini CLI, and Qwen Code (with pnpm/yarn/bun alternatives)
+- README Claude Code install block now lists `commands/` and `agents/` alongside `skills/`, `scripts/`, `hooks/` — matching what Claude actually consumes to expose `/forge:analyze`, `/forge:continue`, `/forge:info`
+- README Installation details gained a Node.js 18+ prerequisite note covering Forge scripts and all four host CLIs
+- README Gemini section now explains why `gemini-extension.json` is intentionally minimal (filesystem-convention discovery) versus `qwen-extension.json`
+- README Codex section now documents the dual `hooks/hooks.json` / `.codex-plugin/hooks/hooks.json` manifest mirror so contributors update both when editing lifecycle events
+
+### Notes
+
+- This release is primarily documentation and locale coverage; no host adapter contract changes
+- All four host-CLI npm package names verified against the npm registry on 2026-04-10
+
 ## v0.6.2
 
 Codex selective-install UX hotfix.
