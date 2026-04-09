@@ -7,4 +7,10 @@ Requirements:
 - Verify whether the saved analysis is stale or missing.
 - If analysis is needed, route through Forge's analyze flow instead of coding immediately.
 - Keep evidence and next steps explicit.
+- Use a first-principles structure when the problem needs redesign:
+  1. identify assumptions and separate physical constraints from habit
+  2. redesign around the irreducible constraints
+  3. produce an action plan plus repeat-mistake checkpoints
+- If the request is design/UX improvement, produce `.forge/design/ux-analysis.md` and hand off to design in UX-opening mode.
+- If the request is about harness behavior, produce a behavioral audit with operating prescriptions.
 """

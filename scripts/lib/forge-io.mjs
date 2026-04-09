@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkS
 import { dirname, join, resolve } from 'path';
 import { createHash } from 'crypto';
 import { withRetry, LockError } from './error-handler.mjs';
+import { normalizeLocale } from './forge-locale.mjs';
 
 /** @typedef {import('../../types/forge-state').ForgeAnalysisMeta} ForgeAnalysisMeta */
 /** @typedef {import('../../types/forge-state').ForgeHostContext} ForgeHostContext */
@@ -138,6 +139,7 @@ export const DEFAULT_ANALYSIS = {
   last_type: '',
   last_target: '',
   artifact_path: '',
+  locale: 'en',
   graph_health: 'unknown',
   confidence: 'unknown',
   risk_level: 'unknown',
@@ -218,7 +220,15 @@ export const DEFAULT_RUNTIME = {
   version: 3,
   active_tier: 'light',
   detected_locale: 'en',
+  preferred_locale: 'en',
   last_task_type: 'general',
+  behavioral_profile: '',
+  active_prescriptions: [],
+  behavioral_counters: {
+    total_prompts: 0,
+    question_prompts: 0,
+    design_improvement_requests: 0,
+  },
   task_graph_version: 1,
   company_mode: 'guided',
   company_gate_mode: 'auto',
@@ -629,6 +639,7 @@ export function normalizeAnalysisMeta(analysis = {}) {
   normalized.last_type = requireString(normalized.last_type);
   normalized.last_target = requireString(normalized.last_target);
   normalized.artifact_path = requireString(normalized.artifact_path);
+  normalized.locale = normalizeLocale(normalized.locale, 'en');
   normalized.graph_health = requireString(normalized.graph_health, 'unknown') || 'unknown';
   normalized.confidence = requireString(normalized.confidence, 'unknown') || 'unknown';
   normalized.risk_level = requireString(normalized.risk_level, 'unknown') || 'unknown';

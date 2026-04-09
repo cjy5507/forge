@@ -134,6 +134,22 @@ If an agent discovers it needs information not in its budget:
 3. If approved: item is loaded as a one-time T2 addition
 4. If the same item is requested by 3+ agents: promote it to T1 for that role
 
+## Checkpoint Exception
+
+Session checkpointing is a safety valve, not a default rhythm.
+
+Only checkpoint early when BOTH are true:
+1. The agent has consumed enough extra context that further progress is likely to degrade into guesswork or hallucination
+2. The remaining work can be resumed from a narrow, deterministic next move recorded in runtime/handoff notes
+
+Do NOT checkpoint merely because:
+- work is still in progress
+- a lane is not yet fully merged
+- the team wants to narrate progress
+- another session could theoretically continue later
+
+Harness rule: if safe parallel agents can keep closing the scope now, keep going now.
+
 ## Express Mode
 
 Express mode relaxes budgets:

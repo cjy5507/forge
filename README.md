@@ -37,7 +37,7 @@ Forge: my-saas-app (build)
 Phase 4/9 — develop
 ████████████░░░░ 55%
 
-Next action: Resume lane auth-api — JWT middleware done, testing refresh token flow
+Next action: Finish lane auth-api — JWT middleware done, testing refresh token flow
 Active: auth-api, payment-ui. Blocked: db-schema (waiting on contract review)
 
 Lanes: 2/5 done, 1 blocked
@@ -60,7 +60,7 @@ Forge: my-saas-app
 Phase 4/9 — develop
 3 lanes active, 1 blocked (auth waiting on DB schema)
 
-Next action: Resume lane auth-api — JWT middleware done, testing refresh token flow
+Next action: Finish lane auth-api — JWT middleware done, testing refresh token flow
 ```
 
 It picks the right entry point automatically:
@@ -266,7 +266,23 @@ fail on the default symlink path.
 </details>
 
 <details>
-<summary>Claude Code marketplace</summary>
+<summary>Claude Code</summary>
+
+Install the Claude Code CLI itself:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Or with pnpm / yarn / bun:
+
+```bash
+pnpm add -g @anthropic-ai/claude-code
+yarn global add @anthropic-ai/claude-code
+bun add -g @anthropic-ai/claude-code
+```
+
+Then register Forge as a plugin from the Claude Code marketplace:
 
 ```text
 /plugin marketplace add cjy5507/forge
@@ -287,11 +303,21 @@ Point Claude Code at the repository root (the folder containing `.claude-plugin/
 <details>
 <summary>Codex</summary>
 
+Install the Codex CLI itself:
+
 ```bash
 npm install -g @openai/codex
 ```
 
-Point the host at the repository root containing `.codex-plugin/plugin.json`,
+Or with pnpm / yarn / bun:
+
+```bash
+pnpm add -g @openai/codex
+yarn global add @openai/codex
+bun add -g @openai/codex
+```
+
+Then point the host at the repository root containing `.codex-plugin/plugin.json`,
 `hooks/`, and `scripts/`.
 Recommended roots: `~/.forge/plugins/forge` or `./.forge/plugins/forge`.
 
@@ -316,6 +342,22 @@ coverage and any local install-state metadata created by copy-mode setup.
 
 <details>
 <summary>Gemini CLI</summary>
+
+Install the Gemini CLI itself:
+
+```bash
+npm install -g @google/gemini-cli
+```
+
+Or with pnpm / yarn / bun:
+
+```bash
+pnpm add -g @google/gemini-cli
+yarn global add @google/gemini-cli
+bun add -g @google/gemini-cli
+```
+
+Then install Forge as a Gemini extension:
 
 ```bash
 gemini extensions install /absolute/path/to/forge
@@ -346,6 +388,22 @@ and `/forge:info`; Claude-style hook lifecycle parity is not claimed.
 
 <details>
 <summary>Qwen Code</summary>
+
+Install the Qwen Code CLI itself:
+
+```bash
+npm install -g @qwen-code/qwen-code
+```
+
+Or with pnpm / yarn / bun:
+
+```bash
+pnpm add -g @qwen-code/qwen-code
+yarn global add @qwen-code/qwen-code
+bun add -g @qwen-code/qwen-code
+```
+
+Then install Forge as a Qwen extension:
 
 ```bash
 qwen extensions install /absolute/path/to/forge

@@ -88,7 +88,7 @@ produce a reviewable execution plan that Develop can consume with minimal ambigu
    - Update company runtime:
      `node scripts/forge-lane-runtime.mjs set-company-gate --gate implementation_readiness --gate-owner lead-dev --delivery-state in_progress`
    - Update session handoff toward development:
-     `node scripts/forge-lane-runtime.mjs set-session-brief --goal "Advance the next implementation lane" --next-owner lead-dev --handoff "{plan summary}"`
+     `node scripts/forge-lane-runtime.mjs set-session-brief --goal "Complete the active implementation lanes and hand off to QA" --next-owner lead-dev --handoff "{plan summary}"`
 
 8. Create git tag: forge/v1-plan
 

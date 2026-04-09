@@ -144,7 +144,7 @@ Example next action:
     "skill": "continue",
     "target": "auth-api",
     "reason": "JWT middleware done, testing refresh token flow",
-    "summary": "Resume lane auth-api — JWT middleware done, testing refresh token flow"
+    "summary": "Finish lane auth-api — JWT middleware done, testing refresh token flow"
   }
 }
 ```

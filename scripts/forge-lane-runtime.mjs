@@ -25,7 +25,7 @@ Usage:
   node scripts/forge-lane-runtime.mjs write-session-handoff --summary <text> [--next-goal <text>] [--next-owner <owner>]
   node scripts/forge-lane-runtime.mjs set-company-gate --gate <gate> [--gate-owner <owner>] [--delivery-state <state>] [--customer-blockers <a,b>] [--internal-blockers <a,b>]
   node scripts/forge-lane-runtime.mjs auto-decompose --description <text> [--dry-run] [--json]
-  node scripts/forge-lane-runtime.mjs record-analysis --type <kind> [--target <target>] [--artifact <path>] [--graph-health <health>] [--confidence <level>] [--risk <level>] [--summary <text>] [--stale]
+  node scripts/forge-lane-runtime.mjs record-analysis --type <kind> [--target <target>] [--artifact <path>] [--locale <locale>] [--graph-health <health>] [--confidence <level>] [--risk <level>] [--summary <text>] [--stale]
   node scripts/forge-lane-runtime.mjs analysis-status [--json]
   node scripts/forge-lane-runtime.mjs summarize-lanes [--json]
   node scripts/forge-lane-runtime.mjs --help
@@ -55,9 +55,10 @@ Options:
   --internal-blockers comma-separated internal blockers
   --owner       current lane owner role or label
   --note        handoff or status note
-  --type        analysis type (architecture | impact | dependency | quality)
+  --type        analysis type (architecture | impact | dependency | quality | design-improvement)
   --target      analysis target symbol, file, module, or lane
   --artifact    analysis artifact path
+  --locale      analysis locale (ko | en | ja | zh)
   --graph-health graph fidelity / health descriptor
   --confidence  confidence level for analysis result
   --risk        risk level from analysis result
@@ -160,6 +161,7 @@ function parseArgs(argv) {
       '--type',
       '--target',
       '--artifact',
+      '--locale',
       '--graph-health',
       '--confidence',
       '--risk',
@@ -226,6 +228,8 @@ function parseArgs(argv) {
         options.target = value.trim();
       } else if (arg === '--artifact') {
         options.artifact = value.trim();
+      } else if (arg === '--locale') {
+        options.locale = value.trim();
       } else if (arg === '--graph-health') {
         options.graphHealth = value.trim();
       } else if (arg === '--confidence') {
@@ -773,6 +777,7 @@ function recordAnalysis(options) {
     last_type: options.type,
     last_target: options.target || '',
     artifact_path: artifactPath,
+    locale: options.locale || '',
     graph_health: options.graphHealth || 'unknown',
     confidence: options.confidence || 'unknown',
     risk_level: options.risk || 'unknown',
@@ -784,6 +789,7 @@ function recordAnalysis(options) {
   console.log(`target: ${saved.analysis.last_target || '(none)'}`);
   console.log(`artifact: ${saved.analysis.artifact_path}`);
   console.log(`artifact_exists: ${artifactExists ? 'yes' : 'no'}`);
+  console.log(`locale: ${saved.analysis.locale}`);
   console.log(`graph_health: ${saved.analysis.graph_health}`);
   console.log(`confidence: ${saved.analysis.confidence}`);
   console.log(`risk: ${saved.analysis.risk_level}`);
@@ -803,6 +809,7 @@ function analysisStatus(options) {
       target: analysis.last_target || '',
       artifact_path: artifactPath,
       artifact_exists: artifactExists,
+      locale: analysis.locale || 'en',
       graph_health: analysis.graph_health || 'unknown',
       confidence: analysis.confidence || 'unknown',
       risk_level: analysis.risk_level || 'unknown',
@@ -817,6 +824,7 @@ function analysisStatus(options) {
   console.log(`target: ${analysis.last_target || '(none)'}`);
   console.log(`artifact: ${artifactPath}`);
   console.log(`artifact_exists: ${artifactExists ? 'yes' : 'no'}`);
+  console.log(`locale: ${analysis.locale || 'en'}`);
   console.log(`graph_health: ${analysis.graph_health || 'unknown'}`);
   console.log(`confidence: ${analysis.confidence || 'unknown'}`);
   console.log(`risk: ${analysis.risk_level || 'unknown'}`);

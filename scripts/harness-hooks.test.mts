@@ -997,6 +997,13 @@ describe('detectTaskType', () => {
     expect(detectTaskType('구현해줘')).toBe('feature');
   });
 
+  it('detects design-improvement tasks', () => {
+    expect(detectTaskType('디자인 개선해줘')).toBe('design');
+    expect(detectTaskType('improve the UX flow')).toBe('design');
+    expect(detectTaskType('デザイン改善して')).toBe('design');
+    expect(detectTaskType('设计改进一下')).toBe('design');
+  });
+
   it('detects pipeline tasks', () => {
     expect(detectTaskType('run all phases')).toBe('pipeline');
     expect(detectTaskType('full pipeline')).toBe('pipeline');
@@ -1085,6 +1092,34 @@ describe('recommendedAgentsFor', () => {
     const agents = recommendedAgentsFor({ tier: 'light', taskType: 'bugfix' });
     expect(agents).toContain('troubleshooter');
     expect(agents).toContain('developer');
+  });
+
+  it('returns lead-dev for medium/feature to support harness-driven implementation', () => {
+    const agents = recommendedAgentsFor({ tier: 'medium', taskType: 'feature', phaseId: 'develop' });
+    expect(agents).toContain('lead-dev');
+    expect(agents).toContain('developer');
+    expect(agents).toContain('qa');
+  });
+
+  it('returns lead-dev for medium/general develop work to encourage active lane orchestration', () => {
+    const agents = recommendedAgentsFor({ tier: 'medium', taskType: 'general', phaseId: 'develop' });
+    expect(agents).toContain('lead-dev');
+    expect(agents).toContain('developer');
+    expect(agents).toContain('qa');
+  });
+
+  it('returns designer, cto, and analyst for medium/design work', () => {
+    const agents = recommendedAgentsFor({ tier: 'medium', taskType: 'design', phaseId: 'develop' });
+    expect(agents).toContain('designer');
+    expect(agents).toContain('cto');
+    expect(agents).toContain('analyst');
+  });
+
+  it('returns design team for full/design intent even outside the design phase', () => {
+    const agents = recommendedAgentsFor({ tier: 'full', taskType: 'design', phaseId: 'develop' });
+    expect(agents).toContain('designer');
+    expect(agents).toContain('cto');
+    expect(agents).toContain('analyst');
   });
 
   it('returns full team for full/develop', () => {
@@ -1603,6 +1638,35 @@ describe('phase-detector hook', () => {
     writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'impact analysis' });
     expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+  });
+
+  it('routes design-improvement text to forge analyze without requiring the forge prefix', () => {
+    writeState(tmpDir, {
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      status: 'active',
+      spec_approved: true,
+      design_approved: true,
+      tasks: ['api', 'ui'],
+    });
+    writeRuntimeState(tmpDir, {
+      session_brief_mode: 'manual',
+      lanes: {
+        api: { id: 'api', status: 'in_progress' },
+      },
+      session_handoff_summary: 'Need to continue later',
+      next_session_owner: 'lead-dev',
+    });
+
+    const output = runHook('phase-detector.mjs', tmpDir, { message: '디자인 개선해줘' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('design-improvement');
+    expect(output.hookSpecificOutput.additionalContext).toContain('운영 프로필');
+
+    const runtime = JSON.parse(readFileSync(join(tmpDir, '.forge', 'runtime.json'), 'utf8'));
+    expect(runtime.detected_locale).toBe('ko');
+    expect(runtime.last_task_type).toBe('design');
   });
 
   it('routes generic forge requests to analyze first in repair mode when analysis is missing', () => {

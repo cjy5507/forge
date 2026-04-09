@@ -14,6 +14,9 @@ runtime-backed: `.forge/runtime.json` stores the lane graph, owners, statuses,
 active worktrees, handoff notes, and review/merge/rebase signals. Common Forge
 paths should update that runtime automatically through the standard helpers, but
 the process remains human-led and review-gated; it is not an autonomous merge bot.
+This is harness engineering, not progress narration: once implementation begins, the harness
+should keep pushing until the approved scope is merged and handed to QA, unless an actual
+external blocker or customer-owned ambiguity prevents completion.
 </Purpose>
 
 <Use_When>
@@ -32,6 +35,7 @@ the process remains human-led and review-gated; it is not an autonomous merge bo
 8. Handoff notes are required before review or reassignment
 9. Explicit review, merge, and rebase states must be reflected in runtime
 10. Zero merge debt before new scope — approved or merge-ready lanes must be landed before starting more implementation work unless a blocker is explicitly recorded
+11. Finish before handoff — if the current scope can be completed now, complete it now. Session handoff notes preserve continuity; they do not justify stopping early
 </Core_Rules>
 
 <Hybrid_Dispatch>
@@ -88,12 +92,13 @@ Layer 2 — Isolated Subagent (parallel execution):
       - Testing gaps: "What's the test strategy for [integration point]?"
       - Performance budgets: "Is there a response time target for [critical path]?"
       Format: "Q: ... | Domain: architecture/contract/testing | Blocker: yes/no | Default assumption: ..."
+      Only generate questions that materially affect implementation correctness. Convert all non-critical uncertainty into assumptions, fact-check tasks, or QA checks instead of opening a user conversation.
 
    c. CEO triages questions:
       - CTO answers architecture/contract questions
       - Designer answers UX/component questions
       - PM answers business logic questions
-      - CLIENT → only if truly customer-owned (rare at this stage)
+      - CLIENT → only if truly customer-owned and implementation would otherwise target the wrong behavior (rare at this stage)
 
    d. Lead writes understanding statement:
       "I will execute the implementation plan across [N] lanes: [list with boundaries].
@@ -154,6 +159,8 @@ Layer 2 — Isolated Subagent (parallel execution):
    - Task file content (up to 2000 chars)
 
    **Wait for each batch to complete before starting the next batch.**
+   If the task contains separable UI/API/state/test surfaces, split it so compatible lanes run in parallel.
+   If the task is truly single-scope, keep one lane and drive it to completion instead of manufacturing coordination overhead.
    If any lane in the batch reaches `review_state=approved`, `merge_state=ready`, or `merge_state=queued`,
    stop opening more implementation scope and land that lane first. Merge debt is a control-tower blocker,
    not background work for later.
@@ -242,7 +249,9 @@ Layer 2 — Isolated Subagent (parallel execution):
 
 10. Repeat steps 7-9 until all PRs are merged
     - Use `node scripts/forge-lane-runtime.mjs summarize-lanes` to review the lane graph and blocked lanes
-    - Update the session handoff so the next session knows what remains and who owns the first move
+    - Update the session handoff only as a safety checkpoint for host interruption or context-risk recovery
+    - Do not surface "continue later" language while completion is still achievable in the current run
+    - The only proactive checkpoint exception is when the active agent context is so expanded that continuing would likely cause guesswork or hallucination; in that case, write a precise checkpoint, narrow the next step, and resume with fresh context
 
 11. Cleanup worktrees:
     node scripts/forge-worktree.mjs remove --lane {module}
@@ -353,6 +362,7 @@ When inconsistency is found, Lead rejects with explicit correction:
 - Layer 2: Agent tool with subagent_type="forge:publisher", isolation="worktree" (parallel, for UI modules)
 - Layer 2: Agent tool with subagent_type="forge:analyst" for codebase impact analysis
 - Layer 2: Agent tool with subagent_type="forge:fact-checker" for technical verification
+- Prefer active parallel lanes whenever scopes are independent. Under-using isolated agents on separable work is a harness failure, not a style choice
 - Agent tool: dispatch forge:cto for Tier 3 reviews
 - Bash tool: git rebase, git tag
 - CLI helper: `node scripts/forge-worktree.mjs` for worktree create/list/remove/prune (manual worktree path)
@@ -388,5 +398,5 @@ When inconsistency is found, Lead rejects with explicit correction:
 When development completes (all lanes merged, worktrees cleaned, forge/v1-dev tag created):
 1. Update state.json: phase_id → "qa"
 2. IMMEDIATELY invoke Skill: forge:qa
-Do NOT stop, summarize, or ask the user. QA Engineer will test automatically.
+Do NOT stop, summarize, or ask the user. State clearly that implementation is complete and move directly to QA.
 </Auto_Chain>

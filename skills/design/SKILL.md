@@ -11,11 +11,14 @@ Researcher supports external option comparison, but CTO and Designer keep decisi
 ownership. Every technical claim is verified via context7 before being committed to
 the design. No guessing — only evidence-backed decisions. In Autonomous Company Mode,
 design is an internal readiness gate by default, not a customer approval checkpoint.
+When design starts from a redesign or UX-improvement request, the design phase must first
+open the user's UX thinking before jumping into components and tokens.
 </Purpose>
 
 <Use_When>
 - After Phase 1 (discovery) completes
 - state.json phase=2
+- After `forge:analyze` writes `.forge/design/ux-analysis.md` for a design-improvement request
 </Use_When>
 
 <Core_Rules>
@@ -100,6 +103,19 @@ Researcher is for EXTERNAL investigation only:
     - Route to PM to update spec before design proceeds.
     - Only continue when spec staleness is cleared.
 
+-0a. **UX Opening Mode (redesign / design-improvement path)**
+   If `.forge/design/ux-analysis.md` exists and the saved analysis type is `design-improvement`:
+   - Designer leads a short UX-opening interview before component design starts
+   - Ask only enough to unlock direction:
+     - current frustration / stuck point
+     - desired feeling after the redesign
+     - must-not-break flows
+     - safe-to-change areas
+   - Keep the structure consistent across locales (`ko/en/ja/zh`)
+   - Save the result to `.forge/design/ux-brief.md`
+   - CTO and Designer use `ux-brief.md` as an input artifact for the rest of design
+   - This is not a full discovery interview; it is a direction-opening layer for design improvement only
+
 -0. **Handoff Interview — Design Intake (BEFORE any design work begins)**
    a. CTO reads spec.md completely, generates technical questions:
       - Missing data flow details, unclear API boundaries
@@ -178,6 +194,12 @@ Researcher is for EXTERNAL investigation only:
       - Border radius values
       - Shadow definitions
       - Breakpoints
+   c. `.forge/design/ux-brief.md` remains the source of truth for:
+      - target users
+      - desired feeling
+      - critical flows
+      - safe-to-change areas
+      - non-negotiables
 
 4. Cross-Review via Team:
    - CTO sends architecture proposal to Designer: SendMessage(to="designer", ...)
@@ -241,6 +263,7 @@ Over-engineering a small project is as bad as under-engineering a large one.
 
 <State_Changes>
 - Creates: .forge/design/codebase-analysis.md (Analyst output, skipped for greenfield)
+- Creates/updates: .forge/design/ux-brief.md (UX-opening output for redesign/design-improvement path)
 - Creates: .forge/design/architecture.md
 - Creates: .forge/design/components.md
 - Creates: .forge/design/tokens.json

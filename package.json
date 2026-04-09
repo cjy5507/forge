@@ -5,6 +5,7 @@
   "type": "module",
   "bin": {
     "forge": "./scripts/forge.mjs",
+    "forge-behavioral-audit": "./scripts/forge-behavioral-audit.mjs",
     "forge-continue": "./scripts/forge-continue.mjs",
     "forge-eval": "./scripts/forge-eval.mjs",
     "forge-health": "./scripts/forge-health.mjs",

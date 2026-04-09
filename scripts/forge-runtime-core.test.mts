@@ -532,7 +532,7 @@ describe('forge runtime core', () => {
 
     const summary = runLaneRuntime(['summarize-lanes'], cwd);
     expect(summary.status).toBe(0);
-    expect(summary.stdout).toContain('Next action: Continue lane api');
+    expect(summary.stdout).toContain('Next action: Start lane api');
   });
 
   it('records analysis metadata to state and runtime via the lane runtime cli', () => {
@@ -566,11 +566,13 @@ describe('forge runtime core', () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('type: architecture');
     expect(result.stdout).toContain('artifact_exists: yes');
+    expect(result.stdout).toContain('locale: en');
 
     const state = readForgeState(cwd);
     const runtime = readRuntimeState(cwd);
     expect(state.analysis.last_type).toBe('architecture');
     expect(state.analysis.last_target).toBe('scripts/lib');
+    expect(state.analysis.locale).toBe('en');
     expect(runtime.analysis.confidence).toBe('medium');
     expect(runtime.analysis.graph_health).toBe('module-only');
     expect(runtime.analysis.stale).toBe(false);
@@ -607,6 +609,7 @@ describe('forge runtime core', () => {
     const payload = JSON.parse(status.stdout);
     expect(payload.analysis_type).toBe('impact');
     expect(payload.artifact_exists).toBe(false);
+    expect(payload.locale).toBe('en');
     expect(payload.stale).toBe(true);
     expect(payload.risk_level).toBe('systemic');
   });
@@ -812,7 +815,7 @@ describe('forge runtime core', () => {
     expect(runtime.active_gate).toBe('implementation_readiness');
     expect(runtime.active_gate_owner).toBe('lead-dev');
     expect(runtime.next_session_owner).toBe('lead-dev');
-    expect(runtime.current_session_goal).toBe('Prepare reviewable implementation lanes');
+    expect(runtime.current_session_goal).toBe('Complete the active implementation lanes and hand off to QA');
     expect(runtime.session_handoff_summary).toContain('lead-dev');
   });
 
@@ -848,7 +851,7 @@ describe('forge runtime core', () => {
 
     runtime = readRuntimeState(cwd);
     expect(runtime.next_session_owner).toBe('lead-dev');
-    expect(runtime.current_session_goal).toBe('Prepare reviewable implementation lanes');
+    expect(runtime.current_session_goal).toBe('Complete the active implementation lanes and hand off to QA');
     expect(runtime.session_customer_blocker_count).toBe(1);
   });
 
@@ -1163,7 +1166,7 @@ describe('forge runtime core', () => {
     const runtime = readRuntimeState(cwd);
     expect(runtime.next_action.skill).toBe('continue');
     expect(runtime.next_action.kind).toBe('active_lane');
-    expect(runtime.next_action.summary).toContain('Resume lane api');
+    expect(runtime.next_action.summary).toContain('Finish lane api');
   });
 
   it('selectContinuationTarget works with no runtime at all', () => {
@@ -1476,7 +1479,7 @@ describe('deriveSessionGoal (tested via readRuntimeState)', () => {
       design_approved: true,
     });
     const runtime = readRuntimeState(cwd);
-    expect(runtime.current_session_goal.toLowerCase()).toContain('lane');
+    expect(runtime.current_session_goal.toLowerCase()).toContain('lanes');
   });
 
   it('derives fix session goal from state phase', () => {

@@ -207,7 +207,7 @@ export function deriveNextAction(state = {}, runtime = DEFAULT_RUNTIME) {
   } else if (continuation.kind === 'merge_lane') {
     summary = `Merge lane ${continuation.target}${continuation.detail ? ` — ${continuation.detail}` : ''}`;
   } else if (continuation.kind === 'active_lane') {
-    summary = `Resume lane ${continuation.target}${continuation.detail ? ` — ${continuation.detail}` : ''}`;
+    summary = `Finish lane ${continuation.target}${continuation.detail ? ` — ${continuation.detail}` : ''}`;
   } else if (continuation.kind === 'next_lane') {
     const lane = continuation.target ? normalizeLane(runtime?.lanes?.[continuation.target], continuation.target) : null;
     if (lane?.merge_state === 'rebasing') {
@@ -216,8 +216,10 @@ export function deriveNextAction(state = {}, runtime = DEFAULT_RUNTIME) {
       summary = `Revise lane ${continuation.target}`;
     } else if (lane?.status === 'in_review') {
       summary = `Review lane ${continuation.target}`;
+    } else if (lane?.status === 'pending' || lane?.status === 'ready') {
+      summary = `Start lane ${continuation.target}`;
     } else {
-      summary = `Continue lane ${continuation.target}`;
+      summary = `Finish lane ${continuation.target}`;
     }
   } else if (continuation.kind === 'phase') {
     summary = `Continue phase ${continuation.target}`;

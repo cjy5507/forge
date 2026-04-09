@@ -179,6 +179,35 @@ describe('forge continue surface', () => {
     expect(directive.additionalContext).toContain('Skill: forge:continue');
   });
 
+  it('includes localized behavioral prescriptions in continue context', () => {
+    const cwd = makeWorkspace();
+    const state = writeForgeState(cwd, {
+      project: 'profile-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+    });
+    const runtime = writeRuntimeState(cwd, {
+      preferred_locale: 'ko',
+      detected_locale: 'ko',
+      behavioral_profile: 'question-heavy',
+      active_prescriptions: [
+        'limit_user_questions_to_ambiguity_gates',
+      ],
+    }, { state });
+
+    const context = buildContinueContext({
+      cwd,
+      state,
+      runtime,
+      skill: 'continue',
+    });
+
+    expect(context).toContain('운영 프로필');
+    expect(context).toContain('사용자 질문');
+  });
+
   it('exposes a real continue CLI surface', () => {
     const cwd = makeWorkspace();
     const state = writeForgeState(cwd, {
@@ -206,7 +235,7 @@ describe('forge continue surface', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Resume skill: forge:continue');
-    expect(result.stdout).toContain('Resume lane api');
+    expect(result.stdout).toContain('Finish lane api');
   });
 
   it('emits structured json from the continue CLI surface', () => {

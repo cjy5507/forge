@@ -9,6 +9,9 @@ too complex for a simple fix. The Troubleshooter agent performs evidence-based
 root cause analysis using a structured protocol: reproduce, hypothesize, gather
 evidence, verify, identify root cause, propose minimal fix, and assess impact.
 No guessing — only evidence-backed conclusions.
+Questions to the user are exceptional here. Troubleshooting should consume issue reports,
+logs, runtime state, code, and reproduction evidence first; the user is only interrupted
+when the target symptom itself is too ambiguous to reproduce or isolate safely.
 </Purpose>
 
 <Use_When>
@@ -24,6 +27,12 @@ No guessing — only evidence-backed conclusions.
 </Progressive_Disclosure>
 
 <Steps>
+0. Ambiguity gate
+   - Ask the user a question only if the issue target or failure symptom is genuinely unclear
+     and cannot be inferred from the hole file, logs, code, or runtime evidence
+   - If multiple hypotheses exist but the failing surface is clear, do NOT ask the user; continue the RCA
+   - If a question is necessary, ask one focused question that narrows reproduction
+
 1. Dispatch troubleshooter agent with context:
    - .forge/holes/{issue-id}.md (issue details)
    - .forge/design/architecture.md (system overview)

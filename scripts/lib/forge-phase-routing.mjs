@@ -7,6 +7,8 @@ import {
   RESUME_TRIGGERS,
   STATUS_TRIGGERS,
   ANALYZE_PROJECT_TRIGGERS,
+  DESIGN_IMPROVEMENT_TRIGGERS,
+  NATURAL_PROJECT_SKILL_TRIGGERS,
 } from './i18n-patterns.mjs';
 
 const forgeTriggers = allTriggers(FORGE_TRIGGERS);
@@ -16,6 +18,10 @@ const expressTriggers = allTriggers(EXPRESS_TRIGGERS_I18N);
 const resumeTriggers = allTriggers(RESUME_TRIGGERS);
 const statusTriggers = allTriggers(STATUS_TRIGGERS);
 const analyzeProjectTriggers = allTriggers(ANALYZE_PROJECT_TRIGGERS);
+const designImprovementTriggers = allTriggers(DESIGN_IMPROVEMENT_TRIGGERS);
+const naturalProjectSkillTriggers = Object.fromEntries(
+  Object.entries(NATURAL_PROJECT_SKILL_TRIGGERS).map(([skill, triggerMap]) => [skill, allTriggers(triggerMap)]),
+);
 
 const PHASE_TO_SKILL = {
   plan: 'plans',
@@ -32,10 +38,21 @@ export function isNaturalForgeRequest(message) {
 
 export function detectNaturalProjectSkill(message) {
   const text = String(message || '');
+  if (designImprovementTriggers.some(re => re.test(text))) return 'analyze';
   if (analyzeProjectTriggers.some(re => re.test(text))) return 'analyze';
   if (statusTriggers.some(re => re.test(text))) return 'info';
   if (resumeTriggers.some(re => re.test(text))) return 'continue';
+  for (const [skill, patterns] of Object.entries(naturalProjectSkillTriggers)) {
+    if (skill === 'analyze') {
+      continue;
+    }
+    if (patterns.some(re => re.test(text))) return skill;
+  }
   return null;
+}
+
+export function isDesignImprovementRequest(message = '') {
+  return designImprovementTriggers.some(re => re.test(String(message || '')));
 }
 
 export function extractExplicitForgeSkill(message) {

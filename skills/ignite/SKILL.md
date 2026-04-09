@@ -12,6 +12,9 @@ Two modes:
 The CEO evaluates the request and routes to the right mode. After kickoff, Forge should
 operate like an internal software company: the client gives the request, answers minimum
 critical questions, and reviews the delivery at the end. Internal teams own the rest.
+Forge is also a harness engineering layer: it should set up the execution harness,
+drive work through completion, and advance phases automatically instead of narrating
+partial progress back to the user as if the user were the internal project manager.
 </Purpose>
 
 <Use_When>
@@ -29,7 +32,8 @@ critical questions, and reviews the delivery at the end. Internal teams own the 
 
 <Core_Principles>
 1. No Evidence, No Code — never write code without evidence
-2. No Ambiguity, No Start — if unclear, ask questions instead of implementing
+2. Question Budget, Not Question Habit — ask the client only when a true customer-owned
+   ambiguity would change the product or make analysis invalid; otherwise resolve it internally
 3. No Hole Left Behind — every discovered gap must be tracked
 4. Right Architecture, Right Scale — optimal design matched to project scale
 5. No Handoff Without Understanding — no handoff without confirmed comprehension
@@ -43,6 +47,8 @@ critical questions, and reviews the delivery at the end. Internal teams own the 
 - Each Phase MUST complete before the next begins
 - The client is NOT the default phase approver; internal readiness gates decide phase progress
 - Ask the client only when a blocker is truly customer-owned or critical ambiguity would cause the wrong product to be built
+- Broad clarification loops are allowed only in intake/discovery. Later phases should default to
+  internal resolution, fact-checking, analysis, or QA instead of reopening client interviews
 - State is persisted in .forge/ directory
 - Cancel with "forge cancel" at any time
 - Load `references/phase-map.md` for the compact phase sequence.
@@ -109,7 +115,8 @@ Phase 0 — INTAKE (CEO):
       → Dispatch Troubleshooter for diagnosis
       → Diagnosis → Fix → QA → Deliver (skip full Phase 1-3)
 
-  3. If unclear which mode or critical customer intent is missing → ask the client
+  3. If unclear which mode or critical customer intent is missing → ask the client ONE focused question
+     that resolves the routing decision. Do not open a broad interview outside intake/discovery
   4. BUILD: initialize .forge/ directory with state.json (from templates/state.json), hand off to PM
      - state.json MUST include: artifact_versions={}, staleness={}, lessons_brief=[]
      - These fields are required for constraint propagation and harness learning

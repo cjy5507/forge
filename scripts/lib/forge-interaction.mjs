@@ -1,6 +1,13 @@
 import { DEFAULT_RUNTIME } from './forge-io.mjs';
 import { allTriggers, INTERACTIVE_PATTERNS } from './i18n-patterns.mjs';
 import { resolvePhase } from './forge-phases.mjs';
+import { detectLocale, normalizeLocale } from './forge-locale.mjs';
+import {
+  deriveBehavioralProfile,
+  prescriptionsForProfile,
+  updateBehavioralCounters,
+} from './forge-behavioral-audit.mjs';
+import { isDesignImprovementRequest } from './forge-phase-routing.mjs';
 import {
   classifyTierFromMessage,
   detectTaskType,
@@ -38,13 +45,31 @@ export function updateAdaptiveTierWith({ readRuntimeState, updateRuntimeState },
   const taskType = detectTaskType(message);
   const phaseId = state ? resolvePhase(state).id : 'develop';
   const currentRuntime = readRuntimeState(cwd);
+  const detectedLocale = detectLocale(message, currentRuntime?.preferred_locale || currentRuntime?.detected_locale || 'en');
+  const isDesignImprovement = isDesignImprovementRequest(message);
+  const nextBehavioralCounters = updateBehavioralCounters(currentRuntime?.behavioral_counters, {
+    taskType,
+    isDesignImprovement,
+  });
+  const nextBehavioralProfile = deriveBehavioralProfile({
+    state,
+    runtime: {
+      ...currentRuntime,
+      behavioral_counters: nextBehavioralCounters,
+    },
+  });
   const recommendedAgents = recommendedAgentsFor({ tier: inferredTier, taskType, phaseId, runtime: currentRuntime || DEFAULT_RUNTIME });
 
   const runtime = updateRuntimeState(cwd, current => applyHostContext({
     ...current,
     active_tier: inferredTier,
+    detected_locale: detectedLocale,
+    preferred_locale: normalizeLocale(detectedLocale || current.preferred_locale || current.detected_locale || 'en', 'en'),
     last_task_type: taskType,
-    recommended_agents: current.recommended_agents?.length ? current.recommended_agents : recommendedAgents,
+    recommended_agents: recommendedAgents,
+    behavioral_counters: nextBehavioralCounters,
+    behavioral_profile: nextBehavioralProfile,
+    active_prescriptions: prescriptionsForProfile(nextBehavioralProfile),
     stats: {
       ...current.stats,
       started_at: current.stats.started_at || new Date().toISOString(),

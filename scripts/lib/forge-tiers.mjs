@@ -41,6 +41,7 @@ const REVIEW_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.review.en, { ko: TASK_TYPE_P
 const QUESTION_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.question.en, { ko: TASK_TYPE_PATTERNS.question.ko, ja: TASK_TYPE_PATTERNS.question.ja, zh: TASK_TYPE_PATTERNS.question.zh });
 const PIPELINE_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.pipeline.en, { ko: TASK_TYPE_PATTERNS.pipeline.ko, ja: TASK_TYPE_PATTERNS.pipeline.ja, zh: TASK_TYPE_PATTERNS.pipeline.zh });
 const FEATURE_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.feature.en, { ko: TASK_TYPE_PATTERNS.feature.ko, ja: TASK_TYPE_PATTERNS.feature.ja, zh: TASK_TYPE_PATTERNS.feature.zh });
+const DESIGN_RE = mergeIntoRegex(TASK_TYPE_PATTERNS.design.en, { ko: TASK_TYPE_PATTERNS.design.ko, ja: TASK_TYPE_PATTERNS.design.ja, zh: TASK_TYPE_PATTERNS.design.zh });
 const FULL_TIER_RE = mergeIntoRegex(FULL_TIER_PATTERNS.en, { ko: FULL_TIER_PATTERNS.ko, ja: FULL_TIER_PATTERNS.ja, zh: FULL_TIER_PATTERNS.zh });
 
 export function detectTaskType(message = '') {
@@ -55,6 +56,7 @@ export function detectTaskType(message = '') {
   if (REVIEW_RE.test(text)) return 'review';
   if (QUESTION_RE.test(text)) return 'question';
   if (PIPELINE_RE.test(text)) return 'pipeline';
+  if (DESIGN_RE.test(text)) return 'design';
   if (FEATURE_RE.test(text)) return 'feature';
 
   return 'general';
@@ -79,6 +81,10 @@ export function classifyTierFromMessage(message = '', state = null) {
   if (taskType === 'review') {
     const phaseTier = inferTierFromState(state);
     return phaseTier === 'full' ? 'medium' : 'light';
+  }
+
+  if (taskType === 'design') {
+    return 'full';
   }
 
   if (taskType === 'feature' || taskType === 'refactor') {
@@ -313,17 +319,32 @@ export function recommendedAgentsFor({ tier = 'light', taskType = 'general', pha
     if (taskType === 'refactor') {
       return classifyAgents(['developer', 'lead-dev']);
     }
+    if (taskType === 'design') {
+      return classifyAgents(['designer', 'cto']);
+    }
     return recommendedAgentsForCompanyRuntime(runtime, ['developer']);
   }
 
   if (normalizedTier === 'medium') {
+    if (taskType === 'design') {
+      return recommendedAgentsForCompanyRuntime(runtime, ['designer', 'cto', 'analyst']);
+    }
+    if (phaseId === 'develop' || phaseId === 'fix') {
+      if (taskType === 'feature' || taskType === 'refactor' || taskType === 'general') {
+        return recommendedAgentsForCompanyRuntime(runtime, ['lead-dev', 'developer', 'qa']);
+      }
+    }
     if (taskType === 'feature') {
-      return recommendedAgentsForCompanyRuntime(runtime, ['cto', 'developer', 'qa']);
+      return recommendedAgentsForCompanyRuntime(runtime, ['lead-dev', 'developer', 'qa']);
     }
     if (taskType === 'refactor') {
-      return recommendedAgentsForCompanyRuntime(runtime, ['developer', 'lead-dev', 'qa']);
+      return recommendedAgentsForCompanyRuntime(runtime, ['lead-dev', 'developer', 'qa']);
     }
     return recommendedAgentsForCompanyRuntime(runtime, ['developer', 'qa']);
+  }
+
+  if (taskType === 'design') {
+    return recommendedAgentsForCompanyRuntime(runtime, ['cto', 'designer', 'analyst', 'researcher']);
   }
 
   if (phaseId === 'discovery') {

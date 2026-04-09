@@ -3,7 +3,8 @@ import { buildStatusModel, renderStatusText } from './forge-status.mjs';
 import { shouldRefreshAnalysis } from './forge-session.mjs';
 import { compactForgeContext } from './forge-compact-context.mjs';
 import { PHASE_SEQUENCE, resolvePhase } from './forge-phases.mjs';
-import { resolveTargetSkill } from './forge-phase-routing.mjs';
+import { isDesignImprovementRequest, resolveTargetSkill } from './forge-phase-routing.mjs';
+import { formatBehavioralContext } from './forge-behavioral-audit.mjs';
 
 export function resolveActiveForgePrompt({
   cwd = '.',
@@ -44,7 +45,21 @@ export function resolveActiveForgePrompt({
 
   const compactOnly = compactForgeContext(state, runtime);
   if (!context.includes('→ forge:analyze') && currentSkill !== 'info') {
-    context = `${compactOnly} → forge:${currentSkill} [${recommendedAgents.join(', ')}]`;
+    if (currentSkill === 'analyze' && isDesignImprovementRequest(request?.message || '')) {
+      context = `${compactOnly} → forge:analyze (design-improvement; then forge:design ux-opening) [${recommendedAgents.join(', ')}]`;
+    } else if (currentSkill === 'design' && runtime?.analysis?.last_type === 'design-improvement') {
+      context = `${compactOnly} → forge:design (ux-opening mode) [${recommendedAgents.join(', ')}]`;
+    } else {
+      context = `${compactOnly} → forge:${currentSkill} [${recommendedAgents.join(', ')}]`;
+    }
+  }
+
+  const behavioralContext = formatBehavioralContext(
+    runtime,
+    runtime?.preferred_locale || runtime?.detected_locale || 'en',
+  );
+  if (behavioralContext) {
+    context = `${context}\n\n${behavioralContext}`;
   }
 
   const resumeContext = `${compactOnly}${recommendedAgents.length ? ` [${recommendedAgents.join(', ')}]` : ''}`;

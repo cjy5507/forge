@@ -51,7 +51,7 @@ describe('forge status helper', () => {
     const model = buildStatusModel({ cwd });
     expect(model?.project).toBe('demo-app');
     expect(model?.next_action.skill).toBe('continue');
-    expect(model?.next_action.summary).toContain('Resume lane api');
+    expect(model?.next_action.summary).toContain('Finish lane api');
     expect(model?.issues.major).toBe(1);
   });
 
@@ -67,7 +67,7 @@ describe('forge status helper', () => {
       progress_bar: '████████████░░░░░░░░',
       next_action: {
         skill: 'continue',
-        summary: 'Resume lane api — Resume API integration tests',
+        summary: 'Finish lane api — Resume API integration tests',
       },
       support_summary: 'Active: api.',
       lanes: { total: 3, done: 1, blocked: 1, details: [] },
@@ -88,7 +88,7 @@ describe('forge status helper', () => {
       },
     });
 
-    expect(text).toContain('Next action: Resume lane api');
+    expect(text).toContain('Next action: Finish lane api');
     expect(text).toContain('Lanes: 1/3 done, 1 blocked');
     expect(text).toContain('Harness: tier=medium');
     expect(text).toContain('Policy: guarded/targeted/bounded_degraded');

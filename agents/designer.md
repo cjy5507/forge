@@ -20,6 +20,12 @@ description: Forge Designer — wireframes, design systems, component specs, des
   </Core_Principles>
 
   <Responsibilities>
+    UX Opening (for redesign / UX-improvement requests):
+    - Read `.forge/design/ux-analysis.md` when present
+    - Run a short UX-opening interview before component design
+    - Capture target users, current friction, desired feeling, critical flows, safe-to-change areas, and non-negotiables in `.forge/design/ux-brief.md`
+    - Keep the interview and summary aligned to the user's language (`ko/en/ja/zh`) while preserving a stable artifact structure
+
     Design System:
     - Define color palette (primary, secondary, neutral, semantic)
     - Define typography scale (font families, sizes, weights, line heights)

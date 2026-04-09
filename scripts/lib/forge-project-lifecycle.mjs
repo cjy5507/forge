@@ -15,6 +15,10 @@ export function setSessionBriefWith(normalizeRuntimeState, runtime = DEFAULT_RUN
     next_session_owner: nextSessionOwner || runtime?.next_session_owner || '',
     session_handoff_summary: sessionHandoffSummary || runtime?.session_handoff_summary || '',
     session_brief_mode: 'manual',
+    session_phase_anchor: runtime?.company_phase_anchor || runtime?.session_phase_anchor || '',
+    session_gate_anchor: runtime?.active_gate || runtime?.session_gate_anchor || '',
+    session_customer_blocker_count: Array.isArray(runtime?.customer_blockers) ? runtime.customer_blockers.length : 0,
+    session_internal_blocker_count: Array.isArray(runtime?.internal_blockers) ? runtime.internal_blockers.length : 0,
   });
 }
 
@@ -29,6 +33,10 @@ export function writeSessionHandoffWith(normalizeRuntimeState, runtime = DEFAULT
     next_session_goal: nextSessionGoal || runtime?.next_session_goal || '',
     next_session_owner: nextSessionOwner || runtime?.next_session_owner || '',
     session_brief_mode: 'manual',
+    session_phase_anchor: runtime?.company_phase_anchor || runtime?.session_phase_anchor || '',
+    session_gate_anchor: runtime?.active_gate || runtime?.session_gate_anchor || '',
+    session_customer_blocker_count: Array.isArray(runtime?.customer_blockers) ? runtime.customer_blockers.length : 0,
+    session_internal_blocker_count: Array.isArray(runtime?.internal_blockers) ? runtime.internal_blockers.length : 0,
   });
 }
 

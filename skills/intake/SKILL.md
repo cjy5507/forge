@@ -8,6 +8,9 @@ Phase 0 of the Forge pipeline. The CEO evaluates the client's request to decide
 if it's something we can build, if the scope is reasonable, and if we have enough
 critical information to begin the discovery process. The CEO acts as the internal
 operator for the company, not as a messenger waiting for customer approval at every step.
+Intake is the only phase that is allowed to spend noticeable question budget on the user.
+After intake, Forge should behave like a harness engineering system: configure the runway,
+start the work, and keep moving unless a real customer-owned blocker exists.
 </Purpose>
 
 <Use_When>
@@ -53,7 +56,8 @@ When express fast-path is active, collapse the PM interview:
 
 4. CEO Decision:
    - GO → Initialize .forge/ directory, set state.json phase=1, hand off to PM
-   - HOLD → CEO asks the client only for missing business-critical information
+   - HOLD → CEO asks the client only for missing business-critical information that cannot be
+     inferred internally and would change the product direction or execution mode
    - NO-GO → CEO explains why and suggests alternatives
    Note: For REPAIR mode, after CEO evaluation, dispatch the Troubleshooter for diagnosis (aligned with ignite/SKILL.md repair routing).
 
@@ -95,6 +99,7 @@ When express fast-path is active, collapse the PM interview:
 - Skipping the feasibility check
 - Proceeding with a request that's clearly out of scope
 - Asking the client to manage internal phase transitions
+- Asking multiple exploratory questions when one routing question or an internal assumption would suffice
 - Not creating the full .forge/ directory structure
 </Failure_Modes_To_Avoid>
 

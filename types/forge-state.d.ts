@@ -27,12 +27,19 @@ export interface ForgeAnalysisMeta {
   last_type: string;
   last_target: string;
   artifact_path: string;
+  locale: string;
   graph_health: string;
   confidence: string;
   risk_level: string;
   summary: string;
   updated_at: string;
   stale: boolean;
+}
+
+export interface ForgeBehavioralCounters {
+  total_prompts: number;
+  question_prompts: number;
+  design_improvement_requests: number;
 }
 
 export interface ForgeNextAction {
@@ -200,7 +207,11 @@ export interface ForgeRuntime {
   version: number;
   active_tier: ForgeTier;
   detected_locale: string;
+  preferred_locale: string;
   last_task_type: string;
+  behavioral_profile: string;
+  active_prescriptions: string[];
+  behavioral_counters: ForgeBehavioralCounters;
   task_graph_version: number;
   company_mode: ForgeCompanyMode;
   company_gate_mode: 'auto' | 'manual';

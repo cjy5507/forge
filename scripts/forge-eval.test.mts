@@ -112,7 +112,7 @@ describe('forge eval', () => {
     writeFileSync(join(cwd, '.forge', 'runtime.json'), JSON.stringify({
       delivery_readiness: 'in_progress',
       next_action: {
-        summary: 'Continue lane phase-gate-enforcement',
+        summary: 'Finish lane phase-gate-enforcement',
       },
       stats: {
         failure_count: 0,
@@ -288,7 +288,7 @@ describe('forge eval', () => {
     writeFileSync(join(cwd, '.forge', 'runtime.json'), JSON.stringify({
       delivery_readiness: 'in_progress',
       next_action: {
-        summary: 'Continue lane host-capability-contract',
+        summary: 'Finish lane host-capability-contract',
       },
       stats: {
         failure_count: 0,

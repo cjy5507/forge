@@ -61,6 +61,58 @@ export const ANALYZE_PROJECT_TRIGGERS = {
   zh: [/代码库分析|程式碼庫分析/i, /影响分析|影響分析/i, /项目分析|專案分析/i],
 };
 
+export const DESIGN_IMPROVEMENT_TRIGGERS = {
+  en: [/\bimprove\s+(?:the\s+)?(?:design|ux|ui)\b/i, /\bredesign\b/i, /\busability improvement\b/i, /\bimprove\s+(?:the\s+)?flow\b/i],
+  ko: [/디자인\s*개선/i, /ux\s*개선/i, /ui\s*개선/i, /리디자인/i, /사용성\s*개선/i, /흐름\s*개선/i],
+  ja: [/デザイン改善/i, /ux改善/i, /ui改善/i, /リデザイン/i, /使いやすさ改善/i, /フロー改善/i],
+  zh: [/设计改进|設計改進/i, /ux改进|ux改善|ux改進/i, /ui改进|ui改進/i, /重设计|重設計/i, /可用性改进|可用性改進/i, /流程改进|流程改進/i],
+};
+
+export const NATURAL_PROJECT_SKILL_TRIGGERS = {
+  analyze: {
+    en: [/\banaly[sz]e\s+(?:this|it)\b/i, /\broot cause\b/i, /\binvestigate\b/i],
+    ko: [/분석해\s*줘/i, /원인\s*찾아/i, /조사해\s*줘/i],
+    ja: [/分析して/i, /原因を調べて/i, /調査して/i],
+    zh: [/分析一下|分析这/i, /查找原因/i, /调查一下|調查一下/i],
+  },
+  design: {
+    en: [/\bdesign\s+(?:this|it)\b/i, /\barchitecture design\b/i, /\bui spec\b/i],
+    ko: [/설계해\s*줘/i, /디자인해\s*줘/i, /아키텍처\s*설계/i],
+    ja: [/設計して/i, /デザインして/i, /アーキテクチャ設計/i],
+    zh: [/设计这个|設計這個/i, /架构设计|架構設計/i, /界面规范|介面規範/i],
+  },
+  develop: {
+    en: [/\bimplement\s+(?:this|it)\b/i, /\bbuild\s+(?:this|it)\s+now\b/i],
+    ko: [/구현해\s*줘/i, /지금\s*구현/i],
+    ja: [/実装して/i, /今すぐ実装/i],
+    zh: [/实现这个|實現這個/i, /现在实现|現在實現/i],
+  },
+  fix: {
+    en: [/\bfix\s+(?:this|it|the bug)\b/i, /\bbug fix\b/i],
+    ko: [/이거\s*고쳐/i, /버그\s*수정/i],
+    ja: [/これを直して/i, /バグ修正/i],
+    zh: [/修复这个|修復這個/i, /修 bug|bug修复|bug修復/i],
+  },
+  qa: {
+    en: [/\brun\s+qa\b/i, /\bqa\s+this\b/i, /\btest\s+this\b/i],
+    ko: [/qa\s*돌려/i, /테스트해\s*줘/i, /검증해\s*줘/i],
+    ja: [/qaして/i, /テストして/i, /検証して/i],
+    zh: [/跑\s*qa/i, /测试这个|測試這個/i, /验证一下|驗證一下/i],
+  },
+  security: {
+    en: [/\bsecurity\s+review\b/i, /\bsecurity\s+check\b/i],
+    ko: [/보안\s*검토/i, /보안\s*체크/i],
+    ja: [/セキュリティレビュー/i, /セキュリティチェック/i],
+    zh: [/安全审查|安全審查/i, /安全检查|安全檢查/i],
+  },
+  deliver: {
+    en: [/\bdeliver\s+this\b/i, /\bprepare\s+delivery\b/i, /\bship\s+this\b/i],
+    ko: [/배포해\s*줘/i, /전달\s*준비/i, /출시해\s*줘/i],
+    ja: [/納品して/i, /デリバリー準備/i, /出荷して/i],
+    zh: [/交付这个|交付這個/i, /准备交付|準備交付/i, /发布这个|發布這個/i],
+  },
+};
+
 // ── Task Type Patterns (for detectTaskType) ──
 
 export const TASK_TYPE_PATTERNS = {
@@ -99,6 +151,12 @@ export const TASK_TYPE_PATTERNS = {
     ko: /기능|추가|구현|만들/,
     ja: /機能|追加|実装|作成/,
     zh: /功能|添加|实现|创建|創建/,
+  },
+  design: {
+    en: /(\bdesign\b|\bux\b|\bui\b|\bredesign\b|\busability\b|\bflow\b)/,
+    ko: /디자인|\bux\b|\bui\b|리디자인|사용성|흐름/,
+    ja: /デザイン|\bux\b|\bui\b|リデザイン|使いやすさ|フロー/,
+    zh: /设计|設計|\bux\b|\bui\b|重设计|重設計|可用性|流程/,
   },
 };
 

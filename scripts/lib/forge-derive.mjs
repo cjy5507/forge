@@ -139,7 +139,7 @@ export function deriveSessionGoal({ state = null, runtime = DEFAULT_RUNTIME } = 
   }
   if (activeGate === 'design_readiness') return 'Close design readiness gate';
   if (activeGate === 'plan_readiness') return 'Lock the execution plan and task breakdown';
-  if (activeGate === 'implementation_readiness') return 'Prepare reviewable implementation lanes';
+  if (activeGate === 'implementation_readiness') return 'Complete the active implementation lanes and hand off to QA';
   if (activeGate === 'qa') return 'Clear QA blockers and re-verify';
   if (activeGate === 'security') return 'Clear security blockers and re-check delivery readiness';
   if (activeGate === 'delivery_readiness') {
@@ -150,7 +150,7 @@ export function deriveSessionGoal({ state = null, runtime = DEFAULT_RUNTIME } = 
   if (phaseId === 'discovery') return 'Clarify V1 scope and prepare spec handoff';
   if (phaseId === 'design') return 'Close architecture and design decisions for implementation';
   if (phaseId === 'plan') return 'Turn the approved design into execution lanes and micro-tasks';
-  if (phaseId === 'develop') return 'Advance the next implementation lane';
+  if (phaseId === 'develop') return 'Complete the active implementation lanes and prepare the QA handoff';
   if (phaseId === 'fix') return 'Resolve blockers and re-run verification';
   if (phaseId === 'delivery') return 'Prepare final delivery review';
   return '';
@@ -165,13 +165,13 @@ export function deriveSessionExitCriteria({ state = null, runtime = DEFAULT_RUNT
 
   if (activeGate === 'design_readiness') return ['architecture approved internally', 'design specs complete', 'technical claims verified'];
   if (activeGate === 'plan_readiness') return ['execution plan written', 'lanes sequenced', 'task briefs linked'];
-  if (activeGate === 'implementation_readiness') return ['lanes defined', 'owners assigned', 'session implementation brief written'];
+  if (activeGate === 'implementation_readiness') return ['active lanes implemented', 'accepted changes merged', 'qa handoff recorded'];
   if (activeGate === 'qa') return ['QA blockers cleared', 'verification rerun complete'];
   if (activeGate === 'security') return ['security blockers cleared', 'delivery gate re-evaluated'];
   if (activeGate === 'delivery_readiness') return ['blocker count is zero', 'delivery report ready'];
   if (phaseId === 'discovery') return ['critical customer questions resolved', 'spec ready for internal review'];
   if (phaseId === 'plan') return ['task breakdown approved', 'execution order validated', 'handoff ready for developers'];
-  if (phaseId === 'develop') return ['current reviewable slice completed', 'next session handoff recorded'];
+  if (phaseId === 'develop') return ['implementation complete', 'qa handoff recorded'];
   return [];
 }
 

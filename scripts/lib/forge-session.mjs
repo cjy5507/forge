@@ -25,6 +25,7 @@ import {
   normalizeTier,
   inferTierFromState,
 } from './forge-tiers.mjs';
+import { normalizeLocale } from './forge-locale.mjs';
 import {
   normalizeRuntimeLanes,
   summarizeLaneCounts,
@@ -106,6 +107,8 @@ export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null 
     ...DEFAULT_RUNTIME,
     ...source,
     active_tier: normalizeTier(source.active_tier || 'light'),
+    detected_locale: normalizeLocale(source.detected_locale, 'en'),
+    preferred_locale: normalizeLocale(source.preferred_locale || source.detected_locale, 'en'),
     company_mode: normalizeCompanyMode(source.company_mode),
     company_gate_mode: source.company_gate_mode === 'manual' ? 'manual' : 'auto',
     company_phase_anchor: typeof source.company_phase_anchor === 'string' ? source.company_phase_anchor : '',
@@ -125,6 +128,15 @@ export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null 
     session_customer_blocker_count: Number(source.session_customer_blocker_count || 0),
     session_internal_blocker_count: Number(source.session_internal_blocker_count || 0),
     recommended_agents: Array.isArray(source.recommended_agents) ? source.recommended_agents : [],
+    behavioral_profile: typeof source.behavioral_profile === 'string' ? source.behavioral_profile : '',
+    active_prescriptions: Array.isArray(source.active_prescriptions) ? source.active_prescriptions : [],
+    behavioral_counters: {
+      ...DEFAULT_RUNTIME.behavioral_counters,
+      ...(source.behavioral_counters && typeof source.behavioral_counters === 'object' ? source.behavioral_counters : {}),
+      total_prompts: Number(source?.behavioral_counters?.total_prompts || 0),
+      question_prompts: Number(source?.behavioral_counters?.question_prompts || 0),
+      design_improvement_requests: Number(source?.behavioral_counters?.design_improvement_requests || 0),
+    },
     active_agents: source.active_agents && typeof source.active_agents === 'object' ? source.active_agents : {},
     recent_agents: Array.isArray(source.recent_agents) ? source.recent_agents : [],
     recent_failures: Array.isArray(source.recent_failures) ? source.recent_failures : [],
@@ -224,6 +236,7 @@ export function recordAnalysisMetadata(cwd = '.', analysis = {}) {
     ...state?.analysis,
     ...runtime?.analysis,
     ...analysis,
+    locale: analysis.locale || runtime?.preferred_locale || runtime?.detected_locale || state?.analysis?.locale || 'en',
     updated_at: analysis.updated_at || new Date().toISOString(),
   });
 

@@ -6,6 +6,9 @@ description: "Continue an existing Forge project after a pause, restart, or inte
 <Purpose>
 Reads .forge/ state and resumes from the most actionable point. The goal is zero re-explanation —
 the user should be able to type "forge continue" and immediately be back in context.
+Continue is an execution surface, not a conversation surface. Once invoked, Forge should
+resume the saved harness and keep moving unless it hits a real customer-owned blocker or an
+ambiguity gate explicitly allowed by intake/analyze/troubleshoot.
 </Purpose>
 
 <Use_When>
@@ -89,8 +92,8 @@ Dispatch agents according to their layer classification (layer0, layer2_subagent
 
 Apply staleness-aware dispatch (from state-restore.mjs):
 - **Fresh (<1hr)**: full context available — dispatch per layer recommendation immediately
-- **Warm (1-24hr)**: abbreviated context — confirm direction with user before dispatching agents
-- **Stale (>24hr)**: minimal context — suggest `forge cancel` or require explicit `forge continue` confirmation before proceeding
+- **Warm (1-24hr)**: abbreviated context — resume from saved handoff and continue autonomously
+- **Stale (>24hr)**: minimal context — require explicit `forge continue`, then resume from saved state instead of restarting discovery
 
 ## 5. Phase → skill mapping
 
@@ -122,6 +125,8 @@ Express mode:
 ## 6. Hand off
 
 Invoke the target skill with loaded context. The skill takes over from here.
+Do NOT ask the user for extra confirmation during resume unless a true customer blocker
+or an approved ambiguity gate is hit.
 
 </Steps>
 

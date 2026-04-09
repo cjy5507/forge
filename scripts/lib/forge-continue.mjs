@@ -2,6 +2,7 @@ import { buildStatusModel, renderStatusText } from './forge-status.mjs';
 import { normalizeRuntimeState, selectResumeSkill } from './forge-session.mjs';
 import { compactForgeContext } from './forge-compact-context.mjs';
 import { describeCrossHostResume } from './forge-host-context.mjs';
+import { formatBehavioralContext } from './forge-behavioral-audit.mjs';
 
 export function createSkillDirective(skillName, context, { reason = '', warm = false } = {}) {
   const warmNote = warm
@@ -60,6 +61,14 @@ export function buildContinueContext({
   const hostBridge = describeCrossHostResume(normalizedRuntime);
   if (hostBridge) {
     baseContext = `${baseContext}\n\n[Forge] ${hostBridge}`;
+  }
+
+  const behavioralContext = formatBehavioralContext(
+    normalizedRuntime,
+    normalizedRuntime.preferred_locale || normalizedRuntime.detected_locale || 'en',
+  );
+  if (behavioralContext) {
+    baseContext = `${baseContext}\n\n${behavioralContext}`;
   }
 
   return baseContext;

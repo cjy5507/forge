@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   detectNaturalProjectSkill,
   deriveForgeRequest,
+  isDesignImprovementRequest,
   resolveTargetSkill,
 } from './lib/forge-phase-routing.mjs';
 
@@ -33,6 +34,20 @@ describe('forge phase routing helpers', () => {
   it('detects natural active-project status and analyze intents', () => {
     expect(detectNaturalProjectSkill('where are we?')).toBe('info');
     expect(detectNaturalProjectSkill('impact analysis')).toBe('analyze');
+  });
+
+  it('detects design-improvement requests without forge prefix', () => {
+    expect(detectNaturalProjectSkill('디자인 개선해줘')).toBe('analyze');
+    expect(detectNaturalProjectSkill('UX 개선이 필요해')).toBe('analyze');
+    expect(detectNaturalProjectSkill('デザイン改善して')).toBe('analyze');
+    expect(detectNaturalProjectSkill('设计改进一下')).toBe('analyze');
+    expect(isDesignImprovementRequest('improve the UX flow')).toBe(true);
+  });
+
+  it('detects strong natural project skill phrases without forge prefix', () => {
+    expect(detectNaturalProjectSkill('run QA on this')).toBe('qa');
+    expect(detectNaturalProjectSkill('security review this')).toBe('security');
+    expect(detectNaturalProjectSkill('설계해줘')).toBe('design');
   });
 
   it('maps complete projects to info through shared routing', () => {
