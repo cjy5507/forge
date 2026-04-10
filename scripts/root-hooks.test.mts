@@ -129,9 +129,13 @@ describe('repository-root hooks surface', () => {
 
   it('uses expanded timeout budgets for write-heavy Claude hooks', () => {
     const config = JSON.parse(readFileSync(join(FORGE_ROOT, 'hooks', 'hooks.json'), 'utf8'));
+    // PreToolUse Write|Edit gate gets expanded timeout
     expect(config.hooks.PreToolUse[0].hooks[0].timeout).toBe(8);
-    expect(config.hooks.PostToolUse[0].hooks[0].timeout).toBe(8);
-    expect(config.hooks.PostToolUse[0].hooks[1].timeout).toBe(8);
+    // PostToolUse Write|Edit guards (contract-guard, code-rules-guard) get expanded timeout
+    const writeEditGroup = config.hooks.PostToolUse.find((g: { matcher: string }) => g.matcher === 'Write|Edit');
+    expect(writeEditGroup.hooks[0].timeout).toBe(8);
+    expect(writeEditGroup.hooks[1].timeout).toBe(8);
+    // Stop guard gets expanded timeout
     expect(config.hooks.Stop[0].hooks[0].timeout).toBe(8);
   });
 });

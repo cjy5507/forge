@@ -16,8 +16,8 @@ function makeWorkspace() {
   return cwd;
 }
 
-function runCli(args: string[], cwd: string) {
-  return spawnSync(process.execPath, [join(FORGE_ROOT, 'scripts', 'forge.mjs'), ...args], {
+function runScript(script: string, args: string[], cwd: string) {
+  return spawnSync(process.execPath, [join(FORGE_ROOT, 'scripts', script), ...args], {
     cwd,
     encoding: 'utf8',
   });
@@ -29,40 +29,41 @@ afterEach(() => {
   }
 });
 
-describe('forge umbrella CLI', () => {
-  it('prints usage for help', () => {
+describe('forge CLI scripts', () => {
+  it('forge-status --json returns valid status model', () => {
     const cwd = makeWorkspace();
-    const result = runCli(['help'], cwd);
-
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain('Forge CLI');
-    expect(result.stdout).toContain('forge status');
-  });
-
-  it('fails cleanly for unknown commands', () => {
-    const cwd = makeWorkspace();
-    const result = runCli(['unknown-command'], cwd);
-
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('[forge] Unknown command: unknown-command');
-  });
-
-  it('proxies status output', () => {
-    const cwd = makeWorkspace();
-    const result = runCli(['status', '--json'], cwd);
+    const result = runScript('forge-status.mjs', ['--json'], cwd);
 
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({ project: '' });
   });
 
-  it('maps lane summarize to summarize-lanes', () => {
+  it('forge-lane-runtime summarize-lanes --json returns lane summary', () => {
     const cwd = makeWorkspace();
-    const result = runCli(['lane', 'summarize', '--json'], cwd);
+    const result = runScript('forge-lane-runtime.mjs', ['summarize-lanes', '--json'], cwd);
 
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({
       counts: { total: 0 },
       lanes: [],
     });
+  });
+
+  it('forge-analytics --json returns analytics report', () => {
+    const cwd = makeWorkspace();
+    const result = runScript('forge-analytics.mjs', ['--json'], cwd);
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout);
+    expect(output).toHaveProperty('project');
+  });
+
+  it('forge-health --json returns health check', () => {
+    const cwd = makeWorkspace();
+    const result = runScript('forge-health.mjs', ['--json'], cwd);
+
+    expect(result.status).toBe(0);
+    const output = JSON.parse(result.stdout);
+    expect(output).toHaveProperty('host');
   });
 });
