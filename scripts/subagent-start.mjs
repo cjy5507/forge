@@ -21,6 +21,7 @@ import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { updateHudLine } from './lib/forge-hud.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
+import { isCodeWorkingAgent, buildLspContextHint } from './lib/forge-lsp.mjs';
 
 runHook(async (input) => {
   const envTier = readEnvTier();
@@ -151,12 +152,19 @@ runHook(async (input) => {
     laneContext = ` | ${parts.join(' ')}`;
   }
 
+  // LSP pre-delegation: inject LSP navigation hint for code-working agents
+  let lspHint = '';
+  try {
+    const hint = buildLspContextHint(agentType, tier);
+    if (hint) lspHint = ` | ${hint}`;
+  } catch { /* LSP hint is non-fatal per R3 */ }
+
   console.log(JSON.stringify({
     continue: true,
     suppressOutput: true,
     hookSpecificOutput: {
       hookEventName: 'SubagentStart',
-      additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}${laneContext}`,
+      additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}${laneContext}${lspHint}`,
     },
   }));
 }, { name: 'subagent-start' });

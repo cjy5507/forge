@@ -35,6 +35,16 @@
             "timeout": 8
           }
         ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.mjs\" lsp-symbol-guard",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
