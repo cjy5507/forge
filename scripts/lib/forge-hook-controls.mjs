@@ -16,6 +16,8 @@ const HOOK_DEFINITIONS = Object.freeze({
   'subagent-stop': Object.freeze({ eventName: 'SubagentStop', profile: 'standard' }),
   'context-manager': Object.freeze({ eventName: 'PreCompact', profile: 'strict' }),
   'lsp-symbol-guard': Object.freeze({ eventName: 'PreToolUse', profile: 'standard' }),
+  'read-budget-guard': Object.freeze({ eventName: 'PreToolUse', profile: 'standard' }),
+  'grep-tracker': Object.freeze({ eventName: 'PostToolUse', profile: 'standard' }),
   'stop-guard': Object.freeze({ eventName: 'Stop', profile: 'minimal' }),
   'stop-failure': Object.freeze({ eventName: 'StopFailure', profile: 'strict' }),
   'session-end': Object.freeze({ eventName: 'SessionEnd', profile: 'minimal' }),

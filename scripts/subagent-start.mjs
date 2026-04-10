@@ -21,7 +21,7 @@ import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { updateHudLine } from './lib/forge-hud.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
-import { isCodeWorkingAgent, buildLspContextHint } from './lib/forge-lsp.mjs';
+import { isCodeWorkingAgent, buildLspContextHint, buildSmartContextHint, buildCrossLaneContext } from './lib/forge-lsp.mjs';
 
 runHook(async (input) => {
   const envTier = readEnvTier();
@@ -104,6 +104,28 @@ runHook(async (input) => {
         ...current.stats,
         agent_calls: (current.stats.agent_calls || 0) + 1,
       },
+      // Agent Token Ledger: init entry for tool call tracking
+      tool_ledger: (() => {
+        try {
+          const ledger = { ...(current.tool_ledger || {}) };
+          ledger[agentId] = {
+            type: agentType,
+            started_at: startedAt,
+            finished_at: '',
+            tool_calls: 0,
+            lane_id: laneId,
+          };
+          // Keep max 10 entries — remove oldest by started_at
+          const keys = Object.keys(ledger);
+          if (keys.length > 10) {
+            const sorted = keys.sort((a, b) =>
+              (ledger[a].started_at || '').localeCompare(ledger[b].started_at || ''),
+            );
+            for (let i = 0; i < keys.length - 10; i++) delete ledger[sorted[i]];
+          }
+          return ledger;
+        } catch { return current.tool_ledger || {}; }
+      })(),
       last_event: {
         name: 'SubagentStart',
         at: startedAt,
@@ -159,12 +181,30 @@ runHook(async (input) => {
     if (hint) lspHint = ` | ${hint}`;
   } catch { /* LSP hint is non-fatal per R3 */ }
 
+  // Smart Context Injection: pre-resolve exports from task file references
+  let smartCtx = '';
+  try {
+    if (isCodeWorkingAgent(agentType) && lane?.task_file) {
+      const ctx = buildSmartContextHint(lane.task_file, rootCwd);
+      if (ctx) smartCtx = ` | ${ctx}`;
+    }
+  } catch { /* smart context is non-fatal */ }
+
+  // Cross-Lane Dependency Pre-Resolve: inject dependency lane exports
+  let crossLaneCtx = '';
+  try {
+    if (laneId && lane?.dependencies?.length) {
+      const ctx = buildCrossLaneContext(lane, updatedRuntime, rootCwd);
+      if (ctx) crossLaneCtx = ` | ${ctx}`;
+    }
+  } catch { /* cross-lane context is non-fatal */ }
+
   console.log(JSON.stringify({
     continue: true,
     suppressOutput: true,
     hookSpecificOutput: {
       hookEventName: 'SubagentStart',
-      additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}${laneContext}${lspHint}`,
+      additionalContext: `[Forge] ${tier} ${phaseId} [${recommended.join(', ')}]${layerHint}${analysisHint}${laneContext}${lspHint}${smartCtx}${crossLaneCtx}`,
     },
   }));
 }, { name: 'subagent-start' });

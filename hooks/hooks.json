@@ -45,9 +45,29 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.mjs\" read-budget-guard",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.mjs\" grep-tracker",
+            "timeout": 5
+          }
+        ]
+      },
       {
         "matcher": "Write|Edit",
         "hooks": [

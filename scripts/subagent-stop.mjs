@@ -92,6 +92,22 @@ runHook(async (input) => {
       },
     };
 
+    // Agent Token Ledger: finalize entry
+    try {
+      if (nextRuntime.tool_ledger?.[agentId]) {
+        nextRuntime = {
+          ...nextRuntime,
+          tool_ledger: {
+            ...nextRuntime.tool_ledger,
+            [agentId]: {
+              ...nextRuntime.tool_ledger[agentId],
+              finished_at: stoppedAt,
+            },
+          },
+        };
+      }
+    } catch { /* ledger finalization is non-fatal */ }
+
     if (laneId) {
       nextRuntime = recordLaneHandoff(nextRuntime, {
         laneId,
