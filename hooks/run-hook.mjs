@@ -22,9 +22,11 @@ if (!ALLOWED_HOOKS.has(hookName)) {
 const targetScript = join(ROOT_DIR, 'scripts', `${hookName}.mjs`);
 const input = process.stdin.isTTY ? '' : await new Promise((resolve) => {
   let data = '';
+  let done = false;
   process.stdin.setEncoding('utf8');
   process.stdin.on('data', chunk => { data += chunk; });
-  process.stdin.on('end', () => resolve(data));
+  process.stdin.on('end', () => { if (!done) { done = true; clearTimeout(t); resolve(data); } });
+  const t = setTimeout(() => { if (!done) { done = true; resolve(data); } }, 3000);
 });
 
 if (!shouldRunForgeHook(hookName, process.env)) {
@@ -43,6 +45,7 @@ const result = spawnSync(process.execPath, [targetScript], {
   input,
   encoding: 'utf8',
   env: process.env,
+  timeout: 7000,
 });
 
 if (result.stdout) {

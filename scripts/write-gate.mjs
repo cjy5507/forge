@@ -4,7 +4,7 @@
 
 import { existsSync, readdirSync } from 'fs';
 import { runHook } from './lib/hook-runner.mjs';
-import { relative, resolve } from 'path';
+import { relative, resolve, sep } from 'path';
 import { checkPhaseGate, resolvePhase } from './lib/forge-phases.mjs';
 import { detectWriteRisk, readActiveTier, tierAtLeast } from './lib/forge-tiers.mjs';
 import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
@@ -95,10 +95,10 @@ function isForgeStateFile(filePath, cwd = '.') {
   const forgeDir = resolve(resolveForgeBaseDir(cwd), '.forge');
   const worktreesDir = resolve(forgeDir, 'worktrees');
   const resolved = resolveForgeAwarePath(cwd, filePath);
-  if (resolved === worktreesDir || resolved.startsWith(worktreesDir + '/')) {
+  if (resolved === worktreesDir || resolved.startsWith(worktreesDir + sep)) {
     return false;
   }
-  return resolved.startsWith(forgeDir + '/') || resolved === forgeDir;
+  return resolved.startsWith(forgeDir + sep) || resolved === forgeDir;
 }
 
 function normalizeRefs(values) {
