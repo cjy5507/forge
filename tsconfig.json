@@ -13,5 +13,12 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["scripts/**/*.mjs", "scripts/**/*.ts", "types/**/*.d.ts"]
+  "include": [
+    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
+    "types/**/*.d.ts"
+  ],
+  "exclude": [
+    "scripts/forge.mjs"
+  ]
 }
