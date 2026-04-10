@@ -92,6 +92,11 @@ runHook(async (input) => {
   let targetSkill = 'ignite';
   let prebuiltOutput = '';
 
+  // If the project is complete/delivered and the user wants a NEW build/repair, treat as fresh ignite
+  if (state && !projectActive && (request.naturalMode || request.explicitSkill === 'ignite')) {
+    state = null;
+  }
+
   if (state) {
     try {
       const adaptive = updateAdaptiveTier(cwd, { state, message, hostId, eventName: 'prompt.submit' });
