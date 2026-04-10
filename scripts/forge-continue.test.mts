@@ -62,7 +62,7 @@ describe('forge continue surface', () => {
       staleTier: 'warm',
     });
 
-    expect(output).toContain('Skill: forge:continue');
+    expect(output).toContain('Skill("forge:continue');
     expect(output).toContain('saved handoff');
   });
 
@@ -92,7 +92,7 @@ describe('forge continue surface', () => {
     });
 
     expect(directive.skill).toBe('analyze');
-    expect(directive.additionalContext).toContain('Skill: forge:analyze');
+    expect(directive.additionalContext).toContain('Skill("forge:analyze');
     expect(directive.additionalContext).toContain('saved analysis is stale');
   });
 
@@ -142,7 +142,7 @@ describe('forge continue surface', () => {
     const directive = buildContinueDirective({ cwd, state, runtime });
 
     expect(directive.skill).toBe('info');
-    expect(directive.additionalContext).toContain('Skill: forge:info');
+    expect(directive.additionalContext).toContain('Skill("forge:info');
     expect(directive.additionalContext).toContain('Project delivered');
     expect(directive.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
   });
@@ -176,7 +176,7 @@ describe('forge continue surface', () => {
 
     expect(directive.skill).toBe('continue');
     expect(directive.additionalContext).toContain('Shared .forge handoff: Claude -> Codex');
-    expect(directive.additionalContext).toContain('Skill: forge:continue');
+    expect(directive.additionalContext).toContain('Skill("forge:continue');
   });
 
   it('includes localized behavioral prescriptions in continue context', () => {

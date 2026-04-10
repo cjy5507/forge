@@ -266,7 +266,7 @@ ${failedCheck.output || batchSummary}`;
 [MAGIC KEYWORD: FORGE:${currentSkill.toUpperCase()}]
 
 To continue, invoke the skill:
-Skill: forge:${currentSkill}
+Skill("forge:${currentSkill}")
 
 To stop, the user can say "forge cancel".${extraReason}`;
 

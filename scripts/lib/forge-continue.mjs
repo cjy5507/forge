@@ -14,10 +14,13 @@ export function createSkillDirective(skillName, context, { reason = '', warm = f
 
 [MAGIC KEYWORD: FORGE:${skillName.toUpperCase()}]
 
-You MUST invoke the skill using the Skill tool:
-Skill: forge:${skillName}
+CRITICAL BLOCKING REQUIREMENT — You MUST call the Skill tool BEFORE any other tool call or text output:
+  Skill("forge:${skillName}")
 
-IMPORTANT: Invoke the skill IMMEDIATELY${skillName === 'continue' ? ' to resume the Forge pipeline' : ''}. Do not ask the user — the project is ready to continue.${warmNote}${resumeReason}`;
+Do NOT use Agent, Explore, Read, Bash, Grep, or any other tool first.
+Do NOT output any text before invoking the skill.
+The Skill tool loads the full execution protocol. All exploration, planning, and coding happens INSIDE the skill.
+${skillName === 'continue' ? 'Resume the Forge pipeline immediately.' : 'Start the Forge pipeline immediately.'}${warmNote}${resumeReason}`;
 }
 
 export function selectContinueDirective({

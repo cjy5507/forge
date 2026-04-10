@@ -111,7 +111,7 @@ describe('forge company e2e smoke', () => {
     expect(runtime.next_session_owner).toBe('pm');
 
     let output = runHook('phase-detector.mjs', cwd, { message: 'forge status' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
     expect(output.hookSpecificOutput.additionalContext).toContain('next:pm');
 
     writeState(cwd, {
@@ -127,7 +127,7 @@ describe('forge company e2e smoke', () => {
     runtime = readRuntime(cwd);
     expect(runtime.active_gate).toBe('implementation_readiness');
     expect(runtime.next_session_owner).toBe('lead-dev');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
     expect(output.hookSpecificOutput.additionalContext).toContain('next:lead-dev');
 
     writeState(cwd, {
@@ -143,7 +143,7 @@ describe('forge company e2e smoke', () => {
     runtime = readRuntime(cwd);
     expect(runtime.active_gate).toBe('customer_review');
     expect(runtime.next_session_owner).toBe('pm');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
     expect(output.hookSpecificOutput.additionalContext).toContain('next:pm');
   });
 
@@ -172,6 +172,6 @@ describe('forge company e2e smoke', () => {
     expect(runtime.host_context.previous_host).toBe('claude');
     expect(runtime.host_context.last_resume_host).toBe('codex');
     expect(output.hookSpecificOutput.additionalContext).toContain('Shared .forge handoff: Claude -> Codex');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
   });
 });

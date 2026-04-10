@@ -360,7 +360,7 @@ describe('forge harness hooks', () => {
     expect(output.hookSpecificOutput.hookEventName).toBe('SessionStart');
     expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
     expect(output.hookSpecificOutput.additionalContext).toContain('security');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
 
     const normalized = JSON.parse(readFileSync(join(cwd, '.forge', 'state.json'), 'utf8'));
     expect(normalized.phase_id).toBe('security');
@@ -395,7 +395,7 @@ describe('forge harness hooks', () => {
     });
 
     const output = runHook('state-restore.mjs', cwd);
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
     expect(output.hookSpecificOutput.additionalContext).toContain('saved handoff');
   });
 
@@ -448,7 +448,7 @@ describe('forge harness hooks', () => {
     });
 
     const output = runHook('state-restore.mjs', cwd);
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:analyze');
     expect(output.hookSpecificOutput.additionalContext).toContain('saved analysis is stale');
   });
 
@@ -465,7 +465,7 @@ describe('forge harness hooks', () => {
 
     const output = runHook('phase-detector.mjs', cwd, { message: 'forge continue' });
     expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:analyze');
     expect(output.hookSpecificOutput.additionalContext).toContain('saved analysis is stale');
   });
 
@@ -474,7 +474,7 @@ describe('forge harness hooks', () => {
 
     const output = runHook('phase-detector.mjs', cwd, { message: 'forge build me a dashboard' });
     expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:ignite');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:ignite');
     expect(output.hookSpecificOutput.additionalContext).toContain('Requested mode: build');
     expect(output.hookSpecificOutput.additionalContext).toContain('Detected build request from user message.');
   });
@@ -484,7 +484,7 @@ describe('forge harness hooks', () => {
 
     const output = runHook('phase-detector.mjs', cwd, { message: 'quick build a dashboard' });
     expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:ignite');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:ignite');
     expect(output.hookSpecificOutput.additionalContext).toContain('Requested mode: express');
     expect(output.hookSpecificOutput.additionalContext).toContain('Detected express request from user message.');
   });
@@ -496,7 +496,7 @@ describe('forge harness hooks', () => {
 
     const output = runHook('phase-detector.mjs', cwd, { message: 'forge:ignite build me a dashboard' });
     expect(output.hookSpecificOutput.hookEventName).toBe('UserPromptSubmit');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:ignite');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:ignite');
 
     expect(existsSync(join(cwd, '.forge', 'plugins', 'forge'))).toBe(true);
     expect(existsSync(join(cwd, '.forge', 'state.json'))).toBe(true);
@@ -550,8 +550,8 @@ describe('forge harness hooks', () => {
     });
 
     const output = runHook('state-restore.mjs', cwd);
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
-    expect(output.hookSpecificOutput.additionalContext).not.toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:info');
+    expect(output.hookSpecificOutput.additionalContext).not.toContain('Skill("forge:continue');
     expect(output.hookSpecificOutput.additionalContext).toContain('Project delivered');
     expect(output.hookSpecificOutput.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
   });
@@ -1498,21 +1498,21 @@ describe('phase-detector hook', () => {
     writeState(tmpDir, { phase: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
     expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
   });
 
   it('detects Korean forge trigger', () => {
     writeState(tmpDir, { phase: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: '포지 상태' });
     expect(output.hookSpecificOutput.additionalContext).toContain('[Forge]');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
   });
 
   it('routes explicit forge analyze requests to forge analyze', () => {
     writeState(tmpDir, { phase: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge analyze scripts/write-gate.mjs' });
     expect(output.hookSpecificOutput.additionalContext).toContain('→ forge:analyze');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:analyze');
   });
 
   it('routes explicit forge info requests to forge info', () => {
@@ -1520,18 +1520,18 @@ describe('phase-detector hook', () => {
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge info' });
     expect(output.hookSpecificOutput.additionalContext).toContain('Next action:');
     expect(output.hookSpecificOutput.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:info');
   });
 
   it('routes colon-form forge continue through the shared resume surface', () => {
     writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge:continue' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
   });
 
   it('routes explicit forge troubleshoot requests without bootstrapping a stray intake project', () => {
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge:troubleshoot' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:troubleshoot');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:troubleshoot');
     expect(existsSync(join(tmpDir, '.forge', 'state.json'))).toBe(false);
     expect(existsSync(join(tmpDir, '.forge', 'runtime.json'))).toBe(false);
   });
@@ -1570,9 +1570,9 @@ describe('phase-detector hook', () => {
     });
 
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge continue' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:analyze');
     expect(output.hookSpecificOutput.additionalContext).toContain('stale');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:analyze');
   });
 
   it('keeps explicit forge continue on shared state when Codex follows a Claude handoff', () => {
@@ -1601,7 +1601,7 @@ describe('phase-detector hook', () => {
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge continue' }, {
       env: { CODEX_THREAD_ID: 'thread-2' },
     });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
     expect(output.hookSpecificOutput.additionalContext).toContain('Shared .forge handoff: Claude -> Codex');
 
     const runtime = readRuntimeState(tmpDir);
@@ -1624,7 +1624,7 @@ describe('phase-detector hook', () => {
 
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge continue' });
     expect(output.hookSpecificOutput.additionalContext).toContain('Project delivered');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:info');
     expect(output.hookSpecificOutput.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
   });
 
@@ -1637,20 +1637,20 @@ describe('phase-detector hook', () => {
   it('routes natural resume text to forge continue when a project is active', () => {
     writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'continue' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
   });
 
   it('routes Korean natural status text to forge info when a project is active', () => {
     writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: '진행 상황 알려줘' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:info');
     expect(output.hookSpecificOutput.additionalContext).toContain('Canonical status surface from scripts/forge-status.mjs');
   });
 
   it('routes natural project analysis text to forge analyze when a project is active', () => {
     writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'impact analysis' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:analyze');
   });
 
   it('routes design-improvement text to forge analyze without requiring the forge prefix', () => {
@@ -1673,7 +1673,7 @@ describe('phase-detector hook', () => {
     });
 
     const output = runHook('phase-detector.mjs', tmpDir, { message: '디자인 개선해줘' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:analyze');
     expect(output.hookSpecificOutput.additionalContext).toContain('design-improvement');
     expect(output.hookSpecificOutput.additionalContext).toContain('운영 프로필');
 
@@ -1685,7 +1685,7 @@ describe('phase-detector hook', () => {
   it('routes generic forge requests to analyze first in repair mode when analysis is missing', () => {
     writeState(tmpDir, { phase: 'isolate', phase_id: 'isolate', phase_name: 'isolate', mode: 'repair', status: 'active' });
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:analyze');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:analyze');
     expect(output.hookSpecificOutput.additionalContext).toContain('no codebase analysis');
   });
 
@@ -1740,7 +1740,7 @@ describe('phase-detector hook', () => {
 
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge' });
     expect(output.hookSpecificOutput.additionalContext).toContain('next:pm');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
   });
 
   it('routes generic forge requests through continue even when the active blocker owner is internal', () => {
@@ -1755,7 +1755,7 @@ describe('phase-detector hook', () => {
 
     const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge status' });
     expect(output.hookSpecificOutput.additionalContext).toContain('next:lead-dev');
-    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill("forge:continue');
   });
 
   it('surfaces gate-aware staffing in forge request context', () => {
@@ -1846,7 +1846,7 @@ describe('stop-guard hook', () => {
     });
 
     expect(output.decision).toBe('block');
-    expect(output.reason).toContain('Skill: forge:analyze');
+    expect(output.reason).toContain('Skill("forge:analyze');
     expect(output.reason).toContain('saved analysis is stale');
   });
 
