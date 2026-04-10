@@ -14,22 +14,28 @@ Usage:
   node scripts/forge-worktree.mjs list [--json]
   node scripts/forge-worktree.mjs remove (--lane <lane> | --path <path>) [--force]
   node scripts/forge-worktree.mjs prune
+  node scripts/forge-worktree.mjs pre-merge [--json]
+  node scripts/forge-worktree.mjs merge-lane --lane <lane> [--message <msg>] [--no-rebase]
   node scripts/forge-worktree.mjs --help
 
 Commands:
-  create   create a lane worktree under .forge/worktrees by default
-  list     list active Forge worktrees
-  remove   remove a Forge worktree by lane id or explicit path
-  prune    prune stale git worktree metadata
+  create      create a lane worktree under .forge/worktrees by default
+  list        list active Forge worktrees
+  remove      remove a Forge worktree by lane id or explicit path
+  prune       prune stale git worktree metadata
+  pre-merge   check all worktrees for uncommitted changes and auto-commit them
+  merge-lane  commit worktree changes, merge lane branch to main, rebase remaining worktrees
 
 Options:
-  --lane    lane identifier used for the default worktree path
-  --branch  branch to create for the worktree
-  --path    explicit worktree path (default: .forge/worktrees/<lane>)
-  --base    starting ref for create (default: HEAD)
-  --json    emit list output as JSON
-  --force   force removal
-  --help    show this message
+  --lane      lane identifier used for the default worktree path
+  --branch    branch to create for the worktree
+  --path      explicit worktree path (default: .forge/worktrees/<lane>)
+  --base      starting ref for create (default: HEAD)
+  --message   commit message for pre-merge auto-commit (default: "feat: {lane} implementation")
+  --no-rebase skip rebasing other worktrees after merge
+  --json      emit list output as JSON
+  --force     force removal
+  --help      show this message
 `);
 }
 
@@ -76,7 +82,12 @@ function parseArgs(argv) {
       continue;
     }
 
-    if (['--lane', '--branch', '--path', '--base'].includes(arg)) {
+    if (arg === '--no-rebase') {
+      options.noRebase = true;
+      continue;
+    }
+
+    if (['--lane', '--branch', '--path', '--base', '--message'].includes(arg)) {
       const value = rest[index + 1];
       if (!value) {
         fail(`Missing value for ${arg}`);
@@ -91,6 +102,8 @@ function parseArgs(argv) {
         options.path = resolve(value);
       } else if (arg === '--base') {
         options.base = value.trim();
+      } else if (arg === '--message') {
+        options.message = value.trim();
       }
       continue;
     }
@@ -286,6 +299,154 @@ function pruneWorktrees() {
   console.log('pruned: git worktree metadata');
 }
 
+function runGitIn(cwd, args) {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  if (result.error) {
+    fail(result.error.message);
+  }
+  return result;
+}
+
+function getWorktreeStatus(worktreePath) {
+  const result = runGitIn(worktreePath, ['status', '--porcelain']);
+  if (result.status !== 0) {
+    return { error: (result.stderr || '').trim() };
+  }
+  const lines = result.stdout.trim().split('\n').filter(Boolean);
+  return { dirty: lines.length > 0, files: lines };
+}
+
+function getWorktreeBranch(worktreePath) {
+  const result = runGitIn(worktreePath, ['rev-parse', '--abbrev-ref', 'HEAD']);
+  if (result.status !== 0) return '';
+  return result.stdout.trim();
+}
+
+function preMerge(options) {
+  const entries = parseWorktreeList(runGit(['worktree', 'list', '--porcelain']))
+    .filter(isForgeWorktree);
+
+  if (entries.length === 0) {
+    console.log('No Forge worktrees found.');
+    return;
+  }
+
+  const results = [];
+
+  for (const entry of entries) {
+    const lane = entry.path.split(sep).pop();
+    const status = getWorktreeStatus(entry.path);
+
+    if (status.error) {
+      results.push({ lane, path: entry.path, status: 'error', detail: status.error });
+      continue;
+    }
+
+    if (!status.dirty) {
+      results.push({ lane, path: entry.path, status: 'clean', committed: false });
+      continue;
+    }
+
+    const msg = options.message || `feat: ${lane} implementation`;
+    const addResult = runGitIn(entry.path, ['add', '-A']);
+    if (addResult.status !== 0) {
+      results.push({ lane, path: entry.path, status: 'error', detail: 'git add failed' });
+      continue;
+    }
+
+    const commitResult = runGitIn(entry.path, ['commit', '-m', msg]);
+    if (commitResult.status !== 0) {
+      results.push({ lane, path: entry.path, status: 'error', detail: (commitResult.stderr || '').trim() });
+      continue;
+    }
+
+    results.push({ lane, path: entry.path, status: 'committed', files: status.files.length });
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify(results, null, 2));
+    return;
+  }
+
+  for (const r of results) {
+    const icon = r.status === 'committed' ? '✓' : r.status === 'clean' ? '-' : '✗';
+    const detail = r.status === 'committed' ? `${r.files} file(s) committed`
+      : r.status === 'clean' ? 'already committed'
+      : r.detail;
+    console.log(`${icon} ${r.lane}: ${detail}`);
+  }
+}
+
+function mergeLane(options) {
+  if (!options.lane) {
+    fail('Expected --lane for merge-lane');
+  }
+
+  const worktreePath = resolveWorktreePath(options);
+  if (!existsSync(worktreePath)) {
+    fail(`Worktree path does not exist: ${worktreePath}`);
+  }
+
+  const laneBranch = getWorktreeBranch(worktreePath);
+  if (!laneBranch) {
+    fail(`Cannot determine branch for worktree: ${worktreePath}`);
+  }
+
+  // Step 1: Commit uncommitted changes in the worktree
+  const status = getWorktreeStatus(worktreePath);
+  if (status.error) {
+    fail(`Cannot read worktree status: ${status.error}`);
+  }
+
+  if (status.dirty) {
+    const msg = options.message || `feat: ${options.lane} implementation`;
+    const addResult = runGitIn(worktreePath, ['add', '-A']);
+    if (addResult.status !== 0) {
+      fail('git add failed in worktree');
+    }
+    const commitResult = runGitIn(worktreePath, ['commit', '-m', msg]);
+    if (commitResult.status !== 0) {
+      fail(`commit failed: ${(commitResult.stderr || '').trim()}`);
+    }
+    console.log(`committed: uncommitted changes in ${options.lane}`);
+  }
+
+  // Step 2: Merge lane branch into main
+  const mergeResult = runGitIn(process.cwd(), ['merge', laneBranch, '--no-ff', '-m', `merge: ${options.lane} lane into main`]);
+  if (mergeResult.status !== 0) {
+    const stderr = (mergeResult.stderr || mergeResult.stdout || '').trim();
+    fail(`merge failed for ${laneBranch}: ${stderr}\nResolve conflicts manually, then re-run.`);
+  }
+  console.log(`merged: ${laneBranch} → main`);
+
+  // Step 3: Rebase remaining active worktrees
+  if (options.noRebase) {
+    console.log('skipped: rebase (--no-rebase)');
+    return;
+  }
+
+  const remaining = parseWorktreeList(runGit(['worktree', 'list', '--porcelain']))
+    .filter(isForgeWorktree)
+    .filter(e => e.path !== resolve(worktreePath));
+
+  if (remaining.length === 0) {
+    console.log('no remaining worktrees to rebase');
+    return;
+  }
+
+  for (const entry of remaining) {
+    const lane = entry.path.split(sep).pop();
+    const rebaseResult = runGitIn(entry.path, ['rebase', 'main']);
+    if (rebaseResult.status !== 0) {
+      // Abort failed rebase so the worktree isn't stuck
+      runGitIn(entry.path, ['rebase', '--abort']);
+      console.log(`✗ ${lane}: rebase conflict — manually rebase and resolve`);
+    } else {
+      console.log(`✓ ${lane}: rebased onto main`);
+    }
+  }
+}
+
 function main() {
   const { command, options } = parseArgs(process.argv.slice(2));
 
@@ -311,6 +472,16 @@ function main() {
 
   if (command === 'prune') {
     pruneWorktrees();
+    return;
+  }
+
+  if (command === 'pre-merge') {
+    preMerge(options);
+    return;
+  }
+
+  if (command === 'merge-lane') {
+    mergeLane(options);
     return;
   }
 

@@ -238,9 +238,34 @@ Layer 2 — Isolated Subagent (parallel execution):
    Leaving approved lanes unmerged creates merge debt and weakens the living standard for later lanes.
 
 9. After each merge, update the lane record, then rebase all other active worktrees:
+
+   **IMPORTANT — commit-based merge only (no diff/patch)**:
+   NEVER use `git diff | git apply` or `git format-patch` to integrate lane work.
+   Uncommitted worktree changes applied via text patches lose git's 3-way merge
+   capability and break when multiple lanes touch the same file.
+   Always use the commit → merge → rebase pipeline below.
+
+   **Preferred — automated merge-lane command** (commits + merges + rebases in one step):
+   ```
+   node scripts/forge-worktree.mjs merge-lane --lane {module}
    node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status merged --note "Merged to main"
    node scripts/forge-lane-runtime.mjs update-lane-status --lane {module} --status done --note "Worktree cleaned up"
+   ```
+   `merge-lane` automatically: (a) commits any uncommitted changes, (b) merges the lane
+   branch into main with `--no-ff`, (c) rebases all remaining active worktrees onto main.
+
+   **Fallback — manual steps** (if merge-lane hits an edge case):
+   ```
+   cd .forge/worktrees/{module} && git add -A && git commit -m "feat: {module} implementation"
+   git checkout main && git merge forge/{module} --no-ff
    cd .forge/worktrees/{other-module} && git rebase main
+   ```
+
+   **Pre-merge check** — before starting the merge sequence, verify all worktrees are committed:
+   ```
+   node scripts/forge-worktree.mjs pre-merge
+   ```
+
    - Do not accumulate multiple approved lanes for a later mega-merge. The moment a lane is approved or merge-ready,
      land it, rebase the remaining worktrees, and only then continue the next batch.
    - If rebase conflicts: developer resolves in their worktree
