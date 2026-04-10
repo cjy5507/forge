@@ -66,8 +66,11 @@ runHook(async (input) => {
     return;
   }
 
+  // Express mode skips batch checks — inline QA during BUILD handles verification,
+  // and batch check failures here cause spurious pauses requiring user intervention.
+  const isExpressMode = state.mode === 'express';
   const batchChecksEnabled = process.env.FORGE_STOP_BATCH_CHECKS !== '0';
-  if (batchChecksEnabled && tierAtLeast(tier, 'medium')) {
+  if (batchChecksEnabled && !isExpressMode && tierAtLeast(tier, 'medium')) {
     const runtimeForBatchChecks = readRuntimeState(cwd, { state });
     const batchPlan = buildStopBatchCheckPlan({
       cwd,
@@ -207,9 +210,9 @@ ${failedCheck.output || batchSummary}`;
     // Non-fatal: cost sampling must never break a Stop hook.
   }
 
-  // For non-critical phases, only full tier gets stop protection.
-  // Batch checks above still run for medium/full tiers before we exit.
-  if (!isCritical && !tierAtLeast(tier, 'full')) {
+  // For non-critical phases (including all Express phases), only full tier gets stop protection.
+  // Express mode always exits here since its phases (plan/build/ship) are never in CRITICAL_PHASES.
+  if (isExpressMode || (!isCritical && !tierAtLeast(tier, 'full'))) {
     recordDecisionTrace(cwd, {
       scope: 'stop_guard',
       kind: 'allow_noncritical',
