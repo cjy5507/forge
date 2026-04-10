@@ -377,3 +377,29 @@ export function loadRunSummary(path, fallbackLabel) {
   }
   return normalizeRunSummary(parsed, fallbackLabel);
 }
+
+/**
+ * Load QA calibration examples from .forge/calibration/qa-examples.json.
+ * Returns [] on any failure (graceful fallback per context7 clean-code: "don't ignore caught errors").
+ * @param {string} cwd
+ * @returns {{ id: string, category: string, code_snippet: string, expected_score: number, max_score: number, reasoning: string }[]}
+ */
+export function loadCalibrationExamples(cwd = '.') {
+  const calibrationPath = join(cwd, '.forge', 'calibration', 'qa-examples.json');
+  const parsed = safeReadJson(calibrationPath);
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(ex => ex && typeof ex === 'object' && ex.id);
+}
+
+/**
+ * Load QA scoring rubric from .forge/calibration/scoring-rubric.json.
+ * Returns null on failure (graceful fallback).
+ * @param {string} cwd
+ * @returns {{ categories: object[], scale: object } | null}
+ */
+export function loadScoringRubric(cwd = '.') {
+  const rubricPath = join(cwd, '.forge', 'calibration', 'scoring-rubric.json');
+  const parsed = safeReadJson(rubricPath);
+  if (!parsed || typeof parsed !== 'object') return null;
+  return parsed;
+}

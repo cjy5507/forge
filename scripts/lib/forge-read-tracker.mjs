@@ -5,7 +5,7 @@
 import { resolve, join } from 'path';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 
-const READ_BUDGET_THRESHOLD = 3;
+const READ_BUDGET_THRESHOLD = 5;
 const TRACKER_FILE = '.forge/read-counts.json';
 
 // Paths that should never trigger read budget warnings

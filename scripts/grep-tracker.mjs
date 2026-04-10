@@ -12,7 +12,7 @@ import { resolveForgeBaseDir } from './lib/forge-io.mjs';
 import { readForgeState } from './lib/forge-session.mjs';
 import { readActiveTier, readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 
-const MANY_RESULTS_THRESHOLD = 100;
+const MANY_RESULTS_THRESHOLD = 150;
 
 function countGrepResults(input) {
   // PostToolUse input shape varies — try known patterns

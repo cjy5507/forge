@@ -48,12 +48,23 @@ export function shouldRefreshAnalysis(state = {}, runtime = DEFAULT_RUNTIME, { p
   };
 }
 
-export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME) {
+export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME, { sessionBoundary = false } = {}) {
   const safeState = state && typeof state === 'object' ? state : {};
   const phase = resolvePhase(safeState);
   const allowsLaneContinuation = new Set(['develop', 'fix', 'build']).has(phase.id);
   const customerBlockers = runtime?.customer_blockers;
   const internalBlockers = runtime?.internal_blockers;
+
+  // Anthropic principle: clean context resets > compaction for long tasks.
+  // When resuming from a new session, prefer artifact-based handoff over
+  // relying on compacted context from the previous session.
+  if (sessionBoundary && runtime?.session_handoff_summary) {
+    return {
+      kind: 'session_resume',
+      target: phase.id,
+      detail: runtime.session_handoff_summary,
+    };
+  }
 
   if (Array.isArray(customerBlockers) && customerBlockers.length > 0) {
     const blocker = customerBlockers[0];
