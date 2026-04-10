@@ -5,6 +5,23 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const HELP_COMMANDS = new Set(['help', '--help']);
+const USAGE = `Forge CLI
+
+Usage:
+  forge analytics [--json]
+  forge status [--json|--verbose]
+  forge verification [--json]
+  forge recovery [--json]
+  forge continue [--json]
+  forge health [--json] [--host <id>]
+  forge lane summarize [--json]
+  forge lane analysis-status [--json]
+  forge worktree <args...>
+  forge eval <args...>
+  forge setup <args...>
+  forge help
+`;
 
 const COMMAND_SCRIPTS = new Map([
   ['analytics', 'forge-analytics.mjs'],
@@ -35,62 +52,81 @@ const LANE_ALIASES = new Map([
 ]);
 
 function printUsage() {
-  process.stdout.write(`Forge CLI
-
-Usage:
-  forge analytics [--json]
-  forge status [--json|--verbose]
-  forge verification [--json]
-  forge recovery [--json]
-  forge continue [--json]
-  forge health [--json] [--host <id>]
-  forge lane summarize [--json]
-  forge lane analysis-status [--json]
-  forge worktree <args...>
-  forge eval <args...>
-  forge setup <args...>
-  forge help
-`);
+  process.stdout.write(USAGE);
 }
 
 function fail(message) {
   process.stderr.write(`[forge] ${message}\n`);
-  process.exit(1);
 }
 
-function dispatch(scriptName, args) {
+function runScript(scriptName, args) {
   const result = spawnSync(process.execPath, [join(SCRIPT_DIR, scriptName), ...args], {
     cwd: process.cwd(),
     stdio: 'inherit',
   });
 
   if (result.error) {
-    fail(result.error.message);
+    return {
+      status: 1,
+      error: result.error.message,
+    };
   }
 
-  process.exit(result.status ?? 1);
+  return {
+    status: result.status ?? 1,
+    error: '',
+  };
 }
 
-function main(argv) {
-  if (argv.length === 0 || argv[0] === 'help' || argv[0] === '--help') {
-    printUsage();
-    return;
+function resolveInvocation(argv) {
+  if (argv.length === 0 || HELP_COMMANDS.has(argv[0])) {
+    return { kind: 'help' };
   }
 
   const [command, ...rest] = argv;
   if (command === 'lane') {
     const [laneCommand = 'summarize', ...laneArgs] = rest;
-    const normalized = LANE_ALIASES.get(laneCommand) || laneCommand;
-    dispatch('forge-lane-runtime.mjs', [normalized, ...laneArgs]);
-    return;
+    return {
+      kind: 'dispatch',
+      scriptName: 'forge-lane-runtime.mjs',
+      args: [(LANE_ALIASES.get(laneCommand) || laneCommand), ...laneArgs],
+    };
   }
 
   const scriptName = COMMAND_SCRIPTS.get(command);
   if (!scriptName) {
-    fail(`Unknown command: ${command}`);
+    return {
+      kind: 'error',
+      message: `Unknown command: ${command}`,
+    };
   }
 
-  dispatch(scriptName, rest);
+  return {
+    kind: 'dispatch',
+    scriptName,
+    args: rest,
+  };
 }
 
-main(process.argv.slice(2));
+function main(argv) {
+  const invocation = resolveInvocation(argv);
+
+  if (invocation.kind === 'help') {
+    printUsage();
+    return 0;
+  }
+
+  if (invocation.kind === 'error') {
+    fail(invocation.message);
+    return 1;
+  }
+
+  const result = runScript(invocation.scriptName, invocation.args);
+  if (result.error) {
+    fail(result.error);
+  }
+
+  return result.status;
+}
+
+process.exitCode = main(process.argv.slice(2));

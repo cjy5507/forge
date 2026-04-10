@@ -22,6 +22,36 @@ const designImprovementTriggers = allTriggers(DESIGN_IMPROVEMENT_TRIGGERS);
 const naturalProjectSkillTriggers = Object.fromEntries(
   Object.entries(NATURAL_PROJECT_SKILL_TRIGGERS).map(([skill, triggerMap]) => [skill, allTriggers(triggerMap)]),
 );
+const genericForgeRequests = new Set([
+  'forge',
+  'forge status',
+  'forge progress',
+  '포지',
+  '포지 상태',
+  '포지 진행',
+]);
+const explicitSkillMappings = [
+  ['continue', [/\bforge(?::|\s+)continue\b/, /\bforge(?::|\s+)resume\b/, /포지\s*계속/, /포지\s*이어/]],
+  ['info', [/\bforge(?::|\s+)info\b/, /\bforge(?::|\s+)details?\b/, /\bforge(?::|\s+)status\b/, /\bforge(?::|\s+)progress\b/, /포지\s*정보/]],
+  ['analyze', [/\bforge(?::|\s+)analy[sz]e\b/, /\bforge(?::|\s+)analysis\b/, /포지\s*분석/]],
+  ['cancel', [/\bforge(?::|\s+)cancel\b/, /\bforge(?::|\s+)stop\b/, /\bforge(?::|\s+)abort\b/, /포지\s*취소/, /포지\s*중단/]],
+  ['design', [/\bforge(?::|\s+)design\b/]],
+  ['plans', [/\bforge(?::|\s+)plans\b/, /\bforge(?::|\s+)plan\b/]],
+  ['develop', [/\bforge(?::|\s+)develop\b/]],
+  ['fix', [/\bforge(?::|\s+)fix\b/]],
+  ['qa', [/\bforge(?::|\s+)qa\b/]],
+  ['security', [/\bforge(?::|\s+)security\b/]],
+  ['deliver', [/\bforge(?::|\s+)deliver\b/, /\bforge(?::|\s+)delivery\b/]],
+  ['troubleshoot', [/\bforge(?::|\s+)troubleshoot\b/]],
+  ['ignite', [/\bforge:ignite\b/, /\bforge\s+ignite\b/, /포지\s*점화/]],
+];
+const prioritizedNaturalSkillMatchers = [
+  ['analyze', designImprovementTriggers],
+  ['analyze', analyzeProjectTriggers],
+  ['info', statusTriggers],
+  ['continue', resumeTriggers],
+  ...Object.entries(naturalProjectSkillTriggers).filter(([skill]) => skill !== 'analyze'),
+];
 
 const PHASE_TO_SKILL = {
   plan: 'plans',
@@ -29,73 +59,46 @@ const PHASE_TO_SKILL = {
   complete: 'info',
 };
 
+function matchesAny(patterns, text) {
+  return patterns.some(pattern => pattern.test(text));
+}
+
+function detectSkillFromMappings(text, mappings) {
+  for (const [skill, patterns] of mappings) {
+    if (matchesAny(patterns, text)) {
+      return skill;
+    }
+  }
+
+  return null;
+}
+
 export function isNaturalForgeRequest(message) {
-  if (expressTriggers.some(re => re.test(message))) return 'express';
-  if (buildTriggers.some(re => re.test(message))) return 'build';
-  if (repairTriggers.some(re => re.test(message))) return 'repair';
+  if (matchesAny(expressTriggers, message)) return 'express';
+  if (matchesAny(buildTriggers, message)) return 'build';
+  if (matchesAny(repairTriggers, message)) return 'repair';
   return null;
 }
 
 export function detectNaturalProjectSkill(message) {
-  const text = String(message || '');
-  if (designImprovementTriggers.some(re => re.test(text))) return 'analyze';
-  if (analyzeProjectTriggers.some(re => re.test(text))) return 'analyze';
-  if (statusTriggers.some(re => re.test(text))) return 'info';
-  if (resumeTriggers.some(re => re.test(text))) return 'continue';
-  for (const [skill, patterns] of Object.entries(naturalProjectSkillTriggers)) {
-    if (skill === 'analyze') {
-      continue;
-    }
-    if (patterns.some(re => re.test(text))) return skill;
-  }
-  return null;
+  return detectSkillFromMappings(String(message || ''), prioritizedNaturalSkillMatchers);
 }
 
 export function isDesignImprovementRequest(message = '') {
-  return designImprovementTriggers.some(re => re.test(String(message || '')));
+  return matchesAny(designImprovementTriggers, String(message || ''));
 }
 
 export function extractExplicitForgeSkill(message) {
-  const text = String(message || '').trim().toLowerCase();
-  const mappings = [
-    { skill: 'continue', patterns: [/\bforge\s+continue\b/, /\bforge\s+resume\b/, /포지\s*계속/, /포지\s*이어/] },
-    { skill: 'info', patterns: [/\bforge\s+info\b/, /\bforge\s+details?\b/, /포지\s*정보/] },
-    { skill: 'analyze', patterns: [/\bforge\s+analy[sz]e\b/, /\bforge\s+analysis\b/, /포지\s*분석/] },
-    { skill: 'cancel', patterns: [/\bforge\s+cancel\b/, /\bforge\s+stop\b/, /\bforge\s+abort\b/, /포지\s*취소/, /포지\s*중단/] },
-    { skill: 'design', patterns: [/\bforge\s+design\b/] },
-    { skill: 'plans', patterns: [/\bforge\s+plans\b/, /\bforge\s+plan\b/] },
-    { skill: 'develop', patterns: [/\bforge\s+develop\b/] },
-    { skill: 'fix', patterns: [/\bforge\s+fix\b/] },
-    { skill: 'qa', patterns: [/\bforge\s+qa\b/] },
-    { skill: 'security', patterns: [/\bforge\s+security\b/] },
-    { skill: 'deliver', patterns: [/\bforge\s+deliver\b/, /\bforge\s+delivery\b/] },
-    { skill: 'ignite', patterns: [/\bforge:ignite\b/, /\bforge\s+ignite\b/, /포지\s*점화/] },
-  ];
-
-  for (const mapping of mappings) {
-    if (mapping.patterns.some(pattern => pattern.test(text))) {
-      return mapping.skill;
-    }
-  }
-
-  return null;
+  return detectSkillFromMappings(String(message || '').trim().toLowerCase(), explicitSkillMappings);
 }
 
 export function isGenericForgeRequest(message) {
-  const text = String(message || '').trim().toLowerCase();
-  return [
-    'forge',
-    'forge status',
-    'forge progress',
-    '포지',
-    '포지 상태',
-    '포지 진행',
-  ].includes(text);
+  return genericForgeRequests.has(String(message || '').trim().toLowerCase());
 }
 
 export function deriveForgeRequest(message, { projectActive = false } = {}) {
   const explicitSkill = extractExplicitForgeSkill(message);
-  const isExplicitForge = forgeTriggers.some(re => re.test(message));
+  const isExplicitForge = matchesAny(forgeTriggers, message);
   const naturalMode = !projectActive ? isNaturalForgeRequest(message) : null;
   const naturalSkill = !isExplicitForge && projectActive ? detectNaturalProjectSkill(message) : null;
 

@@ -55,6 +55,14 @@ export const AREA_FILE_PATTERNS = {
   shared: ['src/types/**', 'src/utils/**', 'src/lib/**', 'src/config/**'],
 };
 
+const AREA_SCOPE_EXCLUSIONS = {
+  backend: [/^\*\*\/\*\.test\.\*$/, /^\*\*\/\*\.spec\.\*$/],
+  database: [/^\*\*\/\*\.test\.\*$/, /^\*\*\/\*\.spec\.\*$/],
+  auth: [/^\*\*\/\*\.test\.\*$/, /^\*\*\/\*\.spec\.\*$/],
+  shared: [/^\*\*\/\*\.test\.\*$/, /^\*\*\/\*\.spec\.\*$/],
+  testing: [/^src\/types\/\*\*$/, /^src\/utils\/\*\*$/, /^src\/lib\/\*\*$/, /^src\/config\/\*\*$/],
+};
+
 const IMPORT_PATTERNS = [
   /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g,
   /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
@@ -514,6 +522,8 @@ export function validateLLMResponse(response) {
     return true;
   });
 
+  components = normalizeComponentFilePatterns(components);
+
   // Referential integrity: remove dependency edges pointing to non-existent IDs
   const validIds = new Set(components.map(c => c.id));
   for (const c of components) {
@@ -586,10 +596,131 @@ function patternMatchesFingerprint(pattern, fingerprint) {
 function resolveAreaFilePatterns(area, fingerprint) {
   const patterns = AREA_FILE_PATTERNS[area] || [];
   if (!fingerprint) {
+    return filterAreaPatterns(area, patterns);
+  }
+
+  return filterAreaPatterns(area, patterns.filter(pattern => patternMatchesFingerprint(pattern, fingerprint)));
+}
+
+function filterAreaPatterns(area, patterns) {
+  const exclusions = AREA_SCOPE_EXCLUSIONS[area] || [];
+  if (exclusions.length === 0) {
     return patterns;
   }
 
-  return patterns.filter(pattern => patternMatchesFingerprint(pattern, fingerprint));
+  return patterns.filter(pattern => !exclusions.some(exclusion => exclusion.test(pattern)));
+}
+
+function filterPatternsForAreas(areas = [], patterns = []) {
+  const normalizedPatterns = [...new Set(patterns.map(String).filter(Boolean))];
+  return [...new Set(
+    areas.reduce(
+      (acc, area) => filterAreaPatterns(area, acc),
+      normalizedPatterns,
+    ),
+  )];
+}
+
+function normalizeGlobPattern(pattern = '') {
+  return String(pattern || '').replace(/\\/g, '/').replace(/^\.\/+/, '');
+}
+
+function globPatternToRegExp(pattern = '') {
+  const normalized = normalizeGlobPattern(pattern);
+  const escaped = normalized.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+  const doubleStarToken = '__FORGE_DOUBLE_STAR__';
+  const withTokens = escaped.replace(/\*\*/g, doubleStarToken);
+  const singleStarExpanded = withTokens.replace(/\*/g, '[^/]*');
+  const regexSource = singleStarExpanded.replaceAll(doubleStarToken, '.*');
+  return new RegExp(`^${regexSource}$`);
+}
+
+function prefixBeforeWildcard(pattern = '') {
+  const normalized = normalizeGlobPattern(pattern);
+  const wildcardIndex = normalized.search(/\*/);
+  if (wildcardIndex === -1) {
+    return normalized.includes('/') ? normalized.slice(0, normalized.lastIndexOf('/') + 1) : '';
+  }
+  return normalized.slice(0, wildcardIndex);
+}
+
+function samplePathForPattern(pattern = '', basePrefix = '') {
+  const normalized = normalizeGlobPattern(pattern);
+  const injected = basePrefix && normalized.startsWith('**/')
+    ? `${basePrefix}${normalized.slice(3)}`
+    : normalized;
+  const sampled = injected
+    .replace(/\*\*\/?/g, 'sample/')
+    .replace(/\*/g, 'sample')
+    .replace(/\/{2,}/g, '/');
+
+  if (!sampled) {
+    return basePrefix ? `${basePrefix}sample` : 'sample';
+  }
+
+  return sampled.endsWith('/') ? `${sampled}sample` : sampled;
+}
+
+function patternsMayOverlap(leftPattern = '', rightPattern = '') {
+  const left = normalizeGlobPattern(leftPattern);
+  const right = normalizeGlobPattern(rightPattern);
+  if (!left || !right) {
+    return false;
+  }
+
+  if (left === right) {
+    return true;
+  }
+
+  const leftRegex = globPatternToRegExp(left);
+  const rightRegex = globPatternToRegExp(right);
+  const candidates = [
+    samplePathForPattern(left),
+    samplePathForPattern(right),
+    samplePathForPattern(left, prefixBeforeWildcard(right)),
+    samplePathForPattern(right, prefixBeforeWildcard(left)),
+  ];
+
+  if (candidates.some(candidate => leftRegex.test(candidate) && rightRegex.test(candidate))) {
+    return true;
+  }
+
+  const containmentPrefixes = [
+    [left, right],
+    [right, left],
+  ];
+
+  return containmentPrefixes.some(([broad, narrow]) => {
+    if (!broad.endsWith('/**')) {
+      return false;
+    }
+    const prefix = broad.slice(0, -3);
+    return Boolean(prefix)
+      && (narrow.startsWith(`${prefix}/`) || narrow === prefix)
+      && globPatternToRegExp(broad).test(samplePathForPattern(narrow, prefixBeforeWildcard(broad)));
+  });
+}
+
+function normalizeComponentFilePatterns(components = []) {
+  const claimedPatterns = new Set();
+
+  return components.map(component => {
+    const filteredPatterns = filterPatternsForAreas(component.areas, component.filePatterns || []);
+    const ownedPatterns = filteredPatterns.filter(pattern => {
+      for (const claimedPattern of claimedPatterns) {
+        if (patternsMayOverlap(claimedPattern, pattern)) {
+          return false;
+        }
+      }
+      claimedPatterns.add(pattern);
+      return true;
+    });
+
+    return {
+      ...component,
+      filePatterns: ownedPatterns,
+    };
+  });
 }
 
 function detectAreasFromFingerprint(description, fingerprint) {

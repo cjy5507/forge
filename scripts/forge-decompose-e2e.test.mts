@@ -44,6 +44,7 @@ function makeFullstackWorkspace() {
     'src/auth/session.ts': 'import { db } from "../db/client";\nexport const session = db;\n',
     'src/routes/api.ts': 'import { db } from "../db/client";\nimport { session } from "../auth/session";\nexport const handler = () => ({ db, session });\n',
     'src/components/App.tsx': 'import { shared } from "../types/shared";\nexport function App() { return <div>{String(shared)}</div>; }\n',
+    'tests/api.test.ts': 'import { handler } from "../src/routes/api";\nexport const apiTest = handler;\n',
   };
 
   for (const [path, content] of Object.entries(files)) {
@@ -400,5 +401,66 @@ describe('task decomposition pipeline', () => {
     expect(result.valid).toBe(true);
     // Referential integrity: invalid dep should be stripped
     expect(result.data.components[0].dependencies).not.toContain('nonexistent');
+  });
+
+  it('validateLLMResponse normalizes overlapping LLM file scopes', () => {
+    const response = {
+      taskType: 'fullstack-app',
+      complexity: 0.7,
+      parallelizable: true,
+      components: [
+        {
+          id: 'shared',
+          title: 'Shared',
+          areas: ['shared'],
+          filePatterns: ['src/lib/**', 'src/types/**'],
+          dependencies: [],
+          modelHint: 'sonnet',
+        },
+        {
+          id: 'api',
+          title: 'API',
+          areas: ['backend'],
+          filePatterns: ['src/api/**', '**/*.test.*', 'src/lib/**'],
+          dependencies: ['shared'],
+          modelHint: 'sonnet',
+        },
+        {
+          id: 'testing',
+          title: 'Testing',
+          areas: ['testing'],
+          filePatterns: ['tests/**', '**/*.test.*', 'src/lib/**'],
+          dependencies: ['api'],
+          modelHint: 'sonnet',
+        },
+      ],
+    };
+
+    const result = validateLLMResponse(response);
+    expect(result.valid).toBe(true);
+
+    const shared = result.data.components.find((component: any) => component.id === 'shared');
+    const api = result.data.components.find((component: any) => component.id === 'api');
+    const testing = result.data.components.find((component: any) => component.id === 'testing');
+
+    expect(shared.filePatterns).toEqual(['src/lib/**', 'src/types/**']);
+    expect(api.filePatterns).toEqual(['src/api/**']);
+    expect(testing.filePatterns).toEqual(['tests/**']);
+  });
+
+  it('heuristic decomposition keeps testing scope from overlapping implementation lanes', () => {
+    const cwd = makeFullstackWorkspace();
+    const result = decomposeTask('build a website with API, database, and tests', { cwd });
+
+    const testing = result.components.find(component => component.id === 'testing');
+    const shared = result.components.find(component => component.id === 'shared');
+    const backend = result.components.find(component => component.id === 'backend');
+
+    expect(testing).toBeTruthy();
+    expect(testing.filePatterns).toContain('tests/**');
+    expect(testing.filePatterns).not.toContain('src/lib/**');
+    expect(testing.filePatterns).not.toContain('src/utils/**');
+    expect(backend?.filePatterns || []).not.toContain('**/*.test.*');
+    expect(shared?.filePatterns || []).not.toContain('**/*.test.*');
   });
 });

@@ -4,7 +4,7 @@
 
 import { existsSync, readdirSync } from 'fs';
 import { runHook } from './lib/hook-runner.mjs';
-import { resolve } from 'path';
+import { relative, resolve } from 'path';
 import { checkPhaseGate, resolvePhase } from './lib/forge-phases.mjs';
 import { detectWriteRisk, readActiveTier, tierAtLeast } from './lib/forge-tiers.mjs';
 import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
@@ -93,12 +93,61 @@ function resolveForgeAwarePath(cwd = '.', filePath = '') {
 function isForgeStateFile(filePath, cwd = '.') {
   if (!filePath) return false;
   const forgeDir = resolve(resolveForgeBaseDir(cwd), '.forge');
+  const worktreesDir = resolve(forgeDir, 'worktrees');
   const resolved = resolveForgeAwarePath(cwd, filePath);
+  if (resolved === worktreesDir || resolved.startsWith(worktreesDir + '/')) {
+    return false;
+  }
   return resolved.startsWith(forgeDir + '/') || resolved === forgeDir;
 }
 
 function normalizeRefs(values) {
   return Array.isArray(values) ? values.map(String).filter(Boolean) : [];
+}
+
+function normalizePathForMatch(value = '') {
+  return String(value || '').replace(/\\/g, '/').replace(/^\.\/+/, '');
+}
+
+function globToRegExp(pattern = '') {
+  const normalized = normalizePathForMatch(pattern);
+  const escaped = normalized.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+  const doubleStarToken = '__FORGE_DOUBLE_STAR__';
+  const withTokens = escaped.replace(/\*\*/g, doubleStarToken);
+  const singleStarExpanded = withTokens.replace(/\*/g, '[^/]*');
+  const regexSource = singleStarExpanded.replaceAll(doubleStarToken, '.*');
+  return new RegExp(`^${regexSource}$`);
+}
+
+function laneScopePatterns(lane) {
+  return Array.isArray(lane?.scope) ? lane.scope.map(String).filter(Boolean) : [];
+}
+
+function resolveLaneRoot(forgeBaseDir, lane, cwd) {
+  if (lane?.worktree_path) {
+    return resolve(forgeBaseDir, lane.worktree_path);
+  }
+
+  return resolve(cwd);
+}
+
+function resolveLaneRelativeFile(forgeBaseDir, lane, cwd, filePath) {
+  const targetPath = resolveForgeAwarePath(cwd, filePath);
+  const laneRoot = resolveLaneRoot(forgeBaseDir, lane, cwd);
+  const relativePath = normalizePathForMatch(relative(laneRoot, targetPath));
+  if (!relativePath || relativePath.startsWith('../') || relativePath === '..') {
+    return '';
+  }
+  return relativePath;
+}
+
+function laneScopeMatchesRelativePath(lane, relativePath) {
+  const patterns = laneScopePatterns(lane);
+  if (patterns.length === 0) {
+    return false;
+  }
+
+  return patterns.some(pattern => globToRegExp(pattern).test(relativePath));
 }
 
 function laneRequirementLinkage(lane) {
@@ -348,6 +397,50 @@ runHook(async (input) => {
         },
       }));
       return;
+    }
+  }
+
+  if (!isForgeStateFile(filePath, cwd)) {
+    const { laneId: currentLaneId, lane: currentLane } = resolveRuntimeLaneContext(runtime, forgeBaseDir, cwd);
+    const currentLaneScope = laneScopePatterns(currentLane);
+    const currentLaneRelativePath = currentLaneId
+      ? resolveLaneRelativeFile(forgeBaseDir, currentLane, cwd, filePath)
+      : '';
+
+    if (currentLaneId && currentLaneScope.length > 0 && (!currentLaneRelativePath || !laneScopeMatchesRelativePath(currentLane, currentLaneRelativePath))) {
+      const reason = `Forge scope guard: "${filePath}" is outside lane "${currentLaneId}" scope [${currentLaneScope.join(', ')}]. Refine the lane scope or route this edit through the owning lane instead of crossing worktree boundaries.`;
+      console.log(JSON.stringify({
+        continue: true,
+        suppressOutput: true,
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: reason,
+        },
+      }));
+      return;
+    }
+
+    if (currentLaneId && currentLaneScope.length > 0 && currentLaneRelativePath) {
+      const conflictingLanes = Object.entries(runtime?.lanes || {})
+        .filter(([laneId, lane]) => laneId !== currentLaneId && !['done', 'merged'].includes(String(lane?.status || '').toLowerCase()))
+        .filter(([, lane]) => laneScopePatterns(lane).length > 0)
+        .filter(([, lane]) => laneScopeMatchesRelativePath(lane, currentLaneRelativePath))
+        .map(([laneId]) => laneId);
+
+      if (conflictingLanes.length > 0) {
+        const reason = `Forge scope conflict: "${filePath}" is claimed by lane "${currentLaneId}" and [${conflictingLanes.join(', ')}]. Split ownership so one lane owns the file, or serialize the work through a shared lane before merging.`;
+        console.log(JSON.stringify({
+          continue: true,
+          suppressOutput: true,
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason: reason,
+          },
+        }));
+        return;
+      }
     }
   }
 

@@ -30,6 +30,23 @@ afterEach(() => {
 });
 
 describe('forge umbrella CLI', () => {
+  it('prints usage for help', () => {
+    const cwd = makeWorkspace();
+    const result = runCli(['help'], cwd);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Forge CLI');
+    expect(result.stdout).toContain('forge status');
+  });
+
+  it('fails cleanly for unknown commands', () => {
+    const cwd = makeWorkspace();
+    const result = runCli(['unknown-command'], cwd);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('[forge] Unknown command: unknown-command');
+  });
+
   it('proxies status output', () => {
     const cwd = makeWorkspace();
     const result = runCli(['status', '--json'], cwd);

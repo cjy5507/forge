@@ -24,7 +24,7 @@ function shouldBootstrapForgeProject(request) {
     return false;
   }
 
-  return request.explicitSkill === 'ignite' || request.naturalMode !== null || request.isExplicitForge;
+  return request.explicitSkill === 'ignite' || request.naturalMode !== null;
 }
 
 function inferBootstrapMode(request) {
@@ -134,7 +134,9 @@ runHook(async (input) => {
       state = bootstrapForgeProject(cwd, request);
     }
 
-    updateAdaptiveTier(cwd, { state, message, hostId, eventName: 'prompt.submit' });
+    if (state) {
+      updateAdaptiveTier(cwd, { state, message, hostId, eventName: 'prompt.submit' });
+    }
     // No active project — mode detection still routes through ignite, but with an explicit hint.
     if (request.naturalMode) {
       targetSkill = 'ignite';

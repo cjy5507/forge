@@ -12,6 +12,7 @@
 //                                  waiting for user input
 //   input.stop_hook_active       — set by the host to prevent recursive blocks
 
+import { basename, resolve } from 'path';
 import { runHook } from './lib/hook-runner.mjs';
 import { appendRecent } from './lib/forge-io.mjs';
 import { readForgeState, readRuntimeState, recordDecisionTrace, recordVerificationState, selectResumeSkill, updateRuntimeState } from './lib/forge-session.mjs';
@@ -259,7 +260,8 @@ ${failedCheck.output || batchSummary}`;
   const resume = selectResumeSkill(state, runtime);
   const currentSkill = resume.skill || 'continue';
   const extraReason = resume.reason ? `\nResume reason: ${resume.reason}` : '';
-  const reason = `[Forge Stop Guard] The Forge pipeline for "${state.project || 'unnamed'}" is still in progress (phase: ${phase.id}). Pending: ${pending.join(', ')}.
+  const projectName = String(state.project || '').trim() || basename(resolve(cwd)) || 'unnamed';
+  const reason = `[Forge Stop Guard] The Forge pipeline for "${projectName}" is still in progress (phase: ${phase.id}). Pending: ${pending.join(', ')}.
 
 [MAGIC KEYWORD: FORGE:${currentSkill.toUpperCase()}]
 

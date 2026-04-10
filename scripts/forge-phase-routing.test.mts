@@ -25,6 +25,13 @@ describe('forge phase routing helpers', () => {
     expect(request.naturalMode).toBe('build');
   });
 
+  it('recognizes colon-prefixed explicit forge skills', () => {
+    expect(deriveForgeRequest('forge:continue', { projectActive: true }).explicitSkill).toBe('continue');
+    expect(deriveForgeRequest('forge:troubleshoot', { projectActive: false }).explicitSkill).toBe('troubleshoot');
+    expect(deriveForgeRequest('forge:status', { projectActive: false }).explicitSkill).toBe('info');
+    expect(deriveForgeRequest('forge progress', { projectActive: false }).explicitSkill).toBe('info');
+  });
+
   it('detects express mode from quick-build phrasing', () => {
     const request = deriveForgeRequest('quick build a dashboard', { projectActive: false });
     expect(request.isForgeRequest).toBe(true);

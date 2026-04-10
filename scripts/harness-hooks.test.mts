@@ -1523,6 +1523,19 @@ describe('phase-detector hook', () => {
     expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:info');
   });
 
+  it('routes colon-form forge continue through the shared resume surface', () => {
+    writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge:continue' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:continue');
+  });
+
+  it('routes explicit forge troubleshoot requests without bootstrapping a stray intake project', () => {
+    const output = runHook('phase-detector.mjs', tmpDir, { message: 'forge:troubleshoot' });
+    expect(output.hookSpecificOutput.additionalContext).toContain('Skill: forge:troubleshoot');
+    expect(existsSync(join(tmpDir, '.forge', 'state.json'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.forge', 'runtime.json'))).toBe(false);
+  });
+
   it('routes explicit forge develop requests to analyze when saved analysis is stale', () => {
     writeState(tmpDir, { phase: 'develop', phase_id: 'develop', phase_name: 'develop', status: 'active' });
     writeRuntimeState(tmpDir, {
@@ -1835,6 +1848,27 @@ describe('stop-guard hook', () => {
     expect(output.decision).toBe('block');
     expect(output.reason).toContain('Skill: forge:analyze');
     expect(output.reason).toContain('saved analysis is stale');
+  });
+
+  it('uses the workspace folder name when stop-guard state has no project name', () => {
+    writeState(tmpDir, {
+      project: '',
+      phase: 'intake',
+      phase_id: 'intake',
+      phase_name: 'intake',
+      status: 'active',
+      tier: 'full',
+    });
+
+    const output = runHook('stop-guard.mjs', tmpDir, {
+      last_assistant_message: 'Still investigating the issue.',
+    }, {
+      env: { FORGE_TIER: 'full' },
+    });
+
+    expect(output.decision).toBe('block');
+    expect(output.reason).toContain(`The Forge pipeline for "${basename(tmpDir)}"`);
+    expect(output.reason).not.toContain('"unnamed"');
   });
 });
 
@@ -2557,5 +2591,97 @@ describe('write-gate phase gate enforcement', () => {
 
     expect(result.hookSpecificOutput?.permissionDecision).not.toBe('deny');
     expect(result.hookSpecificOutput?.additionalContext || '').not.toMatch(/intent warning/i);
+  });
+
+  it('denies worktree writes outside the current lane scope', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    const worktreeCwd = join(forgeDir, 'worktrees', 'api');
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    mkdirSync(join(forgeDir, 'evidence'), { recursive: true });
+    mkdirSync(worktreeCwd, { recursive: true });
+    writeFileSync(join(forgeDir, 'plan.md'), '# Execution Plan\n\nThis plan captures the lane graph, ordering, and verification intent for the build.\n\n## Lanes\n\n- api: implement the API lane\n\n## Execution Order\n\n1. api\n');
+    writeFileSync(join(forgeDir, 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# rules');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'full',
+      status: 'in_progress',
+      spec_approved: true,
+      design_approved: true,
+    }));
+    writeRuntimeState(tmpDir, {
+      lanes: {
+        api: {
+          id: 'api',
+          title: 'API lane',
+          status: 'in_progress',
+          worktree_path: worktreeCwd,
+          requirement_refs: ['FR-1'],
+          scope: ['src/api/**'],
+        },
+      },
+    });
+
+    const result = runHook('write-gate.mjs', worktreeCwd, {
+      tool_name: 'Write',
+      tool_input: { file_path: 'src/ui/widget.ts', content: 'export const x = 1;' },
+    }, { env: { FORGE_TIER: 'full' } });
+
+    expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/scope guard/i);
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/outside lane "api" scope/i);
+  });
+
+  it('denies writes when another active lane also claims the target file', () => {
+    const forgeDir = join(tmpDir, '.forge');
+    const apiWorktreeCwd = join(forgeDir, 'worktrees', 'api');
+    mkdirSync(join(forgeDir, 'contracts'), { recursive: true });
+    mkdirSync(join(forgeDir, 'evidence'), { recursive: true });
+    mkdirSync(apiWorktreeCwd, { recursive: true });
+    writeFileSync(join(forgeDir, 'plan.md'), '# Execution Plan\n\nThis plan captures the lane graph, ordering, and verification intent for the build.\n\n## Lanes\n\n- api: implement the API lane\n- tests: validate the API lane\n\n## Execution Order\n\n1. api | tests\n');
+    writeFileSync(join(forgeDir, 'contracts', 'api.ts'), 'export interface API {}');
+    writeFileSync(join(forgeDir, 'code-rules.md'), '# rules');
+    writeFileSync(join(forgeDir, 'state.json'), JSON.stringify({
+      mode: 'build',
+      phase: 'develop',
+      phase_id: 'develop',
+      phase_name: 'develop',
+      tier: 'full',
+      status: 'in_progress',
+      spec_approved: true,
+      design_approved: true,
+    }));
+    writeRuntimeState(tmpDir, {
+      lanes: {
+        api: {
+          id: 'api',
+          title: 'API lane',
+          status: 'in_progress',
+          worktree_path: apiWorktreeCwd,
+          requirement_refs: ['FR-1'],
+          scope: ['src/api/**'],
+        },
+        tests: {
+          id: 'tests',
+          title: 'Testing lane',
+          status: 'ready',
+          worktree_path: join(forgeDir, 'worktrees', 'tests'),
+          requirement_refs: ['FR-2'],
+          scope: ['**/*.test.ts'],
+        },
+      },
+    });
+
+    const result = runHook('write-gate.mjs', apiWorktreeCwd, {
+      tool_name: 'Write',
+      tool_input: { file_path: 'src/api/client.test.ts', content: 'export const test = true;' },
+    }, { env: { FORGE_TIER: 'full' } });
+
+    expect(result.hookSpecificOutput?.permissionDecision).toBe('deny');
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/scope conflict/i);
+    expect(result.hookSpecificOutput?.permissionDecisionReason).toMatch(/tests/);
   });
 });
