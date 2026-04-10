@@ -15,7 +15,7 @@ export const FORGE_TRIGGERS = {
 
 export const BUILD_TRIGGERS = {
   en: [/build\s+(me\s+)?a\b/i, /create\s+(me\s+)?a\b/i, /make\s+(me\s+)?a\b/i, /develop\s+(me\s+)?a\b/i],
-  ko: [/만들어\s*줘/i, /구축해\s*줘/i, /개발해\s*줘/i, /빌드해\s*줘/i],
+  ko: [/만들어\s*줘/i, /구축해\s*줘/i, /개발해\s*줘/i, /빌드해\s*줘/i, /만들어야/i, /구축\s*해야/i, /개발\s*해야/i, /구현\s*해야/i],
   ja: [/作って/i, /構築して/i, /開発して/i, /ビルドして/i],
   zh: [/做一个|做一個/i, /构建|構建/i, /开发|開發/i, /创建|創建/i],
 };
@@ -23,10 +23,10 @@ export const BUILD_TRIGGERS = {
 // ── Repair Triggers ("fix/analyze something") ──
 
 export const REPAIR_TRIGGERS = {
-  en: [/fix\s+(this|the|my)\b/i, /debug\s/i, /what'?s\s+wrong/i, /analyze\s/i],
-  ko: [/고쳐\s*줘/i, /수정해\s*줘/i, /분석해\s*줘/i, /왜\s*안\s*돼/i, /오류/i],
-  ja: [/直して/i, /修正して/i, /分析して/i, /なんで動かない/i, /エラー/i],
-  zh: [/修复|修復/i, /修改/i, /分析/i, /为什么不行|為什麼不行/i, /错误|錯誤/i],
+  en: [/fix\s+(this|the|my)\b/i, /debug\s/i, /what'?s\s+wrong/i, /analyze\s/i, /\bbug\s*fix/i, /\bimprove\s/i, /\boptimiz/i],
+  ko: [/고쳐\s*줘/i, /수정해\s*줘/i, /분석해\s*줘/i, /왜\s*안\s*돼/i, /오류/i, /버그/i, /수정/i, /개선/i, /최적화/i, /고쳐야/i, /안\s*됨/i, /안\s*돼/i, /안\s*됌/i, /문제/i],
+  ja: [/直して/i, /修正して/i, /分析して/i, /なんで動かない/i, /エラー/i, /バグ/i, /改善/i, /最適化/i],
+  zh: [/修复|修復/i, /修改/i, /分析/i, /为什么不行|為什麼不行/i, /错误|錯誤/i, /bug/i, /改善|改进|改進/i, /优化|優化/i],
 };
 
 // ── Express Triggers ("quick/express path") ──
