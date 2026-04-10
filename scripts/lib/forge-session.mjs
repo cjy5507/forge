@@ -93,6 +93,16 @@ import {
 // Import HUD helper for internal use
 import { updateHudLine } from './forge-hud.mjs';
 
+/** @private Normalize a single string field from a source object. */
+function normalizeStringField(source, key, fallback = '') {
+  return typeof source[key] === 'string' ? source[key] : fallback;
+}
+
+/** @private Normalize a single array field from a source object. */
+function normalizeArrayField(source, key) {
+  return Array.isArray(source[key]) ? source[key] : [];
+}
+
 // ─── normalizeRuntimeState (central orchestrator) ──────────────────────
 
 /**
@@ -111,25 +121,25 @@ export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null 
     preferred_locale: normalizeLocale(source.preferred_locale || source.detected_locale, 'en'),
     company_mode: normalizeCompanyMode(source.company_mode),
     company_gate_mode: source.company_gate_mode === 'manual' ? 'manual' : 'auto',
-    company_phase_anchor: typeof source.company_phase_anchor === 'string' ? source.company_phase_anchor : '',
-    active_gate: typeof source.active_gate === 'string' ? source.active_gate : '',
-    active_gate_owner: typeof source.active_gate_owner === 'string' ? source.active_gate_owner : '',
+    company_phase_anchor: normalizeStringField(source, 'company_phase_anchor'),
+    active_gate: normalizeStringField(source, 'active_gate'),
+    active_gate_owner: normalizeStringField(source, 'active_gate_owner'),
     delivery_readiness: normalizeDeliveryReadiness(source.delivery_readiness),
     customer_blockers: normalizeBlockers(source.customer_blockers),
     internal_blockers: normalizeBlockers(source.internal_blockers),
-    current_session_goal: typeof source.current_session_goal === 'string' ? source.current_session_goal : '',
+    current_session_goal: normalizeStringField(source, 'current_session_goal'),
     session_exit_criteria: normalizeStringList(source.session_exit_criteria),
-    next_session_goal: typeof source.next_session_goal === 'string' ? source.next_session_goal : '',
-    next_session_owner: typeof source.next_session_owner === 'string' ? source.next_session_owner : '',
-    session_handoff_summary: typeof source.session_handoff_summary === 'string' ? source.session_handoff_summary : '',
+    next_session_goal: normalizeStringField(source, 'next_session_goal'),
+    next_session_owner: normalizeStringField(source, 'next_session_owner'),
+    session_handoff_summary: normalizeStringField(source, 'session_handoff_summary'),
     session_brief_mode: source.session_brief_mode === 'manual' ? 'manual' : 'auto',
-    session_phase_anchor: typeof source.session_phase_anchor === 'string' ? source.session_phase_anchor : '',
-    session_gate_anchor: typeof source.session_gate_anchor === 'string' ? source.session_gate_anchor : '',
+    session_phase_anchor: normalizeStringField(source, 'session_phase_anchor'),
+    session_gate_anchor: normalizeStringField(source, 'session_gate_anchor'),
     session_customer_blocker_count: Number(source.session_customer_blocker_count || 0),
     session_internal_blocker_count: Number(source.session_internal_blocker_count || 0),
-    recommended_agents: Array.isArray(source.recommended_agents) ? source.recommended_agents : [],
-    behavioral_profile: typeof source.behavioral_profile === 'string' ? source.behavioral_profile : '',
-    active_prescriptions: Array.isArray(source.active_prescriptions) ? source.active_prescriptions : [],
+    recommended_agents: normalizeArrayField(source, 'recommended_agents'),
+    behavioral_profile: normalizeStringField(source, 'behavioral_profile'),
+    active_prescriptions: normalizeArrayField(source, 'active_prescriptions'),
     behavioral_counters: {
       ...DEFAULT_RUNTIME.behavioral_counters,
       ...(source.behavioral_counters && typeof source.behavioral_counters === 'object' ? source.behavioral_counters : {}),
@@ -138,8 +148,8 @@ export function normalizeRuntimeState(runtime = DEFAULT_RUNTIME, { state = null 
       design_improvement_requests: Number(source?.behavioral_counters?.design_improvement_requests || 0),
     },
     active_agents: source.active_agents && typeof source.active_agents === 'object' ? source.active_agents : {},
-    recent_agents: Array.isArray(source.recent_agents) ? source.recent_agents : [],
-    recent_failures: Array.isArray(source.recent_failures) ? source.recent_failures : [],
+    recent_agents: normalizeArrayField(source, 'recent_agents'),
+    recent_failures: normalizeArrayField(source, 'recent_failures'),
     analysis: normalizeAnalysisMeta(source.analysis),
     next_action: normalizeNextAction(source.next_action),
     host_context: normalizeHostContext(source.host_context),
