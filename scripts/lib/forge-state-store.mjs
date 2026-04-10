@@ -81,6 +81,63 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
     });
   }
 
+  function applyPhaseTransitionGuard(normalized, previousState, { allowRollback }) {
+    if (!previousState) {
+      return { normalized, previousPhase: null };
+    }
+
+    const previousPhase = resolvePhase(previousState);
+    const nextPhase = resolvePhase(normalized);
+    const transition = validatePhaseTransition(previousPhase.id, nextPhase.id, nextPhase.mode, { allowRollback });
+
+    if (!transition.valid) {
+      normalized._phase_transition_warning = transition.reason;
+      process.stderr.write(`[Forge] warning: ${transition.reason}\n`);
+      normalized.phase = previousPhase.id;
+      normalized.phase_id = previousPhase.id;
+      normalized.phase_index = previousPhase.index;
+      normalized.phase_name = previousPhase.label;
+    }
+
+    return { normalized, previousPhase };
+  }
+
+  function applyPhaseGateCheck(normalized, existingRuntime, previousPhase, cwd) {
+    const phase = resolvePhase(normalized);
+    const retainedInternalBlockers = clearPhaseGateBlockers(existingRuntime.internal_blockers);
+    existingRuntime.internal_blockers = retainedInternalBlockers;
+
+    const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
+    if (!gateResult.canAdvance) {
+      const gateWarning = buildPhaseGateWarning(phase, gateResult);
+      normalized._phase_gate_warning = gateWarning;
+
+      if (tierAtLeast(normalized.tier, 'full')) {
+        existingRuntime.internal_blockers = [
+          ...retainedInternalBlockers,
+          buildPhaseGateBlocker(gateWarning, phase),
+        ];
+        existingRuntime.delivery_readiness = 'blocked';
+
+        if (previousPhase && previousPhase.id !== phase.id) {
+          normalized._phase_gate_blocked = `Blocked phase advance to ${phase.id} at tier ${normalized.tier}`;
+          normalized.phase = previousPhase.id;
+          normalized.phase_id = previousPhase.id;
+          normalized.phase_index = previousPhase.index;
+          normalized.phase_name = previousPhase.label;
+        }
+      }
+    } else if (existingRuntime.delivery_readiness === 'blocked' && retainedInternalBlockers.length === 0) {
+      existingRuntime.delivery_readiness = 'in_progress';
+    }
+
+    if (phase.mismatch) {
+      normalized._phase_mismatch_warning = `Phase "${phase.id}" does not belong to ${phase.mode} sequence — using fallback`;
+    }
+
+    return { normalized, existingRuntime };
+  }
+
   function writeForgeState(cwd = '.', state, { allowRollback = false } = {}) {
     return withForgeLock(cwd, () => {
       ensureForgeProjectLayout(cwd);
@@ -88,65 +145,23 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
       normalized.updated_at = new Date().toISOString();
 
       const previousState = readJsonFile(getStatePath(cwd));
-      let previousPhase = null;
-      if (previousState) {
-        previousPhase = resolvePhase(previousState);
-        const nextPhase = resolvePhase(normalized);
-        const transition = validatePhaseTransition(previousPhase.id, nextPhase.id, nextPhase.mode, { allowRollback });
-        if (!transition.valid) {
-          normalized._phase_transition_warning = transition.reason;
-          process.stderr.write(`[Forge] warning: ${transition.reason}\n`);
-          normalized.phase = previousPhase.id;
-          normalized.phase_id = previousPhase.id;
-          normalized.phase_index = previousPhase.index;
-          normalized.phase_name = previousPhase.label;
-        }
-      }
+      const { normalized: withTransition, previousPhase } = applyPhaseTransitionGuard(normalized, previousState, { allowRollback });
 
-      const phase = resolvePhase(normalized);
       const existingRuntime = readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME);
-      const retainedInternalBlockers = clearPhaseGateBlockers(existingRuntime.internal_blockers);
-      existingRuntime.internal_blockers = retainedInternalBlockers;
+      const { normalized: withGate, existingRuntime: updatedRuntime } = applyPhaseGateCheck(withTransition, existingRuntime, previousPhase, cwd);
 
-      const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
-      if (!gateResult.canAdvance) {
-        const gateWarning = buildPhaseGateWarning(phase, gateResult);
-        normalized._phase_gate_warning = gateWarning;
-
-        if (tierAtLeast(normalized.tier, 'full')) {
-          existingRuntime.internal_blockers = [
-            ...retainedInternalBlockers,
-            buildPhaseGateBlocker(gateWarning, phase),
-          ];
-          existingRuntime.delivery_readiness = 'blocked';
-
-          if (previousPhase && previousPhase.id !== phase.id) {
-            normalized._phase_gate_blocked = `Blocked phase advance to ${phase.id} at tier ${normalized.tier}`;
-            normalized.phase = previousPhase.id;
-            normalized.phase_id = previousPhase.id;
-            normalized.phase_index = previousPhase.index;
-            normalized.phase_name = previousPhase.label;
-          }
-        }
-      } else if (existingRuntime.delivery_readiness === 'blocked' && retainedInternalBlockers.length === 0) {
-        existingRuntime.delivery_readiness = 'in_progress';
-      }
-
-      if (phase.mismatch) {
-        normalized._phase_mismatch_warning = `Phase "${phase.id}" does not belong to ${phase.mode} sequence — using fallback`;
-      }
-
-      const consistency = validateStateConsistency(normalized, existingRuntime);
+      const consistency = validateStateConsistency(withGate, updatedRuntime);
       if (consistency.corrections.length > 0) {
         for (const correction of consistency.corrections) {
           process.stderr.write(`[Forge] auto-correct: ${correction}\n`);
         }
-        Object.assign(existingRuntime, consistency.runtimeFixes);
+        Object.assign(updatedRuntime, consistency.runtimeFixes);
       }
 
-      const stampedState = stampIntegrity(normalized, 'state');
+      const stampedState = stampIntegrity(withGate, 'state');
       writeJsonFile(getStatePath(cwd), stampedState);
-      writeRuntimeState(cwd, existingRuntime);
+      // Pass state explicitly to avoid redundant readForgeState inside writeRuntimeState
+      writeRuntimeState(cwd, updatedRuntime, { state: stampedState });
       return stampedState;
     });
   }
