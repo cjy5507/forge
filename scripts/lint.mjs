@@ -40,11 +40,27 @@ function fail(message) {
   process.exit(1);
 }
 
+function isBinaryFile(filePath) {
+  try {
+    const buf = readFileSync(filePath, { length: 4 });
+    if (buf.length >= 4) {
+      const magic = buf.readUInt32BE(0);
+      // Mach-O magic: feedface, feedfacf, cafebabe, and their little-endian variants
+      if (magic === 0xFEEDFACE || magic === 0xFEEDFACF || magic === 0xCAFEBABE || magic === 0xCEFAEDFE || magic === 0xCFFAEDFE) {
+        return true;
+      }
+    }
+  } catch {
+    // If we can't read, let syntax check handle it
+  }
+  return false;
+}
+
 function runSyntaxChecks() {
   const targets = [
     ...walkFiles(join(ROOT, 'scripts')),
     ...(existsSync(join(ROOT, 'hooks')) ? walkFiles(join(ROOT, 'hooks')) : []),
-  ].filter(file => file.endsWith('.mjs'));
+  ].filter(file => file.endsWith('.mjs') && !isBinaryFile(file));
 
   for (const file of targets) {
     const result = spawnSync(process.execPath, ['--check', file], {
