@@ -419,7 +419,21 @@ function mergeLane(options) {
   }
   console.log(`merged: ${laneBranch} → main`);
 
-  // Step 3: Rebase remaining active worktrees
+  // Step 3: Clean up the merged worktree and branch
+  const removeResult = spawnSync('git', ['worktree', 'remove', resolve(worktreePath)], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+  if (removeResult.status === 0) {
+    console.log(`worktree removed: ${worktreePath}`);
+    if (tryDeleteBranch(laneBranch)) {
+      console.log(`branch deleted: ${laneBranch}`);
+    }
+  } else {
+    console.log(`worktree retained: ${(removeResult.stderr || '').trim() || 'remove failed'}`);
+  }
+
+  // Step 4: Rebase remaining active worktrees
   if (options.noRebase) {
     console.log('skipped: rebase (--no-rebase)');
     return;
