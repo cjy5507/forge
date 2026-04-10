@@ -5,6 +5,7 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join, relative, extname } from 'path';
 import { spawnSync } from 'child_process';
 import { TASK_PATTERNS_I18N, AREA_PATTERNS_I18N, mergeIntoRegex } from './i18n-patterns.mjs';
+import { logHookError } from './error-handler.mjs';
 
 // ── Constants ──
 
@@ -115,8 +116,9 @@ function scanDirectoryTree(cwd, maxDepth = 2) {
         dirs.push(rel);
         walk(join(dir, entry.name), depth + 1);
       }
-    } catch {
-      // permission denied or similar -- skip
+    } catch (err) {
+      logHookError(err, 'scanDirectoryTree', cwd, { severity: 'info' });
+      // Permission denied or similar — skip this directory
     }
   }
 
@@ -129,7 +131,8 @@ function readFileSafe(filePath, maxLines = MAX_LINES_PER_FILE) {
     const content = readFileSync(filePath, 'utf-8');
     const lines = content.split('\n');
     return lines.slice(0, maxLines).join('\n');
-  } catch {
+  } catch (err) {
+    logHookError(err, 'readFileSafe', '.', { severity: 'info' });
     return null;
   }
 }
@@ -220,8 +223,9 @@ function sampleSourceFiles(cwd, dirs, fileCount, deadline) {
         }
         break; // only first source file per subdir
       }
-    } catch {
-      // skip
+    } catch (err) {
+      logHookError(err, 'scanSourceFiles', cwd, { severity: 'info' });
+      // skip unreadable subdirectory
     }
   }
 
@@ -266,8 +270,9 @@ function sampleSourceFiles(cwd, dirs, fileCount, deadline) {
           fileCount.n++;
         }
       }
-    } catch {
-      // skip
+    } catch (err) {
+      logHookError(err, 'scanApiDirs', cwd, { severity: 'info' });
+      // skip unreadable API directory
     }
   }
 
@@ -301,8 +306,9 @@ function scanCodebase(cwd) {
         const allDeps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
         fingerprint.dependencies = allDeps;
         fingerprint.framework = detectFramework(allDeps);
-      } catch {
-        // invalid JSON -- skip
+      } catch (err) {
+        logHookError(err, 'parsePackageJson', cwd, { severity: 'warn' });
+        // invalid JSON — skip package metadata
       }
     }
 
@@ -419,9 +425,10 @@ function canUseClaude() {
     });
     claudeAvailability = !probe.error && probe.status === 0;
     lastClaudeProbeReason = claudeAvailability ? 'available' : (probe.error?.message || probe.stderr || `exit ${probe.status}`);
-  } catch {
+  } catch (err) {
     claudeAvailability = false;
     lastClaudeProbeReason = 'probe failed';
+    logHookError(err, 'canUseClaude', '.', { severity: 'info' });
   }
 
   return claudeAvailability;
@@ -453,7 +460,7 @@ function callLLM(prompt) {
     // Try direct parse first
     try {
       return JSON.parse(output);
-    } catch {
+    } catch (parseErr) {
       // Try extracting from markdown code fences
       const fenceMatch = output.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
       if (fenceMatch) {

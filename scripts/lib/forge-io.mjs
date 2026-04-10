@@ -57,10 +57,10 @@ function cleanupStaleLock(lockPath) {
       const reclaimedPath = quarantineLockPath(lockPath);
       try {
         renameSync(lockPath, reclaimedPath);
-        try { unlinkSync(reclaimedPath); } catch {}
-      } catch {}
+        try { unlinkSync(reclaimedPath); } catch { /* quarantine cleanup is best-effort — file will be orphaned but harmless */ }
+      } catch { /* rename to quarantine may race with another process — acceptable, lock will be re-checked on next attempt */ }
     }
-  } catch {}
+  } catch { /* lock file may have been removed between check and read — benign race condition */ }
 }
 
 export function sanitizeJsonValue(value) {
