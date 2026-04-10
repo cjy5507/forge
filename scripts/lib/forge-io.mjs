@@ -105,7 +105,7 @@ export function withForgeLock(cwd, callback) {
       return callback();
     } finally {
       activeLocks.delete(lockPath);
-      try { unlinkSync(lockPath); } catch {}
+      try { unlinkSync(lockPath); } catch { /* lock file may already be removed — benign */ }
     }
   }, {
     maxRetries,
