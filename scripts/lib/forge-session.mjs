@@ -1,4 +1,3 @@
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import {
   DEFAULT_ANALYSIS,

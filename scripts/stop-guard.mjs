@@ -157,6 +157,24 @@ ${failedCheck.output || batchSummary}`;
           inputs: batchCommands,
         });
 
+        // Record cost sample before returning on batch failure (M-6 fix)
+        try {
+          recordHookInputKeys(cwd, input);
+          const prevStopAt = runtime?.cost?.last_stop_at || runtime?.stats?.started_at || '';
+          const nowIso = new Date().toISOString();
+          const prevMs = prevStopAt ? Date.parse(prevStopAt) : NaN;
+          const durationMs = Number.isFinite(prevMs) ? Math.max(0, Date.now() - prevMs) : 0;
+          const measured = probeStopHookUsage(input);
+          const sample = measured
+            ? { phase_id: phase.id, tier, duration_ms: durationMs, ...measured }
+            : estimatePhaseCost({ tier, phaseId: phase.id, durationMs });
+          appendCostSample(cwd, sample);
+          updateRuntimeState(cwd, current => ({
+            ...current,
+            cost: { ...(current.cost || {}), last_stop_at: nowIso, last_sample_source: sample.source },
+          }));
+        } catch { /* cost sampling is non-fatal */ }
+
         console.log(JSON.stringify({
           continue: true,
           suppressOutput: true,

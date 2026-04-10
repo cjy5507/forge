@@ -10,6 +10,70 @@ const SHARED_PACKAGE_PATHS = Object.freeze([
   'hooks/run-hook.mjs',
 ]);
 
+const DEGRADED_CAPABILITIES = Object.freeze({
+  sharedContinue: true,
+  sessionHooks: false,
+  toolHooks: false,
+  subagentLifecycle: false,
+  stopInterception: false,
+  pluginManagerInstall: false,
+  packagedHookRouting: false,
+  workspaceHints: false,
+  explicitContinue: true,
+  sharedStateResume: true,
+  renderedBriefInjection: false,
+});
+
+const DEGRADED_MODES_COMMON = Object.freeze([
+  'session_hooks_unverified',
+  'tool_hooks_unverified',
+  'subagent_lifecycle_unverified',
+  'stop_interception_unverified',
+  'rendered_brief_injection_unverified',
+]);
+
+const DETERMINISM_ALL_TRUE = Object.freeze({
+  sharedContinue: true,
+  sharedStatus: true,
+  sharedAnalyze: true,
+  decisionTraceVisibility: true,
+  verificationVisibility: true,
+  recoveryVisibility: true,
+});
+
+const DETERMINISM_ALL_FALSE = Object.freeze({
+  sharedContinue: false,
+  sharedStatus: false,
+  sharedAnalyze: false,
+  decisionTraceVisibility: false,
+  verificationVisibility: false,
+  recoveryVisibility: false,
+});
+
+const LIFECYCLE_ALL_FALSE = Object.freeze({
+  hookLifecycleObserved: false,
+  stopSemanticsObserved: false,
+  subagentLifecycleObserved: false,
+});
+
+function degradedHost(id, displayName, docsLabel, packagePaths, capOverrides = {}, extraDegradedModes = []) {
+  return Object.freeze({
+    hostId: id,
+    displayName,
+    docsLabel,
+    supportLevel: 'degraded',
+    statusLabel: DEGRADED_LABEL,
+    packagePaths: Object.freeze(packagePaths),
+    capabilities: Object.freeze({
+      ...DEGRADED_CAPABILITIES,
+      ...capOverrides,
+      degradedModes: Object.freeze([...extraDegradedModes, ...DEGRADED_MODES_COMMON]),
+    }),
+    determinismFloor: DETERMINISM_ALL_TRUE,
+    observedLifecycle: LIFECYCLE_ALL_FALSE,
+  });
+}
+
 const HOST_CATALOG = Object.freeze({
   claude: Object.freeze({
     hostId: 'claude',
@@ -35,155 +99,24 @@ const HOST_CATALOG = Object.freeze({
       renderedBriefInjection: true,
       degradedModes: Object.freeze([]),
     }),
-    determinismFloor: Object.freeze({
-      sharedContinue: true,
-      sharedStatus: true,
-      sharedAnalyze: true,
-      decisionTraceVisibility: true,
-      verificationVisibility: true,
-      recoveryVisibility: true,
-    }),
+    determinismFloor: DETERMINISM_ALL_TRUE,
     observedLifecycle: Object.freeze({
       hookLifecycleObserved: true,
       stopSemanticsObserved: true,
       subagentLifecycleObserved: true,
     }),
   }),
-  codex: Object.freeze({
-    hostId: 'codex',
-    displayName: 'Codex',
-    docsLabel: 'Codex',
-    supportLevel: 'degraded',
-    statusLabel: DEGRADED_LABEL,
-    packagePaths: Object.freeze([
-      '.codex-plugin/plugin.json',
-      '.codex-plugin/hooks/hooks.json',
-    ]),
-    capabilities: Object.freeze({
-      sharedContinue: true,
-      sessionHooks: false,
-      toolHooks: false,
-      subagentLifecycle: false,
-      stopInterception: false,
-      pluginManagerInstall: true,
-      packagedHookRouting: true,
-      workspaceHints: false,
-      explicitContinue: true,
-      sharedStateResume: true,
-      renderedBriefInjection: false,
-      degradedModes: Object.freeze([
-        'runtime_hook_execution_not_observed',
-        'session_hooks_unverified',
-        'tool_hooks_unverified',
-        'subagent_lifecycle_unverified',
-        'stop_interception_unverified',
-        'rendered_brief_injection_unverified',
-      ]),
-    }),
-    determinismFloor: Object.freeze({
-      sharedContinue: true,
-      sharedStatus: true,
-      sharedAnalyze: true,
-      decisionTraceVisibility: true,
-      verificationVisibility: true,
-      recoveryVisibility: true,
-    }),
-    observedLifecycle: Object.freeze({
-      hookLifecycleObserved: false,
-      stopSemanticsObserved: false,
-      subagentLifecycleObserved: false,
-    }),
-  }),
-  gemini: Object.freeze({
-    hostId: 'gemini',
-    displayName: 'Gemini CLI',
-    docsLabel: 'Gemini CLI',
-    supportLevel: 'degraded',
-    statusLabel: DEGRADED_LABEL,
-    packagePaths: Object.freeze([
-      'gemini-extension.json',
-      'GEMINI.md',
-      'commands/forge/continue.toml',
-    ]),
-    capabilities: Object.freeze({
-      sharedContinue: true,
-      sessionHooks: false,
-      toolHooks: false,
-      subagentLifecycle: false,
-      stopInterception: false,
-      pluginManagerInstall: false,
-      packagedHookRouting: false,
-      workspaceHints: false,
-      explicitContinue: true,
-      sharedStateResume: true,
-      renderedBriefInjection: false,
-      degradedModes: Object.freeze([
-        'session_hooks_unverified',
-        'tool_hooks_unverified',
-        'subagent_lifecycle_unverified',
-        'stop_interception_unverified',
-        'rendered_brief_injection_unverified',
-      ]),
-    }),
-    determinismFloor: Object.freeze({
-      sharedContinue: true,
-      sharedStatus: true,
-      sharedAnalyze: true,
-      decisionTraceVisibility: true,
-      verificationVisibility: true,
-      recoveryVisibility: true,
-    }),
-    observedLifecycle: Object.freeze({
-      hookLifecycleObserved: false,
-      stopSemanticsObserved: false,
-      subagentLifecycleObserved: false,
-    }),
-  }),
-  qwen: Object.freeze({
-    hostId: 'qwen',
-    displayName: 'Qwen Code',
-    docsLabel: 'Qwen Code',
-    supportLevel: 'degraded',
-    statusLabel: DEGRADED_LABEL,
-    packagePaths: Object.freeze([
-      'qwen-extension.json',
-      'QWEN.md',
-      'qwen-commands/forge/continue.md',
-    ]),
-    capabilities: Object.freeze({
-      sharedContinue: true,
-      sessionHooks: false,
-      toolHooks: false,
-      subagentLifecycle: false,
-      stopInterception: false,
-      pluginManagerInstall: false,
-      packagedHookRouting: false,
-      workspaceHints: false,
-      explicitContinue: true,
-      sharedStateResume: true,
-      renderedBriefInjection: false,
-      degradedModes: Object.freeze([
-        'session_hooks_unverified',
-        'tool_hooks_unverified',
-        'subagent_lifecycle_unverified',
-        'stop_interception_unverified',
-        'rendered_brief_injection_unverified',
-      ]),
-    }),
-    determinismFloor: Object.freeze({
-      sharedContinue: true,
-      sharedStatus: true,
-      sharedAnalyze: true,
-      decisionTraceVisibility: true,
-      verificationVisibility: true,
-      recoveryVisibility: true,
-    }),
-    observedLifecycle: Object.freeze({
-      hookLifecycleObserved: false,
-      stopSemanticsObserved: false,
-      subagentLifecycleObserved: false,
-    }),
-  }),
+  codex: degradedHost('codex', 'Codex', 'Codex',
+    ['.codex-plugin/plugin.json', '.codex-plugin/hooks/hooks.json'],
+    { pluginManagerInstall: true, packagedHookRouting: true },
+    ['runtime_hook_execution_not_observed'],
+  ),
+  gemini: degradedHost('gemini', 'Gemini CLI', 'Gemini CLI',
+    ['gemini-extension.json', 'GEMINI.md', 'commands/forge/continue.toml'],
+  ),
+  qwen: degradedHost('qwen', 'Qwen Code', 'Qwen Code',
+    ['qwen-extension.json', 'QWEN.md', 'qwen-commands/forge/continue.md'],
+  ),
   unknown: Object.freeze({
     hostId: 'unknown',
     displayName: '',
@@ -205,19 +138,8 @@ const HOST_CATALOG = Object.freeze({
       renderedBriefInjection: false,
       degradedModes: Object.freeze(['unrecognized_host']),
     }),
-    determinismFloor: Object.freeze({
-      sharedContinue: false,
-      sharedStatus: false,
-      sharedAnalyze: false,
-      decisionTraceVisibility: false,
-      verificationVisibility: false,
-      recoveryVisibility: false,
-    }),
-    observedLifecycle: Object.freeze({
-      hookLifecycleObserved: false,
-      stopSemanticsObserved: false,
-      subagentLifecycleObserved: false,
-    }),
+    determinismFloor: DETERMINISM_ALL_FALSE,
+    observedLifecycle: LIFECYCLE_ALL_FALSE,
   }),
 });
 

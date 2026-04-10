@@ -42,7 +42,7 @@ function parseRequirementRefsFromHoleText(text = '') {
 
 function createRequirementIndex(snapshot = null) {
   const next = snapshot && typeof snapshot === 'object'
-    ? structuredClone(snapshot)
+    ? JSON.parse(JSON.stringify(snapshot))
     : { version: 1, generatedAt: new Date().toISOString(), requirements: [] };
 
   if (!Array.isArray(next.requirements)) {

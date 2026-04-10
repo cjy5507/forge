@@ -48,6 +48,17 @@ export function updateRecoveryLedger(currentRecovery = {}, entry = {}, { maxRetr
   });
 }
 
+export function resolveRecoveryItem(currentRecovery = {}, id = '') {
+  if (!id) return normalizeRecoveryState(currentRecovery);
+  const normalized = normalizeRecoveryState(currentRecovery);
+  return normalizeRecoveryState({
+    latest: normalized.latest?.id === id
+      ? { ...normalized.latest, status: 'resolved' }
+      : normalized.latest,
+    active: normalized.active.filter(item => item.id !== id),
+  });
+}
+
 export function renderRecoverySummary(item = null) {
   if (!item) {
     return '';

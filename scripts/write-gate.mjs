@@ -8,7 +8,7 @@ import { relative, resolve, sep } from 'path';
 import { checkPhaseGate, resolvePhase } from './lib/forge-phases.mjs';
 import { detectWriteRisk, readActiveTier, tierAtLeast } from './lib/forge-tiers.mjs';
 import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
-import { resolveForgeBaseDir } from './lib/forge-io.mjs';
+import { resolveForgeBaseDir, globToRegExp, normalizePathForGlobMatch } from './lib/forge-io.mjs';
 import { resolveRuntimeLaneContext } from './lib/forge-lanes.mjs';
 import { readEnvTier } from './lib/forge-tiers.mjs';
 
@@ -105,20 +105,6 @@ function normalizeRefs(values) {
   return Array.isArray(values) ? values.map(String).filter(Boolean) : [];
 }
 
-function normalizePathForMatch(value = '') {
-  return String(value || '').replace(/\\/g, '/').replace(/^\.\/+/, '');
-}
-
-function globToRegExp(pattern = '') {
-  const normalized = normalizePathForMatch(pattern);
-  const escaped = normalized.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
-  const doubleStarToken = '__FORGE_DOUBLE_STAR__';
-  const withTokens = escaped.replace(/\*\*/g, doubleStarToken);
-  const singleStarExpanded = withTokens.replace(/\*/g, '[^/]*');
-  const regexSource = singleStarExpanded.replaceAll(doubleStarToken, '.*');
-  return new RegExp(`^${regexSource}$`);
-}
-
 function laneScopePatterns(lane) {
   return Array.isArray(lane?.scope) ? lane.scope.map(String).filter(Boolean) : [];
 }
@@ -134,7 +120,7 @@ function resolveLaneRoot(forgeBaseDir, lane, cwd) {
 function resolveLaneRelativeFile(forgeBaseDir, lane, cwd, filePath) {
   const targetPath = resolveForgeAwarePath(cwd, filePath);
   const laneRoot = resolveLaneRoot(forgeBaseDir, lane, cwd);
-  const relativePath = normalizePathForMatch(relative(laneRoot, targetPath));
+  const relativePath = normalizePathForGlobMatch(relative(laneRoot, targetPath));
   if (!relativePath || relativePath.startsWith('../') || relativePath === '..') {
     return '';
   }

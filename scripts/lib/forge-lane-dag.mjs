@@ -19,7 +19,7 @@ export function validateLaneDag(lanes) {
 
   // Detect orphan dependencies and self-references
   for (const [id, lane] of Object.entries(lanes)) {
-    const deps = Array.isArray(lane.deps) ? lane.deps : [];
+    const deps = Array.isArray(lane.dependencies) ? lane.dependencies : [];
     for (const dep of deps) {
       if (dep === id) {
         orphans.push(`${id} (self-reference)`);
@@ -37,7 +37,7 @@ export function validateLaneDag(lanes) {
     color[node] = 1;
     path.push(node);
 
-    const deps = Array.isArray(lanes[node]?.deps) ? lanes[node].deps : [];
+    const deps = Array.isArray(lanes[node]?.dependencies) ? lanes[node].dependencies : [];
     for (const dep of deps) {
       if (!laneIds.has(dep)) continue;
       if (color[dep] === 1) {
@@ -83,10 +83,10 @@ export function cleanupMergedLanes(lanes) {
 
   const cleaned = {};
   for (const [id, lane] of Object.entries(lanes)) {
-    const deps = Array.isArray(lane.deps) ? lane.deps : [];
+    const deps = Array.isArray(lane.dependencies) ? lane.dependencies : [];
     cleaned[id] = {
       ...lane,
-      deps: deps.filter((dep) => !mergedIds.has(dep)),
+      dependencies: deps.filter((dep) => !mergedIds.has(dep)),
     };
 
     if (mergedIds.has(id)) {

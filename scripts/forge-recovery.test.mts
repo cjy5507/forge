@@ -6,6 +6,7 @@ import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
 import { recordRecoveryState, writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
+import { resolveRecoveryItem, updateRecoveryLedger } from './lib/forge-recovery.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const FORGE_ROOT = dirname(THIS_DIR);
@@ -101,5 +102,41 @@ describe('forge recovery surface', () => {
     expect(result.status).toBe(0);
     const payload = JSON.parse(result.stdout);
     expect(payload.latest.category).toBe('lint');
+  });
+});
+
+describe('resolveRecoveryItem', () => {
+  it('removes resolved item from active list', () => {
+    const ledger = updateRecoveryLedger({}, {
+      category: 'test',
+      lane_id: 'ui',
+      phase_id: 'develop',
+      command: 'npm test',
+      summary: 'Test failed.',
+    });
+    const id = ledger.latest!.id;
+    expect(ledger.active.length).toBe(1);
+
+    const resolved = resolveRecoveryItem(ledger, id);
+    expect(resolved.active.length).toBe(0);
+    expect(resolved.latest!.status).toBe('resolved');
+  });
+
+  it('returns unchanged state for unknown id', () => {
+    const ledger = updateRecoveryLedger({}, {
+      category: 'lint',
+      lane_id: 'api',
+      phase_id: 'develop',
+      command: 'npm run lint',
+      summary: 'Lint failed.',
+    });
+    const resolved = resolveRecoveryItem(ledger, 'nonexistent:id');
+    expect(resolved.active.length).toBe(1);
+  });
+
+  it('returns normalized empty state for empty id', () => {
+    const resolved = resolveRecoveryItem({}, '');
+    expect(resolved.active).toEqual([]);
+    expect(resolved.latest).toBeNull();
   });
 });

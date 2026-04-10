@@ -317,7 +317,7 @@ export function resolveForgeBaseDir(cwd = '.') {
 }
 
 function cloneJsonValue(value) {
-  return value == null ? value : structuredClone(value);
+  return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
 function buildJsonReadCacheKey(path) {
@@ -734,4 +734,20 @@ export function stampIntegrity(value, kind = 'unknown') {
       source: 'forge',
     },
   };
+}
+
+/** Normalize a file path for glob matching (forward slashes, no leading ./) */
+export function normalizePathForGlobMatch(value = '') {
+  return String(value || '').replace(/\\/g, '/').replace(/^\.\/+/, '');
+}
+
+/** Convert a glob pattern (with * and **) to a RegExp */
+export function globToRegExp(pattern = '') {
+  const normalized = normalizePathForGlobMatch(pattern);
+  const escaped = normalized.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+  const doubleStarToken = '__FORGE_DOUBLE_STAR__';
+  const withTokens = escaped.replace(/\*\*/g, doubleStarToken);
+  const singleStarExpanded = withTokens.replace(/\*/g, '[^/]*');
+  const regexSource = singleStarExpanded.replaceAll(doubleStarToken, '.*');
+  return new RegExp(`^${regexSource}$`);
 }

@@ -6,6 +6,7 @@ import { join, relative, extname } from 'path';
 import { spawnSync } from 'child_process';
 import { TASK_PATTERNS_I18N, AREA_PATTERNS_I18N, mergeIntoRegex } from './i18n-patterns.mjs';
 import { logHookError } from './error-handler.mjs';
+import { globToRegExp, normalizePathForGlobMatch } from './forge-io.mjs';
 
 // ── Constants ──
 
@@ -628,22 +629,8 @@ function filterPatternsForAreas(areas = [], patterns = []) {
   )];
 }
 
-function normalizeGlobPattern(pattern = '') {
-  return String(pattern || '').replace(/\\/g, '/').replace(/^\.\/+/, '');
-}
-
-function globPatternToRegExp(pattern = '') {
-  const normalized = normalizeGlobPattern(pattern);
-  const escaped = normalized.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
-  const doubleStarToken = '__FORGE_DOUBLE_STAR__';
-  const withTokens = escaped.replace(/\*\*/g, doubleStarToken);
-  const singleStarExpanded = withTokens.replace(/\*/g, '[^/]*');
-  const regexSource = singleStarExpanded.replaceAll(doubleStarToken, '.*');
-  return new RegExp(`^${regexSource}$`);
-}
-
 function prefixBeforeWildcard(pattern = '') {
-  const normalized = normalizeGlobPattern(pattern);
+  const normalized = normalizePathForGlobMatch(pattern);
   const wildcardIndex = normalized.search(/\*/);
   if (wildcardIndex === -1) {
     return normalized.includes('/') ? normalized.slice(0, normalized.lastIndexOf('/') + 1) : '';
@@ -652,7 +639,7 @@ function prefixBeforeWildcard(pattern = '') {
 }
 
 function samplePathForPattern(pattern = '', basePrefix = '') {
-  const normalized = normalizeGlobPattern(pattern);
+  const normalized = normalizePathForGlobMatch(pattern);
   const injected = basePrefix && normalized.startsWith('**/')
     ? `${basePrefix}${normalized.slice(3)}`
     : normalized;
@@ -669,8 +656,8 @@ function samplePathForPattern(pattern = '', basePrefix = '') {
 }
 
 function patternsMayOverlap(leftPattern = '', rightPattern = '') {
-  const left = normalizeGlobPattern(leftPattern);
-  const right = normalizeGlobPattern(rightPattern);
+  const left = normalizePathForGlobMatch(leftPattern);
+  const right = normalizePathForGlobMatch(rightPattern);
   if (!left || !right) {
     return false;
   }
@@ -679,8 +666,8 @@ function patternsMayOverlap(leftPattern = '', rightPattern = '') {
     return true;
   }
 
-  const leftRegex = globPatternToRegExp(left);
-  const rightRegex = globPatternToRegExp(right);
+  const leftRegex = globToRegExp(left);
+  const rightRegex = globToRegExp(right);
   const candidates = [
     samplePathForPattern(left),
     samplePathForPattern(right),
@@ -704,7 +691,7 @@ function patternsMayOverlap(leftPattern = '', rightPattern = '') {
     const prefix = broad.slice(0, -3);
     return Boolean(prefix)
       && (narrow.startsWith(`${prefix}/`) || narrow === prefix)
-      && globPatternToRegExp(broad).test(samplePathForPattern(narrow, prefixBeforeWildcard(broad)));
+      && globToRegExp(broad).test(samplePathForPattern(narrow, prefixBeforeWildcard(broad)));
   });
 }
 

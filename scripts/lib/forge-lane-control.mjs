@@ -6,18 +6,27 @@ import {
   normalizeLaneMergeState,
   appendLaneNote,
 } from './forge-lanes.mjs';
+import { validateLaneDag } from './forge-lane-dag.mjs';
+import { logHookError } from './error-handler.mjs';
 
 function mutateLane(normalizeRuntimeState, runtime = DEFAULT_RUNTIME, laneId, updater) {
-  const normalizedRuntime = normalizeRuntimeState(runtime);
-  const lane = normalizeLane(normalizedRuntime.lanes[laneId], laneId);
+  const lanes = runtime?.lanes || {};
+  const lane = normalizeLane(lanes[laneId], laneId);
   const nextLane = normalizeLane(updater(lane), laneId);
 
+  const nextLanes = { ...lanes, [laneId]: nextLane };
+
+  const dagResult = validateLaneDag(nextLanes);
+  if (!dagResult.valid) {
+    logHookError(
+      new Error(`Lane DAG invalid: cycles=${JSON.stringify(dagResult.cycles)}, orphans=${JSON.stringify(dagResult.orphans)}`),
+      'mutateLane',
+    );
+  }
+
   return normalizeRuntimeState({
-    ...normalizedRuntime,
-    lanes: {
-      ...normalizedRuntime.lanes,
-      [laneId]: nextLane,
-    },
+    ...runtime,
+    lanes: nextLanes,
   });
 }
 
