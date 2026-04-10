@@ -13,14 +13,36 @@ export function logHookError(error, hookName, cwd = '.', { severity = 'warn' } =
   }
 }
 
-export function handleHookError(error, hookName, cwd = '.') {
-  logHookError(error, hookName, cwd);
+export function handleHookError(error, hookName, cwd = '.', { severity = 'warning' } = {}) {
+  logHookError(error, hookName, cwd, { severity });
+
+  if (severity === 'critical') {
+    console.log(JSON.stringify({
+      continue: false,
+      permissionDecision: 'deny',
+      hookSpecificOutput: {
+        hookEventName: hookName,
+        additionalContext: `[Forge Critical] ${hookName} failed: ${error?.message || error}. Operation blocked for safety.`,
+      },
+    }));
+    return;
+  }
+
+  if (severity === 'info') {
+    console.log(JSON.stringify({
+      continue: true,
+      suppressOutput: true,
+    }));
+    return;
+  }
+
+  // Default: 'warning'
   console.log(JSON.stringify({
     continue: true,
-    suppressOutput: true,
+    suppressOutput: false,
     hookSpecificOutput: {
       hookEventName: hookName,
-      additionalContext: `[Forge Error] ${hookName} encountered an issue. Check .forge/errors.log for details.`,
+      additionalContext: `[Forge Warning] ${hookName} encountered an issue. Check .forge/errors.log for details.`,
     },
   }));
 }
