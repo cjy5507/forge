@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
+import { existsSync, openSync, readSync, closeSync, readdirSync, readFileSync, statSync } from 'fs';
 import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -41,9 +41,12 @@ function fail(message) {
 }
 
 function isBinaryFile(filePath) {
+  let fd;
   try {
-    const buf = readFileSync(filePath, { length: 4 });
-    if (buf.length >= 4) {
+    fd = openSync(filePath, 'r');
+    const buf = Buffer.alloc(4);
+    const bytesRead = readSync(fd, buf, 0, 4, 0);
+    if (bytesRead >= 4) {
       const magic = buf.readUInt32BE(0);
       // Mach-O magic: feedface, feedfacf, cafebabe, and their little-endian variants
       if (magic === 0xFEEDFACE || magic === 0xFEEDFACF || magic === 0xCAFEBABE || magic === 0xCEFAEDFE || magic === 0xCFFAEDFE) {
@@ -52,6 +55,8 @@ function isBinaryFile(filePath) {
     }
   } catch {
     // If we can't read, let syntax check handle it
+  } finally {
+    if (fd !== undefined) closeSync(fd);
   }
   return false;
 }
