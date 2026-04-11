@@ -1,6 +1,6 @@
 import { spawnSync } from 'child_process';
 import { basename } from 'path';
-import { describeCrossHostResume } from './forge-host-context.mjs';
+import { describeCrossHostResume } from './forge-host.mjs';
 import { buildHealthReport } from './forge-health.mjs';
 import { readForgeState, readRuntimeState, normalizeRuntimeState } from './forge-session.mjs';
 import { getStateTrustWarnings } from './forge-state-trust.mjs';

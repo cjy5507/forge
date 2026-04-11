@@ -327,6 +327,6 @@ describe('forge eval', () => {
     const parsed = JSON.parse(scenarioResult.stdout);
     expect(parsed.task).toBe('Host Degraded Support');
     expect(parsed.harness.metadata.scenario).toBe('host-degraded-support');
-    expect(parsed.harness.evidenceRefs).toContain('scripts/lib/forge-host-catalog.mjs');
+    expect(parsed.harness.evidenceRefs).toContain('scripts/lib/forge-host.mjs');
   });
 });

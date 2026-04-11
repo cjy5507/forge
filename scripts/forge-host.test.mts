@@ -2,8 +2,8 @@ import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
-import { getForgeHostAdapterContract, getForgeHostCapabilities, getForgeHostDeterminismFloor, getForgeHostSupportProfile } from './lib/forge-host-support.mjs';
-import { listForgeHostCatalogEntries } from './lib/forge-host-catalog.mjs';
+import { getForgeHostAdapterContract, getForgeHostCapabilities, getForgeHostDeterminismFloor, getForgeHostSupportProfile } from './lib/forge-host.mjs';
+import { listForgeHostCatalogEntries } from './lib/forge-host.mjs';
 
 const THIS_DIR = dirname(fileURLToPath(import.meta.url));
 const FORGE_ROOT = dirname(THIS_DIR);

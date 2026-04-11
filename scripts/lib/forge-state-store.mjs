@@ -10,7 +10,7 @@ import {
   writeJsonFile,
   withForgeLock,
 } from './forge-io.mjs';
-import { applyHostContext } from './forge-host-context.mjs';
+import { applyHostContext } from './forge-host.mjs';
 import { checkPhaseGate, resolvePhase, validatePhaseTransition } from './forge-phases.mjs';
 import { tierAtLeast } from './forge-tiers.mjs';
 import {

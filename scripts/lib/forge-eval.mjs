@@ -39,10 +39,9 @@ const EVAL_SCENARIOS = Object.freeze([
       'Expectation: runtime capability profiles and packaged files describe the same support posture.',
     ]),
     evidenceRefs: Object.freeze([
-      'scripts/lib/forge-host-catalog.mjs',
-      'scripts/lib/forge-host-support.mjs',
+      'scripts/lib/forge-host.mjs',
       'scripts/setup-plugin.mjs',
-      'scripts/forge-host-support.test.mts',
+      'scripts/forge-host.test.mts',
       'scripts/setup-plugin.test.mts',
     ]),
   }),

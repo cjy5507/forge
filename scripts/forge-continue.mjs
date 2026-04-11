@@ -2,10 +2,10 @@
 
 import { buildContinueContext, selectContinueDirective } from './lib/forge-continue.mjs';
 import { withJsonReadCache } from './lib/forge-io.mjs';
-import { describeForgeHostDegradedExecution, getForgeHostAdapterContract } from './lib/forge-host-support.mjs';
+import { describeForgeHostDegradedExecution, getForgeHostAdapterContract } from './lib/forge-host.mjs';
 import { buildStatusModel, renderStatusText } from './lib/forge-status.mjs';
 import { readForgeState, readRuntimeState } from './lib/forge-session.mjs';
-import { detectHostId } from './lib/forge-host-context.mjs';
+import { detectHostId } from './lib/forge-host.mjs';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const TWENTY_FOUR_HOURS_MS = 24 * ONE_HOUR_MS;

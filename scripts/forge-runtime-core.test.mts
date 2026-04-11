@@ -4,7 +4,7 @@ import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
-import { applyHostContext, describeCrossHostResume, detectHostId } from './lib/forge-host-context.mjs';
+import { applyHostContext, describeCrossHostResume, detectHostId } from './lib/forge-host.mjs';
 import { compactForgeContext, initLaneRecord, markLaneMergeState, markLaneReviewState, readRuntimeState, selectContinuationTarget, setLaneOwner, setLaneStatus, updateRuntimeState, readForgeState, writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
 import { selectNextLane } from './lib/forge-lanes.mjs';
 import { inferTierFromState, suggestTierDeescalation } from './lib/forge-tiers.mjs';

@@ -12,7 +12,7 @@ import {
   renderContinueDirective,
   selectContinueDirective,
 } from './lib/forge-continue.mjs';
-import { applyHostContext } from './lib/forge-host-context.mjs';
+import { applyHostContext } from './lib/forge-host.mjs';
 import { writeForgeState, writeRuntimeState } from './lib/forge-session.mjs';
 
 const WORKSPACES = [];
