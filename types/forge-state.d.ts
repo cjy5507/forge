@@ -75,7 +75,6 @@ export interface ForgeActiveAgentRecord {
   status?: string;
   type?: string;
   lane?: string;
-  role?: string;
   started_at?: string;
   updated_at?: string;
   [key: string]: unknown;

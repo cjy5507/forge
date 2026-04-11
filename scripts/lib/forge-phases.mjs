@@ -41,14 +41,18 @@ export const EXPRESS_PHASE_SEQUENCE = [
   'complete',
 ];
 
-/** Map repair phase IDs to required artifacts that must exist before advancing */
+/** Map repair phase IDs to required artifacts that must exist before advancing.
+ *  Note on handoff_required: only `fix` carries it because only the
+ *  isolate→fix transition changes ownership (troubleshooter → developer).
+ *  Per handoff-interview.md, intake→reproduce and same-agent transitions
+ *  do not trigger the three-step handoff. */
 export const REPAIR_PHASE_GATES = {
   reproduce: { requires: [], produces: ['evidence'] },
   isolate:   { requires: ['evidence'], produces: ['evidence/rca'] },
-  fix:       { requires: ['evidence/rca'], produces: [] },
+  fix:       { requires: ['evidence/rca'], produces: [], handoff_required: true },
   regress:   { requires: [], produces: ['holes'] },
   verify:    { requires: ['holes'], produces: [] },
-  delivery:  { requires: [], produces: ['delivery-report'] },
+  delivery:  { requires: [], produces: ['delivery-report'], lessons_required_on_issues: true },
 };
 
 /** Map build phase IDs to required artifacts that must exist before advancing */
