@@ -68,11 +68,8 @@ Layer 2 — Isolated Subagent (parallel execution):
 </Progressive_Disclosure>
 
 <Steps>
--1. **Staleness Check (constraint propagation)**
-    - Read state.json.staleness — if plan, architecture, contracts, code_rules, components, or tokens are stale, BLOCK.
+-1. **Analysis freshness check**
     - Read analysis metadata — if saved analysis is stale or missing for an existing-code path, route to `forge:analyze` first.
-    - Route to Lead/CTO/Designer to update stale artifacts before implementation proceeds.
-    - Only continue when all staleness entries relevant to this phase are cleared.
 
 0. **Handoff Interview — Implementation Intake (BEFORE worktree dispatch)**
    a. Lead Developer reads ALL design artifacts:

@@ -514,9 +514,6 @@ describe('forge harness hooks', () => {
     expect(state.phase_id).toBe('intake');
     expect(state.mode).toBe('build');
     expect(state.project).toBe(basename(cwd));
-    expect(state.artifact_versions).toEqual({});
-    expect(state.staleness).toEqual({});
-    expect(state.lessons_brief).toEqual([]);
   });
 
   it('backfills the default Forge directories for existing projects with only state', () => {

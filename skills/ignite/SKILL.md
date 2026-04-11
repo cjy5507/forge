@@ -53,7 +53,6 @@ partial progress back to the user as if the user were the internal project manag
 - Cancel with "forge cancel" at any time
 - Load `references/phase-map.md` for the compact phase sequence.
 - Load `references/handoff-interview.md` for the handoff interview protocol between phases.
-- Load `references/constraint-propagation.md` when an artifact changes and downstream impact must be tracked.
 - Load `references/context-budget.md` when dispatching agents to determine correct context loading.
 - Load `references/harness-learning.md` at project start (intake) to check lessons from past projects, and at delivery to record new lessons.
 - Load `references/harness-ab-eval.md` when asked to prove Forge's value against a baseline.
@@ -64,8 +63,8 @@ Phase 0 — INTAKE (CEO):
   1. Read the client's request
   1b. **Lessons Check**: CEO loads global lessons from ~/.claude/forge-lessons/ (if exists)
       - Match project type against lesson `applies_when` conditions
-      - Relevant lessons → record in state.json as `lessons_brief`
-      - If no global lessons exist → log "No global lessons found, skipping" and set lessons_brief=[]
+      - Carry relevant lessons forward as in-memory context for CTO and QA
+      - If no global lessons exist → log "No global lessons found, skipping"
       - Pattern lessons feed into CTO's code-rules, QA's test plan
       - Estimation lessons calibrate scope assessment
   2. **Internal Deliberation** — CEO does not decide alone; holds internal meeting:
@@ -118,9 +117,7 @@ Phase 0 — INTAKE (CEO):
   3. If unclear which mode or critical customer intent is missing → ask the client ONE focused question
      that resolves the routing decision. Do not open a broad interview outside intake/discovery
   4. BUILD: initialize .forge/ directory with state.json (from templates/state.json), hand off to PM
-     - state.json MUST include: artifact_versions={}, staleness={}, lessons_brief=[]
-     - These fields are required for constraint propagation and harness learning
-  5. REPAIR: initialize .forge/ with mode="repair" (same template fields), hand off to Troubleshooter
+  5. REPAIR: initialize .forge/ with mode="repair", hand off to Troubleshooter
 
 Phase 1 — DISCOVERY (PM):
   1. Invoke forge:discovery skill
@@ -200,7 +197,7 @@ Phase 8 — DELIVERY (CEO + Tech Writer):
 On first invocation, create .forge/ directory:
 
 .forge/
-├── state.json      ← current phase, progress, active agents, artifact_versions, staleness
+├── state.json      ← current phase, progress, active agents
 ├── spec.md         ← client-approved spec (Phase 1 output)
 ├── code-rules.md   ← CTO-defined code rules (Phase 2 output)
 ├── design/         ← architecture + UI design (Phase 2 output)
@@ -213,9 +210,6 @@ On first invocation, create .forge/ directory:
 ├── knowledge/      ← project knowledge base
 ├── lessons/        ← harness learning: lessons from QA, fixes, and delivery
 └── delivery-report/← final delivery docs
-
-state.json includes `artifact_versions` and `staleness` fields for constraint propagation.
-See `references/constraint-propagation.md` for the full protocol.
 </State_Management>
 
 <Dashboard>

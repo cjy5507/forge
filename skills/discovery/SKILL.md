@@ -124,7 +124,6 @@ design review, prototyping, or QA.
 <State_Changes>
 - Creates: .forge/spec.md
 - Updates: state.json (phase=2, spec_approved=true)
-- Updates: state.json artifact_versions: initialize `spec` with version=1
 - Updates: .forge/runtime.json (design_readiness gate + next session brief)
 - Creates: git tag forge/v1-spec
 </State_Changes>

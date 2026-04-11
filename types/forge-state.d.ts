@@ -266,9 +266,6 @@ export interface ForgeState {
   agents_active: string[];
   spec_approved: boolean;
   design_approved: boolean;
-  artifact_versions: Record<string, unknown>;
-  staleness: Record<string, unknown>;
-  lessons_brief: string[];
   analysis: ForgeAnalysisMeta;
   harness_policy?: ForgeHarnessPolicy;
   tasks: string[];

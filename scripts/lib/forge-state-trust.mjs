@@ -74,7 +74,6 @@ export function getStateShapeWarnings(value) {
     tasks: 'array',
     holes: 'array',
     pr_queue: 'array',
-    staleness: 'object',
   });
 
   return issues.length > 0 ? [buildShapeWarning(STATE_PATH, issues)] : [];

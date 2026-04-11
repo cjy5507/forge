@@ -25,11 +25,6 @@ produce a reviewable execution plan that Develop can consume with minimal ambigu
 </Core_Rules>
 
 <Steps>
--1. **Staleness check**
-    - Read state.json.staleness.
-    - If architecture, contracts, code_rules, components, or tokens are stale, BLOCK.
-    - Route back to design owners before planning proceeds.
-
 0. **Handoff Interview — Planning Intake**
    a. Lead Dev reads:
       - .forge/design/architecture.md

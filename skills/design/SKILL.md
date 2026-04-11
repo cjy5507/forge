@@ -97,11 +97,8 @@ Researcher is for EXTERNAL investigation only:
 </Researcher_Scope>
 
 <Steps>
--1. **Staleness Check (constraint propagation)**
-    - Read state.json.staleness — if `spec` is marked stale, BLOCK.
+-1. **Analysis freshness check**
     - Read analysis metadata — if saved codebase analysis is stale or missing for a non-greenfield path, route to `forge:analyze` first.
-    - Route to PM to update spec before design proceeds.
-    - Only continue when spec staleness is cleared.
 
 -0a. **UX Opening Mode (redesign / design-improvement path)**
    If `.forge/design/ux-analysis.md` exists and the saved analysis type is `design-improvement`:
@@ -142,7 +139,7 @@ Researcher is for EXTERNAL investigation only:
    e. Understanding confirmed → design work begins.
 
 -0b. **Lessons Check (harness learning)**
-    - CTO loads relevant pattern lessons from ~/.claude/forge-lessons/ and state.json.lessons_brief
+    - CTO loads relevant pattern lessons from ~/.claude/forge-lessons/ when present
     - Known bug patterns for the chosen tech stack → add preventive rules to code-rules.md
     - Known QA-failure patterns → add to contracts as explicit constraints
     - Known estimation gaps → flag to CEO for scope calibration
@@ -270,7 +267,6 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Creates: .forge/contracts/*.ts
 - Creates: .forge/code-rules.md
 - Updates: .forge/state.json (phase=3, phase_name="plan", design_approved=true)
-- Updates: .forge/state.json artifact_versions: bump architecture, contracts, components, code_rules, tokens
 - Updates: .forge/runtime.json (plan_readiness gate + next session brief)
 - Creates: git tag forge/v1-design
 </State_Changes>

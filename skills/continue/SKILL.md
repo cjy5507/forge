@@ -90,7 +90,7 @@ The goal: the user types `forge continue` and lands on the single most useful th
 On resume, `recommendedAgentsFor()` provides layer-classified agent recommendations.
 Dispatch agents according to their layer classification (layer0, layer2_subagent, etc.).
 
-Apply staleness-aware dispatch (from state-restore.mjs):
+Apply session age-aware dispatch (from state-restore.mjs; based on session wall-clock, not artifact dependencies):
 - **Fresh (<1hr)**: full context available — dispatch per layer recommendation immediately
 - **Warm (1-24hr)**: abbreviated context — resume from saved handoff and continue autonomously
 - **Stale (>24hr)**: minimal context — require explicit `forge continue`, then resume from saved state instead of restarting discovery
