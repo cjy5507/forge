@@ -5,7 +5,7 @@ import { dirname, join } from 'path';
 import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'url';
-import { getForgePackagedPaths } from './lib/forge-host-catalog.mjs';
+import { getForgePackagedPaths } from './lib/forge-host.mjs';
 import { getCodexMarketplaceManifestPath, getCodexMarketplacePluginsDir } from './lib/forge-codex-marketplace.mjs';
 import { getForgeInstallStateFileName } from './lib/forge-setup-manifest.mjs';
 

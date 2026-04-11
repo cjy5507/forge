@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdirSync, lstatSync, readlinkSync, realpathSync, r
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
-import { getForgeAllowedHiddenTopLevelEntries } from './lib/forge-host-catalog.mjs';
+import { getForgeAllowedHiddenTopLevelEntries } from './lib/forge-host.mjs';
 import {
   describeSetupSelection,
   getForgeInstallStateFileName,

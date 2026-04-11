@@ -1,6 +1,6 @@
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { getForgeAllowedHiddenTopLevelEntries } from './forge-host-catalog.mjs';
+import { getForgeAllowedHiddenTopLevelEntries } from './forge-host.mjs';
 import { normalizeHostId } from './forge-io.mjs';
 
 const FULL_PROFILE = 'full';

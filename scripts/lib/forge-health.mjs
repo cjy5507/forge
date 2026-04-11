@@ -1,7 +1,7 @@
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { detectHostId } from './forge-host-context.mjs';
-import { getForgeHostAdapterContract, getForgeHostSupportProfile } from './forge-host-support.mjs';
+import { detectHostId } from './forge-host.mjs';
+import { getForgeHostAdapterContract, getForgeHostSupportProfile } from './forge-host.mjs';
 import { getForgeInstallStateFileName } from './forge-setup-manifest.mjs';
 import { getVerificationArtifactPath, readVerificationArtifact } from './forge-verification.mjs';
 import { readForgeState, readRuntimeState } from './forge-session.mjs';

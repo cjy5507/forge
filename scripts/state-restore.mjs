@@ -13,8 +13,8 @@
 import { runHook } from './lib/hook-runner.mjs';
 import { buildContinueDirective } from './lib/forge-continue.mjs';
 import { compactForgeContext, readForgeState, updateRuntimeHookContext, writeForgeState } from './lib/forge-session.mjs';
-import { detectHostId } from './lib/forge-host-context.mjs';
-import { applyForgeHostAdapter, describeForgeHostDegradedExecution, getForgeHostAdapterContract } from './lib/forge-host-support.mjs';
+import { detectHostId } from './lib/forge-host.mjs';
+import { applyForgeHostAdapter, describeForgeHostDegradedExecution, getForgeHostAdapterContract } from './lib/forge-host.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { updateHudLine } from './lib/forge-hud.mjs';
 import { cleanupSessionArtifacts } from './lib/session-cleanup.mjs';

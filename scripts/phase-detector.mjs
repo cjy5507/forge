@@ -9,7 +9,7 @@ import { buildContinueDirective, createSkillDirective } from './lib/forge-contin
 import { deriveForgeRequest } from './lib/forge-phase-routing.mjs';
 import { resolveActiveForgePrompt } from './lib/forge-prompt-continue.mjs';
 import { PHASE_SEQUENCE } from './lib/forge-phases.mjs';
-import { detectHostId } from './lib/forge-host-context.mjs';
+import { detectHostId } from './lib/forge-host.mjs';
 import { ensureForgeProjectLayout, getRuntimePath, getStatePath } from './lib/forge-io.mjs';
 import { readForgeState, updateRuntimeHookContext, updateAdaptiveTier, writeForgeState } from './lib/forge-session.mjs';
 import { isProjectActive } from './lib/forge-interaction.mjs';

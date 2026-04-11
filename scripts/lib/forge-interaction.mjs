@@ -13,7 +13,7 @@ import {
   detectTaskType,
   recommendedAgentsFor,
 } from './forge-tiers.mjs';
-import { applyHostContext } from './forge-host-context.mjs';
+import { applyHostContext } from './forge-host.mjs';
 
 const interactivePatterns = allTriggers(INTERACTIVE_PATTERNS);
 
