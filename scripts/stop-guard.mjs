@@ -23,6 +23,7 @@ import { resolvePhase } from './lib/forge-phases.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 import { buildStopBatchCheckPlan, runStopBatchChecks, summarizeStopBatchResults } from './lib/forge-tooling.mjs';
 import { appendCostSample, estimatePhaseCost, probeStopHookUsage, recordHookInputKeys } from './lib/forge-metrics.mjs';
+import { logHookError } from './lib/error-handler.mjs';
 
 const CRITICAL_PHASES = new Set(['develop', 'fix', 'qa']);
 
@@ -171,7 +172,11 @@ ${failedCheck.output || batchSummary}`;
             ...current,
             cost: { ...(current.cost || {}), last_stop_at: nowIso, last_sample_source: sample.source },
           }));
-        } catch { /* cost sampling is non-fatal */ }
+        } catch (error) {
+          // Cost sampling is non-fatal for the Stop hook decision, but we no
+          // longer swallow silently — surface via errors.log (R2 compliance).
+          logHookError(error, 'stop-guard:cost-sample-batch-fail', cwd);
+        }
 
         console.log(JSON.stringify({
           continue: true,
@@ -222,8 +227,10 @@ ${failedCheck.output || batchSummary}`;
         last_sample_source: sample.source,
       },
     }));
-  } catch {
-    // Non-fatal: cost sampling must never break a Stop hook.
+  } catch (error) {
+    // Cost sampling must never break a Stop hook, but we surface failures via
+    // errors.log instead of swallowing (R2: no silent catch).
+    logHookError(error, 'stop-guard:cost-sample', cwd);
   }
 
   // For non-critical phases (including all Express phases), only full tier gets stop protection.

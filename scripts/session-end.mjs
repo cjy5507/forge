@@ -11,8 +11,10 @@ import { cleanupSessionArtifacts, cleanupForgeBranches, clearHudCustomLine, comp
 import { appendRecent } from './lib/forge-io.mjs';
 import { readActiveTier } from './lib/forge-tiers.mjs';
 import { readForgeState, readRuntimeState, summarizePendingWork, updateRuntimeState } from './lib/forge-session.mjs';
+import { isProjectActive } from './lib/forge-interaction.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { finalizeSessionCost } from './lib/forge-metrics.mjs';
+import { logHookError } from './lib/error-handler.mjs';
 
 runHook(async (input) => {
   const cwd = input?.cwd || '.';
@@ -48,10 +50,20 @@ runHook(async (input) => {
     return next;
   });
 
-  try {
-    finalizeSessionCost(cwd);
-  } catch {
-    // Non-fatal: cost finalization must never break session cleanup.
+  // Gate cost finalization on project activity. Writing a session-*.json for
+  // inactive sessions (no .forge/state.json, or phase=complete/delivered)
+  // produces empty shells that pollute tier-comparison history. Mirrors the
+  // isProjectActive gate in stop-guard.mjs which skips cost sampling for the
+  // same reason.
+  if (state && isProjectActive(state)) {
+    try {
+      finalizeSessionCost(cwd);
+    } catch (error) {
+      // Cost finalization must never break session cleanup, but we no longer
+      // swallow errors silently — logHookError leaves a trail in errors.log
+      // so failures surface on inspection (R2: no silent catch).
+      logHookError(error, 'session-end:cost-finalize', cwd);
+    }
   }
 
   cleanupSessionArtifacts(cwd);
