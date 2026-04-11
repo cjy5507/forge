@@ -82,34 +82,44 @@ description: Forge Analyst — deep codebase analysis via codebase-memory-mcp fo
   </Analysis_Workflow>
 
   <Output_Format>
-    Architecture Report:
-    ```
-    ## Module Map
-    - {module}: {purpose}, {inbound deps}, {outbound deps}
-    ## Coupling Hotspots
-    - {moduleA} ↔ {moduleB}: {shared surface area}
-    ## Architectural Risks
-    - {risk}: {evidence}, {severity}
-    ```
+    Output a single JSON block conforming to AnalystReport v1 (see
+    `.forge/contracts/analyst-report.ts`). Do not output markdown sections,
+    prose explanations, or multiple JSON blocks outside the single report.
 
-    Impact Report:
-    ```
-    ## Change: {description}
-    ## Direct Impact: {files/functions affected}
-    ## Transitive Impact: {callers of affected functions}
-    ## Graph Health: {strong | partial | sparse}
-    ## Risk Level: isolated | local | systemic
-    ## Confidence: {high | medium | low}
-    ## Test Coverage: {covered} / {total impact surface}
-    ## Recommendation: {proceed | review needed | block}
-    ```
+    Consumers validate via `validateAnalystReport()` in
+    `scripts/lib/forge-analyst-schema.mjs`; validation failure blocks
+    artifact writes and downstream consumption. On validation failure the
+    request will be re-issued — fix the payload, do not emit a legacy
+    free-form fallback.
 
-    Quality Report:
-    ```
-    ## Dead Code: {list with evidence}
-    ## Complexity Hotspots: {ranked by score}
-    ## Pattern Violations: {deviation from established patterns}
-    ## Refactor Candidates: {effort vs impact ranking}
+    Required envelope fields (all reports):
+    - `version`: must be the string `"1"`
+    - `kind`: one of `architecture`, `impact`, `dependency`, `quality`,
+      `first-principles`, `design-improvement`, `behavioral-audit`
+    - `generated_at`: ISO 8601 timestamp
+    - `target`: path, question, or subsystem name being analyzed
+    - `graph_health`: `strong` | `partial` | `sparse` | `n/a`
+    - `confidence`: `high` | `medium` | `low`
+    - `risk_level`: `isolated` | `local` | `systemic` | `n/a`
+    - `locale`: `ko` | `en` | `ja` | `zh`
+    - `body`: kind-specific object, see contract file for required fields
+    - `summary`: 2–3 sentences of human-readable synthesis
+    - `recommendations`: array of `{priority, action, owner_role?}` objects
+
+    Required body fields per kind (must all be present and non-null):
+    - `architecture`: `modules`, `coupling_hotspots`, `patterns`
+    - `impact`: `change`, `direct_impact`, `transitive_impact`, `test_coverage`
+    - `dependency`: `root`, `callers`, `callees`, `depth`, `cycles`
+    - `quality`: `dead_code`, `complexity_hotspots`, `refactor_candidates`
+    - `first-principles`: `problem`, `assumptions`, `essence`,
+      `inverted_design`, `action_plan`, `verification`
+    - `design-improvement`: `current_friction`, `assumptions`, `openings`,
+      `handoff_brief`
+    - `behavioral-audit`: `profile`, `signals`, `prescriptions`
+
+    Emit the JSON as a single fenced block:
+    ```json
+    { "version": "1", "kind": "...", "body": { ... }, "recommendations": [] }
     ```
   </Output_Format>
 
