@@ -110,121 +110,56 @@ The Analyst uses codebase-memory-mcp tools:
 - **detect_changes** — what changed and blast radius
 - **search_code / LSP fallback** — when graph fidelity is too weak for symbol-level confidence
 
-## 4. Present results
+## 4. Capture Analyst output (AnalystReport v1 JSON only)
 
-Every analysis must end in two stages when the request has design, workflow, or problem-framing weight:
+The Analyst agent MUST emit a single JSON block conforming to
+`.forge/contracts/analyst-report.ts` (the `AnalystReport` discriminated union).
+No free-form markdown templates. The shape is mechanically enforced by
+`scripts/lib/forge-analyst-schema.mjs::validateAnalystReport`, which is called
+in Step 5 before the record is accepted — if the payload does not match the
+contract, `record-analysis` exits non-zero and you must re-dispatch the
+Analyst with the error message so it can fix its output.
 
-### Stage 1 — First-principles reframe
+Envelope fields (required on every kind):
 
-Produce:
-- Problem statement in one sentence
-- Assumption audit table:
-  - assumption
-  - evidence/source
-  - type: physical constraint | invariant contract | habit/convention | unknown
-  - disposition: keep | challenge | remove
-- Essence model: what remains after non-essential assumptions are stripped away
-- Inverted design: the simplest structure that satisfies only the irreducible constraints
+- `version: '1'`
+- `kind`: one of `architecture | impact | dependency | quality | first-principles | design-improvement | behavioral-audit`
+- `generated_at` (ISO 8601), `target`, `graph_health`, `confidence`,
+  `risk_level`, `locale`, `summary`
+- `body`: kind-specific object (see contract for required fields per kind)
+- `recommendations`: array of `{ priority, action, owner_role? }`
 
-### Stage 2 — Execution plan and risk management
+Analyses with design, workflow, or problem-framing weight still need the
+first-principles reframe + execution plan substance — that substance lives
+inside `body` for the `first-principles` and `design-improvement` kinds
+(`assumptions`, `essence`, `inverted_design`, `action_plan`, `verification`,
+etc). Do not re-format it as markdown before saving; downstream consumers
+read the JSON directly.
 
-Produce:
-- step-by-step action plan
-- decision checkpoints where the team is likely to repeat the same mistake
-- leading indicators that the redesign is drifting back into convention
-- verification plan: what must be proved before moving to implementation or QA
-
-Format the Analyst's output based on type:
-
-**Architecture Report:**
-```
-## Module Map
-{modules with inbound/outbound dependency counts}
-## Coupling Hotspots
-{high-coupling pairs}
-## Patterns
-{architectural patterns detected}
-```
-
-**Impact Report:**
-```
-## Change: {target}
-## Direct Impact: {files/functions}
-## Transitive Impact: {callers of callers}
-## Risk: isolated | local | systemic
-```
-
-**Dependency Report:**
-```
-## {function/module}
-## Callers (who depends on this): {list}
-## Callees (what this depends on): {list}
-## Call depth: {N levels}
-```
-
-**Quality Report:**
-```
-## Dead Code: {unused exports/functions}
-## Complexity Hotspots: {ranked}
-## Refactor Candidates: {effort vs impact}
-```
-
-**First-Principles Redesign Report:**
-```
-## Problem
-{one-sentence problem definition}
-## Assumption Audit
-- {assumption} — {physical constraint | habit | unknown} — {keep/challenge/remove}
-## Essence
-{irreducible constraints only}
-## Inverted Design
-{redesigned structure}
-## Action Plan
-1. {step}
-2. {step}
-## Risk Windows
-- {moment where the team may repeat the old mistake}
-## Verification
-- {how to prove the redesign actually worked}
-```
-
-**Design-Improvement Analysis Report:**
-```
-## Current UX Friction
-{where users get stuck now}
-## Assumption Audit
-- {assumption} — {physical constraint | habit | unknown} — {keep/challenge/remove}
-## Openings
-- {2-3 viable UX directions}
-## Handoff Brief
-- target users
-- desired feeling
-- critical flows
-- safe-to-change areas
-```
-
-**Behavioral Audit Report:**
-```
-## Profile
-{question-heavy | serial-finisher | premature-handoff | none}
-## Signals
-- {evidence from runtime / lanes / prompt patterns}
-## Prescriptions
-- {next-session operating rules}
-```
-
-## 5. Feed into active phase (optional)
+## 5. Persist + validate (mandatory if Forge project is active)
 
 If a Forge project is active (.forge/state.json exists):
-- Save analysis to:
-  - `.forge/design/codebase-analysis.md` for architecture/impact/dependency/quality
-  - `.forge/design/ux-analysis.md` for design-improvement
-  - `.forge/evidence/behavioral-audit.md` for behavioral-audit
-- Record analysis metadata via:
-  `node scripts/forge-lane-runtime.mjs record-analysis --type <kind> --target <target> --artifact <artifact-path> --locale <ko|en|ja|zh> --graph-health <health> --confidence <level> --risk <level> --summary "<summary>"`
-- CTO, Lead, or Troubleshooter can reference this in their phase work
-- Use `node scripts/forge-lane-runtime.mjs analysis-status --json` when checking freshness before design/develop/fix
-- If the type is `design-improvement` and a Forge project is active, immediately hand off to `forge:design` in UX-opening mode after saving `.forge/design/ux-analysis.md`
+
+1. Write the raw JSON payload (a fenced ```json block is acceptable — the
+   validator's `extractJson` handles both raw and fenced forms) to the
+   kind-appropriate artifact path:
+   - `.forge/design/codebase-analysis.md` for
+     architecture / impact / dependency / quality / first-principles
+   - `.forge/design/ux-analysis.md` for `design-improvement`
+   - `.forge/evidence/behavioral-audit.md` for `behavioral-audit`
+2. Immediately record + validate via:
+   `node scripts/forge-lane-runtime.mjs record-analysis --type <kind> --target <target> --artifact <artifact-path> --locale <ko|en|ja|zh> --graph-health <health> --confidence <level> --risk <level> --summary "<summary>"`
+3. If the CLI exits non-zero, treat as failure: do NOT advance the phase, do
+   NOT hand off downstream. Read the stderr message (it will start with
+   `record-analysis rejected for ... AnalystReport v1 validation failed:
+   ...`), then re-dispatch the Analyst with the error so it can correct the
+   payload. Legacy free-form markdown is explicitly rejected by the validator.
+4. On success, CTO, Lead, or Troubleshooter can reference the validated
+   artifact in their phase work. Use
+   `node scripts/forge-lane-runtime.mjs analysis-status --json` when checking
+   freshness before design/develop/fix.
+5. If the kind is `design-improvement` and the validated record was accepted,
+   immediately hand off to `forge:design` in UX-opening mode.
 
 </Steps>
 

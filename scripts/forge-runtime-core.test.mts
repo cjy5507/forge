@@ -543,7 +543,27 @@ describe('forge runtime core', () => {
       phase: 'design',
       spec_approved: true,
     });
-    writeFileSync(join(cwd, '.forge', 'design', 'codebase-analysis.md'), '# Analysis\n');
+    const validArchitectureReport = {
+      version: '1',
+      kind: 'architecture',
+      generated_at: '2026-04-12T00:00:00.000Z',
+      target: 'scripts/lib',
+      graph_health: 'partial',
+      confidence: 'medium',
+      risk_level: 'local',
+      locale: 'en',
+      summary: 'Module graph only; fallback required for call paths',
+      body: {
+        modules: [{ name: 'scripts/lib', inbound: 2, outbound: 3, role: 'core' }],
+        coupling_hotspots: [],
+        patterns: ['layered'],
+      },
+      recommendations: [],
+    };
+    writeFileSync(
+      join(cwd, '.forge', 'design', 'codebase-analysis.md'),
+      JSON.stringify(validArchitectureReport, null, 2),
+    );
 
     const result = runLaneRuntime([
       'record-analysis',
@@ -576,6 +596,79 @@ describe('forge runtime core', () => {
     expect(runtime.analysis.confidence).toBe('medium');
     expect(runtime.analysis.graph_health).toBe('module-only');
     expect(runtime.analysis.stale).toBe(false);
+  });
+
+  it('rejects record-analysis when the artifact payload is missing a required body field', () => {
+    const cwd = makeWorkspace();
+    mkdirSync(join(cwd, '.forge', 'design'), { recursive: true });
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'design',
+      spec_approved: true,
+    });
+    // Missing body.modules — validator must reject.
+    const brokenReport = {
+      version: '1',
+      kind: 'architecture',
+      generated_at: '2026-04-12T00:00:00.000Z',
+      target: 'scripts/lib',
+      graph_health: 'partial',
+      confidence: 'medium',
+      risk_level: 'local',
+      locale: 'en',
+      summary: 'Broken — missing modules',
+      body: {
+        coupling_hotspots: [],
+        patterns: [],
+      },
+      recommendations: [],
+    };
+    writeFileSync(
+      join(cwd, '.forge', 'design', 'codebase-analysis.md'),
+      JSON.stringify(brokenReport, null, 2),
+    );
+
+    const result = runLaneRuntime([
+      'record-analysis',
+      '--type',
+      'architecture',
+      '--artifact',
+      '.forge/design/codebase-analysis.md',
+    ], cwd);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('AnalystReport v1 validation failed');
+    expect(result.stderr).toContain('body.modules is missing');
+
+    // No metadata should have been recorded because the CLI failed closed.
+    const state = readForgeState(cwd);
+    expect(state.analysis?.last_type).not.toBe('architecture');
+  });
+
+  it('rejects record-analysis when the artifact payload is legacy free-form markdown', () => {
+    const cwd = makeWorkspace();
+    mkdirSync(join(cwd, '.forge', 'design'), { recursive: true });
+    writeForgeState(cwd, {
+      project: 'Forge',
+      phase: 'design',
+      spec_approved: true,
+    });
+    writeFileSync(
+      join(cwd, '.forge', 'design', 'codebase-analysis.md'),
+      '# Analysis\n\n## Module Map\n- scripts/lib\n\n## Coupling Hotspots\n- none\n',
+    );
+
+    const result = runLaneRuntime([
+      'record-analysis',
+      '--type',
+      'architecture',
+      '--artifact',
+      '.forge/design/codebase-analysis.md',
+    ], cwd);
+
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain('AnalystReport v1 validation failed');
+    expect(result.stderr).toContain('unable to parse JSON payload');
   });
 
   it('reports analysis status as stale when the artifact is missing', () => {

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { spawnSync } from 'child_process';
 import { withJsonReadCache } from './lib/forge-io.mjs';
 import { LANE_STATUS_SEQUENCE, normalizeRuntimeLanes, selectNextLane, summarizeLaneBriefs, summarizeLaneCounts } from './lib/forge-lanes.mjs';
+import { ANALYST_REPORT_KINDS, validateAnalystReport } from './lib/forge-analyst-schema.mjs';
 import { initLaneRecord, markLaneMergeState, markLaneReviewState, recordAnalysisMetadata, recordLaneHandoff, readForgeState, readRuntimeState, setCompanyGate, setLaneOwner, setSessionBrief, setLaneStatus, writeSessionHandoff, writeRuntimeState } from './lib/forge-session.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { decomposeTask } from './lib/task-decomposer.mjs';
@@ -768,7 +769,30 @@ function recordAnalysis(options) {
   }
 
   const artifactPath = options.artifact || '.forge/design/codebase-analysis.md';
-  const artifactExists = existsSync(resolve(process.cwd(), artifactPath));
+  const resolvedArtifactPath = resolve(process.cwd(), artifactPath);
+  const artifactExists = existsSync(resolvedArtifactPath);
+
+  // R3 (1)(2): before persisting analysis metadata, mechanically validate the
+  // artifact payload against the AnalystReport v1 schema. This is the
+  // decision-influencing consumer of validateAnalystReport — if the payload
+  // does not match the contract in .forge/contracts/analyst-report.ts, the
+  // record is rejected and the skill must re-dispatch the Analyst agent.
+  //
+  // Only the 7 AnalystReport kinds trigger validation. Non-analyst analysis
+  // types (if any are added later) bypass this gate so the hook stays
+  // opt-in per kind.
+  if (ANALYST_REPORT_KINDS.includes(options.type) && artifactExists && !options.stale) {
+    const payload = readFileSync(resolvedArtifactPath, 'utf8');
+    try {
+      validateAnalystReport(payload);
+    } catch (error) {
+      // R2: rethrow via fail() so the CLI exits non-zero with an actionable
+      // message. No silent swallow.
+      const message = error && error.message ? error.message : String(error);
+      fail(`record-analysis rejected for ${artifactPath}: ${message}`);
+    }
+  }
+
   const saved = recordAnalysisMetadata(process.cwd(), {
     last_type: options.type,
     last_target: options.target || '',
