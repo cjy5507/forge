@@ -12,7 +12,7 @@ import { appendRecent } from './lib/forge-io.mjs';
 import { readActiveTier } from './lib/forge-tiers.mjs';
 import { readForgeState, readRuntimeState, summarizePendingWork, updateRuntimeState } from './lib/forge-session.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
-import { finalizeSessionCost } from './lib/forge-cost.mjs';
+import { finalizeSessionCost } from './lib/forge-metrics.mjs';
 
 runHook(async (input) => {
   const cwd = input?.cwd || '.';

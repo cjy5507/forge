@@ -22,7 +22,7 @@ import { readActiveTier } from './lib/forge-tiers.mjs';
 import { resolvePhase } from './lib/forge-phases.mjs';
 import { readEnvTier, tierAtLeast } from './lib/forge-tiers.mjs';
 import { buildStopBatchCheckPlan, runStopBatchChecks, summarizeStopBatchResults } from './lib/forge-tooling.mjs';
-import { appendCostSample, estimatePhaseCost, probeStopHookUsage, recordHookInputKeys } from './lib/forge-cost.mjs';
+import { appendCostSample, estimatePhaseCost, probeStopHookUsage, recordHookInputKeys } from './lib/forge-metrics.mjs';
 
 const CRITICAL_PHASES = new Set(['develop', 'fix', 'qa']);
 

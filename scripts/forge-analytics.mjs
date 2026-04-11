@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { buildForgeAnalyticsReport, renderForgeAnalyticsText } from './lib/forge-analytics.mjs';
+import { buildForgeAnalyticsReport, renderForgeAnalyticsText } from './lib/forge-metrics.mjs';
 
 function parseArgs(argv) {
   const options = {
