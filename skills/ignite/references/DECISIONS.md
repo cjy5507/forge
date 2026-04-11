@@ -55,14 +55,22 @@ measurable impact, escalate to tier-gated static analysis of Agent prompts.
   closes the "LLM reads markdown" loop — data is now in state.json for
   downstream agents.
 
-**Write side** (enforced via phase gate, not runtime helper):
+**Write side** (enforced via phase gate + helper):
 
-- `checkPhaseGate(cwd, 'delivery', 'build', { tier })` blocks advance when
-  `.forge/holes/` has any file but `.forge/lessons/` contains no `.md`.
-- Rationale: the writer is still LLM-driven (Troubleshooter/QA/CEO write
-  lesson files directly), but the gate enforces that the pair is closed
-  before delivery. Format validation is intentionally loose — the reader
-  tolerates unknown types, and strict format checks would be noise.
+- `scripts/lib/forge-lessons-writer.mjs` exposes `createLesson({cwd, type,
+  title, sections, ...})` and `validateLessonContent(content)`. The helper
+  validates against the protocol (Type, "Applies when", prevention/process/
+  calibration section) before writing `.forge/lessons/{id}.md`. Agents
+  should call the helper rather than write markdown directly so format
+  errors surface at write time, not at later read time.
+- `checkPhaseGate(cwd, 'delivery', 'build'|'repair', { tier })` blocks
+  advance when `.forge/holes/` has any file but `.forge/lessons/` contains
+  no `.md`. Both modes are subject to this gate for harness-learning
+  symmetry across projects.
+- Format validation at the phase gate is intentionally loose — it checks
+  existence, not per-file format. Strict format checks happen at write
+  time via the helper; the gate is a soft "issues found, lessons must
+  exist" invariant, not a format linter.
 
 ## handoff-interview.md — what is enforced
 
@@ -71,6 +79,10 @@ measurable impact, escalate to tier-gated static analysis of Agent prompts.
 - Phases marked `handoff_required: true` in `BUILD_PHASE_GATES` (design,
   plan, develop, qa) require `.forge/handoff-interviews/{phase}.md` to
   exist with ≥40 bytes before `checkPhaseGate` returns `canAdvance: true`.
+- `REPAIR_PHASE_GATES.fix` also carries `handoff_required: true` — the
+  isolate→fix transition is the only ownership change in the repair
+  sequence (troubleshooter → developer). Same-agent repair transitions
+  (intake→reproduce, regress→verify) remain prompt-only.
 - State-store's `applyPhaseGateCheck` passes the active tier to the gate
   check and reverts advances when the handoff artifact is missing.
 

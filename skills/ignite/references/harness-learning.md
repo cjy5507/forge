@@ -89,11 +89,20 @@ Date: {date}
 
 ## When Lessons Are Created
 
+**Tooling.** Use `scripts/lib/forge-lessons-writer.mjs` — exports
+`createLesson({cwd, type, title, sections, ...})` which validates against
+this protocol before writing `.forge/lessons/{id}.md`, and
+`validateLessonContent(content)` for checking existing files. Prefer the
+helper over writing markdown by hand: validation errors surface at
+creation time instead of at read time. Required sections:
+`applies when` plus one of `prevention rule` / `process change` /
+`calibration rule` depending on the lesson type.
+
 ### During Fix Phase (Phase 6)
 After every COMPLEX fix (triage score 0-2) that required RCA:
 1. Troubleshooter extracts the structural cause
 2. Lead Dev determines if this is a recurring pattern or one-off
-3. If recurring: create a pattern lesson in `.forge/lessons/`
+3. If recurring: create a pattern lesson in `.forge/lessons/` via `createLesson({type: 'pattern', ...})`
 4. If the fix reveals a code-rules gap: add the rule to the lesson's prevention checklist
 
 ### During QA Phase (Phase 4)
@@ -124,14 +133,23 @@ After delivery, CEO selects which lessons should be promoted to global:
 
 ## When Lessons Are Consulted
 
+**Tooling.** Lesson consultation is code-enforced via
+`scripts/lib/forge-lessons-loader.mjs` — `initializeLessonsBrief(cwd)`
+runs automatically on the first `writeForgeState` call (when no prior
+state exists) and populates `state.lessons_brief: ForgeLessonBrief[]`.
+The loader reads both `.forge/lessons/` (project-local) and
+`~/.claude/forge-lessons/` (global, overridable via
+`FORGE_LESSONS_GLOBAL_DIR` env var for test isolation). No manual "CEO
+loads global lessons" step is required — the harness does it.
+
 ### At Intake (Phase 0)
-CEO loads global lessons and checks:
+CEO reviews the auto-populated `lessons_brief` and checks:
 - Does this project type match any `applies_when` conditions?
 - Are there estimation lessons for similar scope?
 - Are there pattern lessons for the chosen tech stack?
 
 Relevant lessons are:
-1. Summarized in a "Lessons Brief" section of state.json
+1. Already in `state.lessons_brief` (auto-populated at first state write)
 2. Fed to CTO during design phase (pattern lessons → code-rules.md)
 3. Fed to QA during testing (pattern lessons → additional test cases)
 

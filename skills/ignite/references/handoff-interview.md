@@ -60,6 +60,23 @@ If accurate → sign off and the phase proceeds.
   no interview needed
 - Same-team transitions (e.g., QA→Fix→QA re-verify): handoff note suffices
 
+## When a handoff artifact is required (code-enforced)
+
+At `full` tier, the following transitions require
+`.forge/handoff-interviews/{phase}.md` (≥40 bytes) before `checkPhaseGate`
+returns `canAdvance: true`:
+
+- Build mode: `design`, `plan`, `develop`, `qa` (entering each phase)
+- Repair mode: `fix` only — the isolate→fix transition changes ownership
+  (troubleshooter → developer), which is the only handoff in the repair
+  sequence. All other repair transitions keep the same agent and do not
+  require an artifact.
+
+Below full tier the requirement is prompt-only. The enforcement runs in
+`state-store`'s `applyPhaseGateCheck` at transition time, not in
+`write-gate` (which would re-check on every tool call). See
+`skills/ignite/references/DECISIONS.md` for the full enforcement rationale.
+
 ## Anti-Patterns
 
 - Receiving team starts work before questions are answered
