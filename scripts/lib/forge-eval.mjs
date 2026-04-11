@@ -155,7 +155,7 @@ export function deriveHarnessRun(cwd = '.', seed = {}) {
   const stateStats = state?.stats && typeof state.stats === 'object' ? state.stats : {};
   const stats = { ...stateStats, ...runtimeStats };
 
-  const retryCount = Number(stats.failure_count || 0) + Number(stats.rollback_count || 0);
+  const retryCount = Number(stats.failure_count || 0);
   const testsPassed = Math.max(0, Number(stats.test_runs || 0) - Number(stats.test_failures || 0));
   const regressions = holes.blockerCount + holes.majorCount;
   const userCorrections = Number(stats.stop_block_count || 0) + (runtime.customer_blockers?.length || 0);

@@ -36,7 +36,6 @@ const stateContract: ForgeState = {
   status: 'pending',
   created_at: '',
   updated_at: '',
-  client_name: '',
   agents_active: [],
   spec_approved: false,
   design_approved: false,

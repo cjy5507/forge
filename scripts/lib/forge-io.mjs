@@ -123,11 +123,9 @@ export function withForgeLock(cwd, callback) {
 /** @type {ForgeStats} */
 export const DEFAULT_STATS = {
   started_at: '',
-  last_prompt_at: '',
   last_finished_at: '',
   session_count: 0,
   agent_calls: 0,
-  rollback_count: 0,
   failure_count: 0,
   stop_block_count: 0,
   test_runs: 0,
@@ -229,7 +227,6 @@ export const DEFAULT_RUNTIME = {
     question_prompts: 0,
     design_improvement_requests: 0,
   },
-  task_graph_version: 1,
   company_mode: 'guided',
   company_gate_mode: 'auto',
   company_phase_anchor: '',
@@ -270,8 +267,6 @@ export const DEFAULT_RUNTIME = {
   },
   stop_guard: {
     block_count: 0,
-    last_reason: '',
-    last_message: '',
   },
   stats: { ...DEFAULT_STATS },
   last_event: null,

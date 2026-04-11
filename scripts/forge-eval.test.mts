@@ -46,7 +46,6 @@ describe('forge eval', () => {
       created_at: '2026-04-06T00:00:00.000Z',
       stats: {
         failure_count: 1,
-        rollback_count: 0,
         stop_block_count: 2,
         test_runs: 6,
         test_failures: 1,
@@ -56,7 +55,6 @@ describe('forge eval', () => {
       delivery_readiness: 'delivered',
       stats: {
         failure_count: 1,
-        rollback_count: 0,
         stop_block_count: 2,
         test_runs: 6,
         test_failures: 1,
@@ -103,7 +101,6 @@ describe('forge eval', () => {
       tier: 'full',
       stats: {
         failure_count: 0,
-        rollback_count: 0,
         stop_block_count: 0,
         test_runs: 3,
         test_failures: 0,
@@ -116,7 +113,6 @@ describe('forge eval', () => {
       },
       stats: {
         failure_count: 0,
-        rollback_count: 0,
         stop_block_count: 0,
         test_runs: 3,
         test_failures: 0,
@@ -179,7 +175,6 @@ describe('forge eval', () => {
       tier: 'medium',
       stats: {
         failure_count: 0,
-        rollback_count: 0,
         stop_block_count: 0,
         test_runs: 2,
         test_failures: 0,
@@ -189,7 +184,6 @@ describe('forge eval', () => {
       delivery_readiness: 'delivered',
       stats: {
         failure_count: 0,
-        rollback_count: 0,
         stop_block_count: 0,
         test_runs: 2,
         test_failures: 0,
@@ -279,7 +273,6 @@ describe('forge eval', () => {
       tier: 'full',
       stats: {
         failure_count: 0,
-        rollback_count: 0,
         stop_block_count: 0,
         test_runs: 2,
         test_failures: 0,
@@ -292,7 +285,6 @@ describe('forge eval', () => {
       },
       stats: {
         failure_count: 0,
-        rollback_count: 0,
         stop_block_count: 0,
         test_runs: 2,
         test_failures: 0,

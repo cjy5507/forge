@@ -91,7 +91,6 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
     const transition = validatePhaseTransition(previousPhase.id, nextPhase.id, nextPhase.mode, { allowRollback });
 
     if (!transition.valid) {
-      normalized._phase_transition_warning = transition.reason;
       process.stderr.write(`[Forge] warning: ${transition.reason}\n`);
       normalized.phase = previousPhase.id;
       normalized.phase_id = previousPhase.id;

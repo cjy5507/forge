@@ -188,8 +188,6 @@ function parseArgs(argv) {
         options.requirementRefs = parseList(value);
       } else if (arg === '--acceptance-refs') {
         options.acceptanceRefs = parseList(value);
-      } else if (arg === '--evidence-refs') {
-        options.evidenceRefs = parseList(value);
       } else if (arg === '--status') {
         options.status = value.trim();
       } else if (arg === '--state') {
@@ -300,7 +298,6 @@ function buildRuntime(runtime, eventName, laneId) {
   return writeRuntimeState(process.cwd(), {
     ...runtime,
     lanes: normalizeLaneRecords(runtime.lanes),
-    task_graph_version: Number(runtime.task_graph_version) > 0 ? Number(runtime.task_graph_version) : 1,
     last_event: {
       name: eventName,
       lane: laneId,
@@ -342,7 +339,6 @@ function initLane(options) {
       dependencies: options.dependsOn || [],
       requirementRefs: options.requirementRefs || [],
       acceptanceRefs: options.acceptanceRefs || [],
-      evidenceRefs: options.evidenceRefs || [],
     }),
     'init-lane',
     options.lane,

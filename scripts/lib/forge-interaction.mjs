@@ -73,7 +73,6 @@ export function updateAdaptiveTierWith({ readRuntimeState, updateRuntimeState },
     stats: {
       ...current.stats,
       started_at: current.stats.started_at || new Date().toISOString(),
-      last_prompt_at: new Date().toISOString(),
     },
   }, {
     hostId,

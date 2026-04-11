@@ -67,7 +67,6 @@ function writeState(cwd: string, overrides = {}) {
     status: 'active',
     created_at: '',
     updated_at: '',
-    client_name: '',
     agents_active: [],
     spec_approved: true,
     design_approved: true,

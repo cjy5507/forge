@@ -39,7 +39,6 @@ export function initLaneRecordWith(normalizeRuntimeState, runtime = DEFAULT_RUNT
   dependencies = [],
   requirementRefs = [],
   acceptanceRefs = [],
-  evidenceRefs = [],
 } = {}) {
   const now = new Date().toISOString();
   return mutateLane(normalizeRuntimeState, runtime, laneId, lane => ({
@@ -52,7 +51,6 @@ export function initLaneRecordWith(normalizeRuntimeState, runtime = DEFAULT_RUNT
     dependencies: dependencies.length ? dependencies.map(String) : lane.dependencies,
     requirement_refs: requirementRefs.length ? requirementRefs.map(String) : lane.requirement_refs,
     acceptance_refs: acceptanceRefs.length ? acceptanceRefs.map(String) : lane.acceptance_refs,
-    evidence_refs: evidenceRefs.length ? evidenceRefs.map(String) : lane.evidence_refs,
     status: lane.status === 'pending' && lane.title === 'unnamed lane' ? 'pending' : lane.status,
     last_event_at: now,
   }));

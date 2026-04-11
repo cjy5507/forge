@@ -54,7 +54,6 @@ function bootstrapForgeProject(cwd, request) {
     mode: inferBootstrapMode(request),
     status: 'pending',
     created_at: now,
-    client_name: '',
     agents_active: [],
     spec_approved: false,
     design_approved: false,

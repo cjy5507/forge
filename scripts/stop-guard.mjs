@@ -123,8 +123,6 @@ ${failedCheck.output || batchSummary}`;
           ...current,
           stop_guard: {
             block_count: (current.stop_guard?.block_count || 0) + 1,
-            last_reason: reason,
-            last_message: lastMessage,
           },
           stats: {
             ...(current.stats || {}),
@@ -251,8 +249,6 @@ ${failedCheck.output || batchSummary}`;
       ...current,
       stop_guard: {
         block_count: (current.stop_guard?.block_count || 0) + 1,
-        last_reason: warning,
-        last_message: lastMessage,
       },
       stats: {
         ...(current.stats || {}),
@@ -295,8 +291,6 @@ To stop, the user can say "forge cancel".${extraReason}`;
     ...current,
     stop_guard: {
       block_count: (current.stop_guard?.block_count || 0) + 1,
-      last_reason: reason,
-      last_message: lastMessage,
     },
     stats: {
       ...(current.stats || {}),

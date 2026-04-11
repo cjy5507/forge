@@ -12,11 +12,9 @@ export type ForgeDeliveryReadiness =
 
 export interface ForgeStats {
   started_at: string;
-  last_prompt_at: string;
   last_finished_at: string;
   session_count: number;
   agent_calls: number;
-  rollback_count: number;
   failure_count: number;
   stop_block_count: number;
   test_runs: number;
@@ -98,10 +96,8 @@ export interface ForgeLaneRecord {
   scope: string[];
   areas: string[];
   model_hint: string;
-  acceptance_criteria: string[];
   requirement_refs: string[];
   acceptance_refs: string[];
-  evidence_refs: string[];
   last_event_at: string;
   blocked_reason: string;
   reviewer: string;
@@ -111,8 +107,6 @@ export interface ForgeLaneRecord {
 
 export interface ForgeStopGuard {
   block_count: number;
-  last_reason: string;
-  last_message: string;
 }
 
 export interface ForgeDetectedCommands {
@@ -212,7 +206,6 @@ export interface ForgeRuntime {
   behavioral_profile: string;
   active_prescriptions: string[];
   behavioral_counters: ForgeBehavioralCounters;
-  task_graph_version: number;
   company_mode: ForgeCompanyMode;
   company_gate_mode: 'auto' | 'manual';
   company_phase_anchor: string;
@@ -262,7 +255,6 @@ export interface ForgeState {
   status: string;
   created_at: string;
   updated_at: string;
-  client_name: string;
   agents_active: string[];
   spec_approved: boolean;
   design_approved: boolean;
@@ -274,7 +266,6 @@ export interface ForgeState {
   tier: ForgeTier;
   stats: ForgeStats;
   phase_index: number;
-  _phase_transition_warning?: string;
   _phase_gate_warning?: string;
   _phase_mismatch_warning?: string;
 }
