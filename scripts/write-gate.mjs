@@ -260,7 +260,9 @@ runHook(async (input) => {
       return;
     }
 
-    // Phase gate check
+    // Phase gate check — note: handoff-interview enforcement runs in
+    // state-store at transition time, not on every tool write. Write-gate
+    // intentionally omits tier so handoff artifacts are not re-checked here.
     const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
     if (!gateResult.canAdvance) {
       console.log(JSON.stringify({

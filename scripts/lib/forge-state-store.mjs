@@ -20,6 +20,7 @@ import {
   getStateShapeWarnings,
   validateStateConsistency,
 } from './forge-state-trust.mjs';
+import { initializeLessonsBrief } from './forge-lessons-loader.mjs';
 
 const PHASE_GATE_BLOCKER_SOURCE = 'phase_gate';
 
@@ -106,7 +107,7 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
     const retainedInternalBlockers = clearPhaseGateBlockers(existingRuntime.internal_blockers);
     existingRuntime.internal_blockers = retainedInternalBlockers;
 
-    const gateResult = checkPhaseGate(cwd, phase.id, phase.mode);
+    const gateResult = checkPhaseGate(cwd, phase.id, phase.mode, { tier: normalized.tier });
     if (!gateResult.canAdvance) {
       const gateWarning = buildPhaseGateWarning(phase, gateResult);
       normalized._phase_gate_warning = gateWarning;
@@ -130,10 +131,6 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
       existingRuntime.delivery_readiness = 'in_progress';
     }
 
-    if (phase.mismatch) {
-      normalized._phase_mismatch_warning = `Phase "${phase.id}" does not belong to ${phase.mode} sequence — using fallback`;
-    }
-
     return { normalized, existingRuntime };
   }
 
@@ -144,6 +141,16 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
       normalized.updated_at = new Date().toISOString();
 
       const previousState = readJsonFile(getStatePath(cwd));
+      if (!previousState && !Array.isArray(normalized.lessons_brief)) {
+        try {
+          normalized.lessons_brief = initializeLessonsBrief(cwd, {
+            projectType: normalized.project || '',
+          });
+        } catch (error) {
+          process.stderr.write(`[Forge] warning: lessons_brief init failed: ${error.message}\n`);
+          normalized.lessons_brief = [];
+        }
+      }
       const { normalized: withTransition, previousPhase } = applyPhaseTransitionGuard(normalized, previousState, { allowRollback });
 
       const existingRuntime = readJsonFile(getRuntimePath(cwd), DEFAULT_RUNTIME);

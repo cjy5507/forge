@@ -124,8 +124,25 @@ function validatePackageEntrypoints() {
   return bins.length;
 }
 
+function runDeadScaffoldAudit() {
+  const auditor = join(ROOT, 'scripts/audit-dead-scaffolds.mjs');
+  if (!existsSync(auditor)) {
+    fail('dead-scaffold auditor missing at scripts/audit-dead-scaffolds.mjs');
+  }
+  const result = spawnSync(process.execPath, [auditor], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.status !== 0) {
+    fail('dead-scaffold audit failed — see output above');
+  }
+}
+
 const syntaxCount = runSyntaxChecks();
 const jsonCount = validateJsonManifests();
 const binCount = validatePackageEntrypoints();
+runDeadScaffoldAudit();
 
 process.stdout.write(`forge lint ok: syntax=${syntaxCount} json=${jsonCount} bins=${binCount}\n`);

@@ -2271,18 +2271,6 @@ describe('writeForgeState phase validation', () => {
     expect(runtime.next_action.kind).toBe('internal_blocker');
   });
 
-  it('adds _phase_mismatch_warning for mode-phase mismatch', () => {
-    const state = {
-      mode: 'repair',
-      phase: 'develop',
-      phase_id: 'develop',
-      phase_name: 'develop',
-      tier: 'light',
-    };
-    const result = writeForgeState(tmpDir, state);
-    expect(result._phase_mismatch_warning).toMatch(/does not belong to repair/);
-  });
-
   it('does not add warnings when everything is valid', () => {
     const forgeDir = join(tmpDir, '.forge');
     mkdirSync(join(forgeDir, 'evidence'), { recursive: true });
@@ -2295,7 +2283,6 @@ describe('writeForgeState phase validation', () => {
     };
     const result = writeForgeState(tmpDir, state);
     expect(result._phase_gate_warning).toBeUndefined();
-    expect(result._phase_mismatch_warning).toBeUndefined();
   });
 });
 

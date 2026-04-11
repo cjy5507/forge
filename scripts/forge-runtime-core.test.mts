@@ -679,6 +679,11 @@ describe('forge runtime core', () => {
       join(cwd, '.forge', 'spec.md'),
       '# Spec\n\n## Overview\nDesign-ready project.\n\n## Constraints\nKeep phase-gate tests valid with the required artifact.\n\nAdditional content to satisfy the minimum file size check.',
     );
+    mkdirSync(join(cwd, '.forge', 'handoff-interviews'), { recursive: true });
+    writeFileSync(
+      join(cwd, '.forge', 'handoff-interviews', 'design.md'),
+      '# Handoff: discovery → design\n\nCTO + Designer understanding statement recorded.\n',
+    );
 
     writeForgeState(cwd, {
       project: 'Forge',
@@ -925,6 +930,11 @@ describe('forge runtime core', () => {
     writeFileSync(
       join(cwd, '.forge', 'spec.md'),
       '# Spec\n\n## Overview\nDesign-ready project.\n\n## Constraints\nKeep company-gate refresh tests valid with the required artifact.\n\nAdditional content to satisfy the minimum file size check.',
+    );
+    mkdirSync(join(cwd, '.forge', 'handoff-interviews'), { recursive: true });
+    writeFileSync(
+      join(cwd, '.forge', 'handoff-interviews', 'design.md'),
+      '# Handoff: discovery → design\n\nCTO + Designer understanding statement recorded.\n',
     );
 
     writeForgeState(cwd, {

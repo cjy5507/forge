@@ -109,6 +109,19 @@ export interface ForgeStopGuard {
   block_count: number;
 }
 
+export type ForgeLessonType = 'pattern' | 'process' | 'estimation' | 'unknown';
+export type ForgeLessonSource = 'local' | 'global';
+
+export interface ForgeLessonBrief {
+  id: string;
+  source: ForgeLessonSource;
+  type: ForgeLessonType;
+  title: string;
+  applies_when: string;
+  prevention: string;
+  path: string;
+}
+
 export interface ForgeDetectedCommands {
   lint: string;
   typecheck: string;
@@ -266,6 +279,6 @@ export interface ForgeState {
   tier: ForgeTier;
   stats: ForgeStats;
   phase_index: number;
+  lessons_brief?: ForgeLessonBrief[];
   _phase_gate_warning?: string;
-  _phase_mismatch_warning?: string;
 }

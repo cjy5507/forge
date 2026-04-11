@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { resolveForgeBaseDir } from './forge-io.mjs';
 
@@ -54,13 +54,13 @@ export const REPAIR_PHASE_GATES = {
 /** Map build phase IDs to required artifacts that must exist before advancing */
 export const BUILD_PHASE_GATES = {
   discovery: { requires: [], produces: ['spec.md'] },
-  design:    { requires: ['spec.md'], produces: ['design', 'code-rules.md', 'contracts'] },
-  plan:      { requires: ['design', 'code-rules.md', 'contracts'], produces: ['plan.md'] },
-  develop:   { requires: ['plan.md'], produces: [] },
-  qa:        { requires: [], produces: ['holes'] },
+  design:    { requires: ['spec.md'], produces: ['design', 'code-rules.md', 'contracts'], handoff_required: true },
+  plan:      { requires: ['design', 'code-rules.md', 'contracts'], produces: ['plan.md'], handoff_required: true },
+  develop:   { requires: ['plan.md'], produces: [], handoff_required: true },
+  qa:        { requires: [], produces: ['holes'], handoff_required: true },
   security:  { requires: [], produces: [] },
   fix:       { requires: ['holes'], produces: [] },
-  delivery:  { requires: [], produces: ['delivery-report'] },
+  delivery:  { requires: [], produces: ['delivery-report'], lessons_required_on_issues: true },
 };
 
 /** Map express phase IDs to required artifacts that must exist before advancing.
@@ -166,12 +166,43 @@ export function checkRepairGate(cwd, phaseId) {
   return checkPhaseGate(cwd, phaseId, 'repair');
 }
 
+function directoryHasFiles(dirPath) {
+  try {
+    if (!existsSync(dirPath)) return false;
+    const stat = statSync(dirPath);
+    if (!stat.isDirectory()) return false;
+    return readdirSync(dirPath).some(name => !name.startsWith('.'));
+  } catch {
+    return false;
+  }
+}
+
+function directoryHasMarkdownFiles(dirPath) {
+  try {
+    if (!existsSync(dirPath)) return false;
+    const stat = statSync(dirPath);
+    if (!stat.isDirectory()) return false;
+    return readdirSync(dirPath).some(name => /\.md$/i.test(name));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Check whether a phase's required artifacts exist for any mode.
  * Returns { canAdvance, missing[], phase, mode }.
  * This is the tier-independent phase integrity check.
+ *
+ * @param {string} cwd
+ * @param {string} phaseId
+ * @param {string} [mode='build']
+ * @param {{ tier?: string }} [options]
+ *   tier — when 'full', additional soft-protocol gates are enforced:
+ *     - handoff_required: .forge/handoff-interviews/{phase}.md must exist
+ *   At lower tiers these gates are skipped. The lessons-on-issues check runs
+ *   at all tiers because the reader always populates lessons_brief at intake.
  */
-export function checkPhaseGate(cwd, phaseId, mode = 'build') {
+export function checkPhaseGate(cwd, phaseId, mode = 'build', options = {}) {
   const gates = getPhaseGates(mode);
   const gate = gates[phaseId];
   if (!gate) {
@@ -179,6 +210,7 @@ export function checkPhaseGate(cwd, phaseId, mode = 'build') {
   }
   const forgeDir = join(resolveForgeBaseDir(cwd), '.forge');
   const MIN_ARTIFACT_BYTES = 100;
+  const MIN_HANDOFF_BYTES = 40;
   const missing = [];
   for (const req of gate.requires) {
     const artifactPath = join(forgeDir, req);
@@ -205,6 +237,37 @@ export function checkPhaseGate(cwd, phaseId, mode = 'build') {
       } catch {}
     }
   }
+
+  // Full-tier soft-protocol gate: handoff-interview artifact must exist before
+  // receiving team starts work. Below full tier this is prompt-only guidance.
+  if (gate.handoff_required && options.tier === 'full') {
+    const handoffPath = join(forgeDir, 'handoff-interviews', `${phaseId}.md`);
+    let handoffOk = false;
+    try {
+      if (existsSync(handoffPath)) {
+        const stat = statSync(handoffPath);
+        if (stat.isFile() && stat.size >= MIN_HANDOFF_BYTES) {
+          handoffOk = true;
+        }
+      }
+    } catch {}
+    if (!handoffOk) {
+      missing.push(`handoff-interviews/${phaseId}.md`);
+    }
+  }
+
+  // Delivery gate: if QA found any holes, at least one lesson file must exist.
+  // This closes the read/write pair — the reader auto-populates lessons_brief
+  // at intake, so the writer side needs a matching gate to prevent silent
+  // non-compliance with the harness-learning protocol.
+  if (gate.lessons_required_on_issues) {
+    const holesDir = join(forgeDir, 'holes');
+    const lessonsDir = join(forgeDir, 'lessons');
+    if (directoryHasFiles(holesDir) && !directoryHasMarkdownFiles(lessonsDir)) {
+      missing.push('lessons/*.md (harness-learning protocol: issues found but no lessons recorded)');
+    }
+  }
+
   return { canAdvance: missing.length === 0, missing, phase: phaseId, mode };
 }
 
