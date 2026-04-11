@@ -3,7 +3,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { detectLocale } from './lib/forge-locale.mjs';
+import { detectLocale } from './lib/forge-i18n.mjs';
 import {
   buildBehavioralAuditReport,
   formatBehavioralContext,

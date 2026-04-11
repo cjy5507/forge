@@ -9,7 +9,7 @@ import {
   getRuntimePath,
 } from './forge-io.mjs';
 import { resolvePhase } from './forge-phases.mjs';
-import { TASK_TYPE_PATTERNS, FULL_TIER_PATTERNS, mergeIntoRegex } from './i18n-patterns.mjs';
+import { TASK_TYPE_PATTERNS, FULL_TIER_PATTERNS, mergeIntoRegex } from './forge-i18n.mjs';
 
 export const TIER_SEQUENCE = ['off', 'light', 'medium', 'full'];
 

@@ -9,7 +9,7 @@ import {
   ANALYZE_PROJECT_TRIGGERS,
   DESIGN_IMPROVEMENT_TRIGGERS,
   NATURAL_PROJECT_SKILL_TRIGGERS,
-} from './i18n-patterns.mjs';
+} from './forge-i18n.mjs';
 
 const forgeTriggers = allTriggers(FORGE_TRIGGERS);
 const buildTriggers = allTriggers(BUILD_TRIGGERS_I18N);

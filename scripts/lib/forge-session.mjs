@@ -24,7 +24,7 @@ import {
   normalizeTier,
   inferTierFromState,
 } from './forge-tiers.mjs';
-import { normalizeLocale } from './forge-locale.mjs';
+import { normalizeLocale } from './forge-i18n.mjs';
 import {
   normalizeRuntimeLanes,
   summarizeLaneCounts,

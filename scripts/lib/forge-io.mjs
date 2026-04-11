@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkS
 import { dirname, join, resolve } from 'path';
 import { createHash } from 'crypto';
 import { withRetry, LockError } from './error-handler.mjs';
-import { normalizeLocale } from './forge-locale.mjs';
+import { normalizeLocale } from './forge-i18n.mjs';
 
 /** @typedef {import('../../types/forge-state').ForgeAnalysisMeta} ForgeAnalysisMeta */
 /** @typedef {import('../../types/forge-state').ForgeHostContext} ForgeHostContext */

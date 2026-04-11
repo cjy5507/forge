@@ -1,7 +1,7 @@
 import { DEFAULT_RUNTIME } from './forge-io.mjs';
-import { allTriggers, INTERACTIVE_PATTERNS } from './i18n-patterns.mjs';
+import { allTriggers, INTERACTIVE_PATTERNS } from './forge-i18n.mjs';
 import { resolvePhase } from './forge-phases.mjs';
-import { detectLocale, normalizeLocale } from './forge-locale.mjs';
+import { detectLocale, normalizeLocale } from './forge-i18n.mjs';
 import {
   deriveBehavioralProfile,
   prescriptionsForProfile,

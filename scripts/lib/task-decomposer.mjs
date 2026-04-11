@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join, relative, extname } from 'path';
 import { spawnSync } from 'child_process';
-import { TASK_PATTERNS_I18N, AREA_PATTERNS_I18N, mergeIntoRegex } from './i18n-patterns.mjs';
+import { TASK_PATTERNS_I18N, AREA_PATTERNS_I18N, mergeIntoRegex } from './forge-i18n.mjs';
 import { logHookError } from './error-handler.mjs';
 import { globToRegExp, normalizePathForGlobMatch } from './forge-io.mjs';
 

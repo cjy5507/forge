@@ -13,7 +13,7 @@ import {
   AREA_PATTERNS_I18N,
   TASK_PATTERNS_I18N,
   FULL_TIER_PATTERNS,
-} from './lib/i18n-patterns.mjs';
+} from './lib/forge-i18n.mjs';
 import { detectTaskType, classifyTierFromMessage } from './lib/forge-tiers.mjs';
 import { messageLooksInteractive } from './lib/forge-interaction.mjs';
 import { analyzeTask } from './lib/task-decomposer.mjs';

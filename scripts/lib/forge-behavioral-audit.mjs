@@ -1,6 +1,6 @@
 import { summarizeLaneCounts } from './forge-lanes.mjs';
 import { resolvePhase } from './forge-phases.mjs';
-import { localizeText, normalizeLocale } from './forge-locale.mjs';
+import { localizeText, normalizeLocale } from './forge-i18n.mjs';
 
 const DEFAULT_COUNTERS = {
   total_prompts: 0,
