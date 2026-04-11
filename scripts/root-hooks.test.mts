@@ -135,7 +135,9 @@ describe('repository-root hooks surface', () => {
     const writeEditGroup = config.hooks.PostToolUse.find((g: { matcher: string }) => g.matcher === 'Write|Edit');
     expect(writeEditGroup.hooks[0].timeout).toBe(8);
     expect(writeEditGroup.hooks[1].timeout).toBe(8);
-    // Stop guard gets expanded timeout
-    expect(config.hooks.Stop[0].hooks[0].timeout).toBe(8);
+    // Stop guard gets expanded timeout — 30s is required so batch lint/typecheck
+    // checks fit within the host budget; the inner spawn cap (run-hook.mjs) and
+    // per-check cap (forge-tooling.mjs) keep the actual work bounded.
+    expect(config.hooks.Stop[0].hooks[0].timeout).toBe(30);
   });
 });

@@ -40,12 +40,14 @@ if (!shouldRunForgeHook(hookName, process.env)) {
   process.exit(0);
 }
 
+const HOOK_SPAWN_TIMEOUT_MS = Number(process.env.FORGE_HOOK_SPAWN_TIMEOUT_MS) || 25000;
+
 const result = spawnSync(process.execPath, [targetScript], {
   cwd: process.cwd(),
   input,
   encoding: 'utf8',
   env: process.env,
-  timeout: 7000,
+  timeout: HOOK_SPAWN_TIMEOUT_MS,
 });
 
 if (result.stdout) {

@@ -144,7 +144,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.mjs\" stop-guard",
-            "timeout": 8
+            "timeout": 30
           }
         ]
       }

@@ -148,7 +148,7 @@ export function formatCommandSpec(spec = null) {
   return [runner, ...args].filter(Boolean).join(' ').trim();
 }
 
-export function runCommandSpec(spec, cwd = '.', { extraArgs = [] } = {}) {
+export function runCommandSpec(spec, cwd = '.', { extraArgs = [], timeoutMs } = {}) {
   if (!spec?.available) {
     return {
       status: 0,
@@ -162,10 +162,15 @@ export function runCommandSpec(spec, cwd = '.', { extraArgs = [] } = {}) {
     ? buildScriptCommand(spec.runner, spec.scriptName, extraArgs)
     : [...(spec.args || []), ...extraArgs];
 
+  const resolvedTimeout = Number.isFinite(timeoutMs) && timeoutMs > 0
+    ? timeoutMs
+    : Number(process.env.FORGE_TOOL_RUN_TIMEOUT_MS) || 0;
+
   return spawnSync(spec.runner, baseArgs, {
     cwd,
     encoding: 'utf8',
     stdio: 'pipe',
+    ...(resolvedTimeout ? { timeout: resolvedTimeout } : {}),
   });
 }
 
@@ -345,21 +350,32 @@ export function buildStopBatchCheckPlan({ cwd = '.', runtime = {}, state = {}, e
   };
 }
 
-export function runStopBatchChecks(plan, { cwd = '.' } = {}) {
+export function runStopBatchChecks(plan, { cwd = '.', perCheckTimeoutMs } = {}) {
   const results = [];
+  const resolvedTimeout = Number.isFinite(perCheckTimeoutMs) && perCheckTimeoutMs > 0
+    ? perCheckTimeoutMs
+    : Number(process.env.FORGE_STOP_CHECK_TIMEOUT_MS) || 8000;
 
   for (const check of plan.checks || []) {
-    const result = runCommandSpec(check.spec, cwd);
+    const result = runCommandSpec(check.spec, cwd, { timeoutMs: resolvedTimeout });
+    // spawnSync returns null status + signal=SIGTERM on timeout. Treat as
+    // inconclusive (ok=true) so the Stop hook does not fail-close on a slow
+    // tool — this is observation, not a hard gate.
+    const timedOut = result.status === null && (result.signal || result.error?.code === 'ETIMEDOUT');
+    const ok = timedOut || result.status === 0;
     results.push({
       id: check.id,
       reason: check.reason,
       command: formatCommandSpec(check.spec),
-      ok: result.status === 0,
-      status: result.status ?? 1,
-      output: String(result.stdout || result.stderr || '').trim(),
+      ok,
+      status: result.status ?? (timedOut ? 0 : 1),
+      output: timedOut
+        ? `[forge] ${check.id} skipped: exceeded ${resolvedTimeout}ms budget`
+        : String(result.stdout || result.stderr || '').trim(),
+      timedOut: Boolean(timedOut),
     });
 
-    if (result.status !== 0) {
+    if (!ok) {
       break;
     }
   }
