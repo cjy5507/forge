@@ -1,9 +1,17 @@
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync, existsSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanupForgeBranches, cleanupSessionArtifacts, clearHudCustomLine, compactRuntimeState } from './lib/session-cleanup.mjs';
+import {
+  archiveForgeWorkspace,
+  cleanupForgeBranches,
+  cleanupSessionArtifacts,
+  clearHudCustomLine,
+  compactRuntimeState,
+  detectStaleForgeWorkspace,
+  pruneStaleSessions,
+} from './lib/session-cleanup.mjs';
 
 const TEMP_DIRS: string[] = [];
 const ORIGINAL_HOME = process.env.HOME;
@@ -175,5 +183,118 @@ describe('session cleanup helpers', () => {
     expect(compactRuntimeState(null as any).compacted).toBe(false);
     expect(compactRuntimeState({} as any).compacted).toBe(false);
     expect(compactRuntimeState({ lanes: {}, recent_agents: [], recent_failures: [] } as any).compacted).toBe(false);
+  });
+});
+
+describe('rerun hygiene helpers', () => {
+  it('pruneStaleSessions removes session JSONLs older than the threshold', () => {
+    const cwd = makeWorkspace();
+    const sessionsDir = join(cwd, '.forge', 'sessions');
+    mkdirSync(sessionsDir, { recursive: true });
+
+    const stalePath = join(sessionsDir, 'session-old.jsonl');
+    const freshPath = join(sessionsDir, 'session-new.jsonl');
+    const unrelatedPath = join(sessionsDir, 'README.md');
+    writeFileSync(stalePath, '{}\n');
+    writeFileSync(freshPath, '{}\n');
+    writeFileSync(unrelatedPath, 'note\n');
+
+    // Backdate the stale file to 2 hours ago.
+    const twoHoursAgo = (Date.now() - 2 * 60 * 60 * 1000) / 1000;
+    utimesSync(stalePath, twoHoursAgo, twoHoursAgo);
+
+    const removed = pruneStaleSessions(cwd);
+
+    expect(removed).toEqual([stalePath]);
+    expect(existsSync(stalePath)).toBe(false);
+    expect(existsSync(freshPath)).toBe(true);
+    expect(existsSync(unrelatedPath)).toBe(true);
+  });
+
+  it('cleanupSessionArtifacts also prunes stale session JSONLs', () => {
+    const cwd = makeWorkspace();
+    const sessionsDir = join(cwd, '.forge', 'sessions');
+    mkdirSync(sessionsDir, { recursive: true });
+    const stalePath = join(sessionsDir, 'session-stale.jsonl');
+    writeFileSync(stalePath, '{}\n');
+    const twoHoursAgo = (Date.now() - 2 * 60 * 60 * 1000) / 1000;
+    utimesSync(stalePath, twoHoursAgo, twoHoursAgo);
+
+    const removed = cleanupSessionArtifacts(cwd);
+
+    expect(removed).toContain(stalePath);
+    expect(existsSync(stalePath)).toBe(false);
+  });
+
+  it('detectStaleForgeWorkspace returns absent when .forge/ is missing', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'forge-detect-'));
+    TEMP_DIRS.push(cwd);
+
+    const result = detectStaleForgeWorkspace(cwd);
+
+    expect(result.exists).toBe(false);
+    expect(result.tier).toBe('absent');
+  });
+
+  it('detectStaleForgeWorkspace classifies fresh/warm/stale by runtime timestamp', () => {
+    const cwd = makeWorkspace();
+    writeFileSync(join(cwd, '.forge', 'state.json'), '{}');
+
+    // Fresh: 10 minutes ago
+    writeFileSync(
+      join(cwd, '.forge', 'runtime.json'),
+      JSON.stringify({ stats: { last_finished_at: new Date(Date.now() - 10 * 60 * 1000).toISOString() } }),
+    );
+    expect(detectStaleForgeWorkspace(cwd).tier).toBe('fresh');
+
+    // Warm: 5 hours ago
+    writeFileSync(
+      join(cwd, '.forge', 'runtime.json'),
+      JSON.stringify({ stats: { last_finished_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() } }),
+    );
+    expect(detectStaleForgeWorkspace(cwd).tier).toBe('warm');
+
+    // Stale: 30 hours ago
+    writeFileSync(
+      join(cwd, '.forge', 'runtime.json'),
+      JSON.stringify({ stats: { last_finished_at: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString() } }),
+    );
+    expect(detectStaleForgeWorkspace(cwd).tier).toBe('stale');
+  });
+
+  it('detectStaleForgeWorkspace counts orphan session JSONLs', () => {
+    const cwd = makeWorkspace();
+    writeFileSync(join(cwd, '.forge', 'state.json'), '{}');
+    const sessionsDir = join(cwd, '.forge', 'sessions');
+    mkdirSync(sessionsDir, { recursive: true });
+
+    const orphan = join(sessionsDir, 'session-orphan.jsonl');
+    writeFileSync(orphan, '{}\n');
+    const twoHoursAgo = (Date.now() - 2 * 60 * 60 * 1000) / 1000;
+    utimesSync(orphan, twoHoursAgo, twoHoursAgo);
+
+    const result = detectStaleForgeWorkspace(cwd);
+    expect(result.orphanSessions).toBe(1);
+  });
+
+  it('archiveForgeWorkspace renames .forge/ aside and preserves contents', () => {
+    const cwd = makeWorkspace();
+    writeFileSync(join(cwd, '.forge', 'state.json'), '{"phase":1}');
+    writeFileSync(join(cwd, '.forge', 'spec.md'), '# spec\n');
+
+    const archivePath = archiveForgeWorkspace(cwd);
+
+    expect(archivePath).toBeTruthy();
+    expect(existsSync(join(cwd, '.forge'))).toBe(false);
+    expect(existsSync(archivePath!)).toBe(true);
+    expect(readFileSync(join(archivePath!, 'state.json'), 'utf8')).toBe('{"phase":1}');
+    expect(readFileSync(join(archivePath!, 'spec.md'), 'utf8')).toBe('# spec\n');
+  });
+
+  it('archiveForgeWorkspace returns null when there is nothing to archive', () => {
+    const cwd = mkdtempSync(join(tmpdir(), 'forge-archive-'));
+    TEMP_DIRS.push(cwd);
+
+    expect(archiveForgeWorkspace(cwd)).toBeNull();
   });
 });

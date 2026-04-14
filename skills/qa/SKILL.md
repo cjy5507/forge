@@ -25,6 +25,21 @@ invoke Analyst based on project size and scope; skip for small projects, recomme
 multi-module codebases.
 </Layer_Classification>
 
+<Test_Budget>
+Tests must prove acceptance criteria, not the QA process. Inflated test files were a benchmark
+defect (codex-framework-benchmark-hard, 2026-04: forge produced 300 lines vs plain 169).
+
+Hard rules:
+1. **Baseline before adding**: `wc -l test/**/*` before any test addition. Record the baseline.
+2. **Per-file growth cap**: a QA pass may grow any single test file by at most **+50% over baseline OR +60 lines**, whichever is larger. Exceeding the cap requires a written justification entry in the QA summary listing each added test → spec/acceptance ID.
+3. **One test per acceptance criterion** is the default. Multiple tests for the same criterion require justification (boundary, error path, regression — each must be named).
+4. **No process-proof tests**: do not add tests that exist only to demonstrate QA ran (e.g., "verify allocator returns an object", "verify import works"). Every test must map to a spec line, contract clause, or known regression.
+5. **Reuse > duplicate**: if an existing test covers the criterion, reference it in the QA summary instead of writing a parallel one.
+6. **Edge cases on demand**: edge-case tests are added only when the spec mentions the boundary OR a real failure was observed. Speculative edge cases ("what if input is null?") are skipped unless null is a legal input per contract.
+
+If QA needs to exceed the budget, escalate to Lead Dev with the rationale before writing the tests, not after.
+</Test_Budget>
+
 <Steps>
 0. **Handoff Interview — QA Intake**
    a. QA Engineer reads:

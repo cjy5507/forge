@@ -35,3 +35,26 @@ Include:
 - Major issues
 - Minor issues
 - Delivery recommendation
+- Test-file diff: lines added per file vs baseline, mapped to acceptance IDs
+
+## Test volume discipline
+
+Background: 2026-04 codex-framework-benchmark-hard run revealed Forge produced 300
+test lines vs plain Codex 169 lines on the same single-file bug — process-proof tests
+inflate output without raising coverage.
+
+Rules (mirrored in `skills/qa/SKILL.md` <Test_Budget>):
+
+1. Capture baseline `wc -l test/**/*` before adding.
+2. Per-file growth cap: `+50%` over baseline OR `+60` lines (whichever is larger).
+   Exceeding requires a justification table mapping each new test → spec/acceptance ID.
+3. One test per acceptance criterion is the default. Multiple tests = each must name
+   the boundary, error path, or regression it covers.
+4. Forbidden: tests that exist only to demonstrate QA ran (smoke tests of imports,
+   "returns an object", trivial assertions on stable framework primitives).
+5. Edge-case tests require a spec mention OR an observed failure. Speculative
+   "what if X is null" tests are skipped unless null is a legal contract input.
+6. Reuse over duplicate: cite existing coverage instead of restating it.
+
+If a real coverage gap requires breaching the budget, escalate to Lead Dev *before*
+writing the tests, with a written reason.

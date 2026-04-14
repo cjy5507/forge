@@ -19,15 +19,23 @@ start the work, and keep moving unless a real customer-owned blocker exists.
 </Use_When>
 
 <Fast_Path_Check>
-Before full internal deliberation, CEO does a quick scope assessment:
+Before full internal deliberation, CEO does a quick scope assessment.
 
-**If ALL of these are true**:
-- Task is clearly bounded (user specified what to build/fix)
-- No multi-system integration needed
-- No security/compliance concerns
-- User wants speed ("quick", "express", "simple")
+**Auto-express triggers** (route directly to express, no deliberation, no full pipeline):
+- Bug fix prompt: matches `fix`, `bug`, `error`, `failing test`, `not working`, KO `고쳐`, `버그`, JA `直し`, `バグ`, ZH `修复`, `bug` AND scope appears bounded (≤3 files, no architecture decisions)
+- Single-feature change with explicit scope (file/module named in prompt)
+- "Quick", "simple", "express", "small" keywords (any language)
+- Documentation or config-only edit
 
-**Then**: Skip internal deliberation (CEO+CTO+PM meeting). Instead:
+**Full-pipeline triggers**:
+- Multi-system integration (auth + db + API + UI)
+- Security/compliance-sensitive change (auth, payments, PII, secrets)
+- User explicitly asks for full process ("full forge", "discovery", "design first")
+- Greenfield product ("build me an app that…")
+
+**Default for ambiguous bug fixes**: prefer express. Bias toward less process — if QA later finds the scope was bigger, escalate then. Over-processing a 1-file fix is itself a defect (this rule reverses the prior "prefer full pipeline" default after benchmark feedback showed a 77% test-line inflation on routine bug fixes).
+
+**Express routing action**:
 1. CEO acknowledges the request
 2. Initialize .forge/ with mode appropriate to request (build/repair/express)
 3. Set tier to "medium"
@@ -45,6 +53,19 @@ When express fast-path is active, collapse the PM interview:
 </Express_Interview>
 
 <Steps>
+0. **Pre-flight: workspace freshness** (prevents prior-run state contamination WITHOUT discarding paused long-running projects)
+   a. Run `node -e "import('./scripts/lib/session-cleanup.mjs').then(m=>console.log(JSON.stringify(m.detectStaleForgeWorkspace(process.cwd()))))"` (or read `.forge/runtime.json` `stats.last_finished_at`)
+   b. **Long-term memory is sacred** — `state.json`, `runtime.json`, `spec.md`, `design/`, `contracts/`, `plan.md`, `holes/`, `lessons/`, `evidence/`, `knowledge/` are NEVER auto-deleted. Only `.forge/sessions/*.jsonl` (>1h) is auto-pruned because that's the actual contamination vector.
+   c. Decide based on tier:
+      - **absent**: proceed normally (this is a brand-new project)
+      - **fresh** (<1h): the prior session is almost certainly the same project. Invoke `forge:continue` instead of intake.
+      - **warm** (1h–24h): the prior session is likely the same project. Default to `forge:continue`. Only ask the client if their new request semantically diverges from the existing `state.json` `project_name` / `spec.md` summary.
+      - **stale** (≥24h): the project may be paused or abandoned. **Ask the client ONE question** — "Found a prior Forge project (`{project_name}`, last touched `{ts}`, phase `{phase}`). Resume, or archive and start fresh?" Default = resume. NEVER auto-archive without explicit consent.
+      - **orphanSessions > 0** alone: do nothing here — `cleanupSessionArtifacts` already prunes them on SessionStart. Not a reason to disturb the project.
+   d. Honor `FORGE_FRESH=1` env var: explicit user override — archive and start fresh, no prompt.
+   e. Archive only on consent or `FORGE_FRESH=1`. Use `archiveForgeWorkspace(cwd)` (moves to `.forge.archive-{ts}/` — data is preserved, not destroyed).
+   f. After any decision (resume, ask, archive), proceed to step 1 only if the user chose fresh; otherwise yield to `forge:continue`.
+
 1. Read the client's request
 
 2. **Fast-path gate**: Apply <Fast_Path_Check> — if all conditions met, skip to step 5 with express routing

@@ -60,6 +60,17 @@ partial progress back to the user as if the user were the internal project manag
 
 <Steps>
 Phase 0 — INTAKE (CEO):
+  0. **Pre-flight: workspace freshness gate** (prevents session JSONL contamination WITHOUT discarding paused projects)
+     - Long-term memory is sacred: `state.json`, `runtime.json`, `spec.md`, `design/`, `contracts/`, `plan.md`, `holes/`, `lessons/`, `evidence/`, `knowledge/` are NEVER auto-deleted. Only `.forge/sessions/*.jsonl` >1h is pruned automatically (that is the actual contamination vector).
+     - Use `detectStaleForgeWorkspace(cwd)` from `scripts/lib/session-cleanup.mjs`
+     - tier=`absent` → proceed (new project)
+     - tier=`fresh` (<1h) → invoke `forge:continue` instead (same project)
+     - tier=`warm` (1h–24h) → default to `forge:continue`; only ask if the new request semantically diverges from the existing project
+     - tier=`stale` (≥24h) → ASK the client: "Resume `{project_name}` (phase `{phase}`, last touched `{ts}`), or archive and start fresh?" Default = resume. NEVER auto-archive.
+     - `FORGE_FRESH=1` is the only auto-archive trigger (explicit user override)
+     - Archive (when authorized) uses `archiveForgeWorkspace(cwd)` — moves `.forge/` to `.forge.archive-{ts}/`, never deletes
+     See `skills/intake/SKILL.md` step 0 for the full procedure.
+
   1. Read the client's request
   1b. **Lessons Check**: CEO loads global lessons from ~/.claude/forge-lessons/ (if exists)
       - Match project type against lesson `applies_when` conditions
@@ -95,7 +106,11 @@ Phase 0 — INTAKE (CEO):
         → Initialize .forge/ with mode="express", tier="medium"
         → Route directly to forge:express (skips discovery + design)
 
-      **Default**: When unclear, prefer full pipeline. It's better to over-process than under-process.
+      **Default for routine bug fixes**: prefer **express**. Benchmark evidence (2026-04 codex-framework-benchmark-hard) showed full pipeline produced 77% more test-file lines than plain Codex on a single-file bug — over-processing is itself a defect, not safety. Only escalate to full pipeline when:
+        - Multi-system integration is in scope
+        - Security/compliance is in scope
+        - The user explicitly asks for full process
+      For brand-new product builds and unclear-multi-feature requests, full pipeline remains the default.
 
   3. CEO agent evaluates and ROUTES:
 

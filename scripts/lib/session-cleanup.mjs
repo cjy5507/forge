@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
 
@@ -7,6 +7,10 @@ const CLEANUP_PATHS = [
   ['.forge', 'session-logs'],
   ['.forge', 'session-state'],
 ];
+
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * ONE_HOUR_MS;
+const DEFAULT_SESSION_PRUNE_MS = ONE_HOUR_MS;
 
 export function cleanupSessionArtifacts(cwd = '.') {
   const removed = [];
@@ -31,7 +35,118 @@ export function cleanupSessionArtifacts(cwd = '.') {
     removed.push(forgeErrorLog);
   }
 
+  removed.push(...pruneStaleSessions(cwd));
+
   return removed;
+}
+
+/**
+ * Remove `.forge/sessions/*.jsonl` files older than `thresholdMs` (default 1h).
+ * Prevents prior session transcripts from leaking into a new run's context.
+ */
+export function pruneStaleSessions(cwd = '.', thresholdMs = DEFAULT_SESSION_PRUNE_MS) {
+  const sessionsDir = join(cwd, '.forge', 'sessions');
+  if (!existsSync(sessionsDir)) return [];
+
+  const removed = [];
+  const cutoff = Date.now() - thresholdMs;
+
+  let entries;
+  try {
+    entries = readdirSync(sessionsDir);
+  } catch {
+    return removed;
+  }
+
+  for (const name of entries) {
+    if (!name.endsWith('.jsonl')) continue;
+    const target = join(sessionsDir, name);
+    let mtimeMs;
+    try {
+      mtimeMs = statSync(target).mtimeMs;
+    } catch {
+      continue;
+    }
+    if (mtimeMs < cutoff) {
+      rmSync(target, { force: true });
+      removed.push(target);
+    }
+  }
+
+  return removed;
+}
+
+/**
+ * Inspect `.forge/` for staleness markers without mutating it.
+ * Returns:
+ *   - exists:        whether `.forge/state.json` is present
+ *   - lastTouchedMs: most recent activity timestamp (state.json mtime or runtime stats), or null
+ *   - elapsedMs:     ms since lastTouchedMs (Infinity if unknown)
+ *   - tier:          'fresh' (<1h), 'warm' (<24h), 'stale' (>=24h), or 'absent'
+ *   - orphanSessions: count of `.forge/sessions/*.jsonl` older than 1h
+ */
+export function detectStaleForgeWorkspace(cwd = '.', staleThresholdMs = TWENTY_FOUR_HOURS_MS) {
+  const statePath = join(cwd, '.forge', 'state.json');
+  const runtimePath = join(cwd, '.forge', 'runtime.json');
+  const sessionsDir = join(cwd, '.forge', 'sessions');
+
+  if (!existsSync(statePath)) {
+    return { exists: false, lastTouchedMs: null, elapsedMs: Infinity, tier: 'absent', orphanSessions: 0 };
+  }
+
+  let lastTouchedMs = null;
+
+  try {
+    if (existsSync(runtimePath)) {
+      const runtime = JSON.parse(readFileSync(runtimePath, 'utf8'));
+      const ts = runtime?.stats?.last_finished_at || runtime?.updated_at;
+      if (ts) {
+        const parsed = new Date(ts).getTime();
+        if (Number.isFinite(parsed)) lastTouchedMs = parsed;
+      }
+    }
+  } catch { /* runtime unreadable, fall back to mtime */ }
+
+  if (lastTouchedMs == null) {
+    try {
+      lastTouchedMs = statSync(statePath).mtimeMs;
+    } catch { /* keep null */ }
+  }
+
+  const elapsedMs = lastTouchedMs == null ? Infinity : Math.max(0, Date.now() - lastTouchedMs);
+  const tier = elapsedMs < ONE_HOUR_MS ? 'fresh'
+    : elapsedMs < staleThresholdMs ? 'warm'
+    : 'stale';
+
+  let orphanSessions = 0;
+  if (existsSync(sessionsDir)) {
+    try {
+      const cutoff = Date.now() - ONE_HOUR_MS;
+      for (const name of readdirSync(sessionsDir)) {
+        if (!name.endsWith('.jsonl')) continue;
+        try {
+          if (statSync(join(sessionsDir, name)).mtimeMs < cutoff) orphanSessions += 1;
+        } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
+  }
+
+  return { exists: true, lastTouchedMs, elapsedMs, tier, orphanSessions };
+}
+
+/**
+ * Move stale `.forge/` aside so a new run starts clean. Returns the archive path,
+ * or null if there was nothing to archive. Caller decides when to invoke this
+ * (e.g., intake when tier === 'stale' or user requests --fresh).
+ */
+export function archiveForgeWorkspace(cwd = '.') {
+  const forgeDir = join(cwd, '.forge');
+  if (!existsSync(forgeDir)) return null;
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const archivePath = join(cwd, `.forge.archive-${stamp}`);
+  renameSync(forgeDir, archivePath);
+  return archivePath;
 }
 
 export function clearHudCustomLine() {
