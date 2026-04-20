@@ -86,7 +86,7 @@ When express fast-path is active, collapse the PM interview:
    a. Create .forge/ directory structure:
       .forge/state.json, .forge/runtime.json, .forge/design/, .forge/contracts/, .forge/evidence/,
       .forge/holes/, .forge/tasks/, .forge/worktrees/,
-      .forge/knowledge/, .forge/delivery-report/
+      .forge/knowledge/, .forge/lessons/, .forge/delivery-report/
    b. Copy templates/state.json → .forge/state.json
    c. Initialize `.forge/runtime.json` for helper-backed company coordination:
       - lanes / lane graph
@@ -98,7 +98,30 @@ When express fast-path is active, collapse the PM interview:
    d. Fill in project name, client name, created_at
    e. Set phase=1, phase_id="discovery", phase_name="discovery", status="active"
 
-6. Transition to Phase 1 (forge:discovery)
+6. **REPAIR baseline bootstrap** — run ONLY when `state.mode === 'repair'`:
+   The write-gate (`scripts/write-gate.mjs:319-325`) requires `.forge/code-rules.md` and
+   at least one file in `.forge/contracts/` for medium+ tier high-risk writes. In repair
+   mode these artifacts are never produced by a design phase, so the CEO MUST generate
+   minimal stubs during intake to prevent write-gate self-deadlock. This is intentional
+   prompt-only enforcement (see references/DECISIONS.md → "repair baseline generation").
+
+   a. **Scan existing codebase conventions** and write `.forge/code-rules.md`:
+      - Read the closest lint/format config (eslint, biome, prettier, tsconfig, ruff, etc.)
+      - Extract naming conventions from 3-5 existing source files in the affected module
+      - Minimum sections: `## Naming Conventions` and `## Rules` (enforced by phase gate regex)
+      - Minimum 100 bytes; placeholder "# Repair baseline (auto-generated)" is acceptable
+        when the target codebase has no discoverable conventions
+   b. **Generate contract stubs** in `.forge/contracts/`:
+      - Scan existing `types/`, `*.d.ts`, or public API surfaces for interfaces touched by the repair
+      - Copy or symlink at least one `.ts`/`.json`/`.mjs`/`.zod` file into `.forge/contracts/`
+      - If no typed surfaces exist, write a placeholder `contracts/repair-scope.json` documenting
+        which functions/modules are in scope (satisfies write-gate contracts[] check)
+   c. **Document the bootstrap** in `.forge/evidence/repair-baseline.md`:
+      - Which config was scanned, which files were sampled, which surfaces were captured as contracts
+      - This provides audit trail for the fact-checker during fix phase
+
+7. Transition to Phase 1 (forge:discovery) for BUILD; forge:troubleshoot for REPAIR;
+   forge:express for EXPRESS (see Auto_Chain below).
 </Steps>
 
 <State_Changes>

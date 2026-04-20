@@ -2083,10 +2083,18 @@ describe('checkPhaseGate express mode', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns canAdvance=true for express plan phase (no gate defined)', () => {
+  it('returns canAdvance=true for express plan phase when state.json exists', () => {
+    const state = { mode: 'express', phase: 'plan', project: 'test', version: '0.2.0', status: 'active', created_at: new Date().toISOString() };
+    writeFileSync(join(tmpDir, '.forge', 'state.json'), JSON.stringify(state, null, 2));
     const result = checkPhaseGate(tmpDir, 'plan', 'express');
     expect(result.canAdvance).toBe(true);
     expect(result.mode).toBe('express');
+  });
+
+  it('returns canAdvance=false for express plan phase when state.json missing', () => {
+    const result = checkPhaseGate(tmpDir, 'plan', 'express');
+    expect(result.canAdvance).toBe(false);
+    expect(result.missing).toContain('state.json');
   });
 
   it('returns canAdvance=true for express build phase (state.json exists)', () => {

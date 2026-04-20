@@ -11,6 +11,44 @@ this file first — intentional prompt-only status is recorded here.
 | `harness-learning.md` | **Code-enforced** | Reader auto-populates `lessons_brief` at state init; delivery phase gate blocks advance when holes exist but no lessons recorded |
 | `handoff-interview.md` | **Code-enforced (full tier)** | Phase gate requires `.forge/handoff-interviews/{phase}.md` artifact at full tier for phases flagged `handoff_required` |
 | `context-budget.md` | **Prompt-only (intentional)** | See rationale below |
+| `repair-baseline` | **Prompt-only (intentional)** | See rationale below |
+
+## repair-baseline — why prompt-only
+
+In build mode, `.forge/code-rules.md` and `.forge/contracts/*` are produced by
+the design phase (CTO + Designer). Write-gate (`scripts/write-gate.mjs:319-325`)
+requires both to exist for medium+ tier high-risk writes. In repair mode there
+is no design phase, so these artifacts must be bootstrapped at intake or the
+write-gate will self-deadlock the first time a developer attempts a fix.
+
+**Why enforcement is prompt-only:**
+
+1. **Target codebase diversity.** A baseline generator would need to understand
+   every language's convention extraction (ESLint → JS naming, ruff → Python,
+   rustfmt → Rust, gofmt → Go, etc.) plus every public API surface shape
+   (`.d.ts`, OpenAPI, protobuf, GraphQL SDL). Shipping a robust code-level
+   generator is larger than the rest of Forge combined.
+
+2. **LLM inspection is cheap and correct.** The CEO at intake can read the
+   existing config and sample files, then write a minimal `code-rules.md`
+   and copy 1-2 type files into `contracts/` in seconds. This is exactly
+   the kind of "judgment + filesystem read" task LLMs excel at.
+
+3. **Placeholder is acceptable.** Unlike build mode (where code-rules.md
+   reflects team agreements), repair code-rules.md only needs to unblock
+   the write-gate. A file saying "Repair scope: follow existing conventions
+   in files touched by this fix" satisfies the gate and matches reality.
+
+**Where the protocol is declared:** `skills/intake/SKILL.md` Step 6
+("REPAIR baseline bootstrap") — CEO runs this before transitioning to
+forge:troubleshoot. If the bootstrap is skipped, the first developer Edit
+under medium tier will be denied with a missing-artifact error — which is
+a self-correcting signal rather than a silent-failure risk.
+
+**Escalation path:** If repair self-deadlock is reported in the wild despite
+this protocol, the correct fix is to extend `shouldSkipApprovalChecks` in
+write-gate.mjs to also skip `.forge/code-rules.md` and `contracts/` checks
+in repair mode, NOT to add a code-level baseline generator.
 
 ## context-budget.md — why prompt-only
 

@@ -1,4 +1,23 @@
-# Constraint Propagation Protocol
+> **STATUS: ABANDONED DESIGN — DO NOT IMPLEMENT**
+>
+> This document describes a fine-grained artifact versioning + staleness propagation
+> system that Forge explored but **did not ship**. The `state.json.artifact_versions`
+> and `state.json.staleness` fields described below are NOT present in
+> `templates/state.json` or `types/forge-state.d.ts` and have no producer or consumer
+> anywhere in the codebase.
+>
+> Retained for historical reference only. The current source of truth for enforcement
+> is `references/DECISIONS.md`.
+>
+> **If you are considering implementing this:** read DECISIONS.md first. Forge's
+> current design decision is that constraint propagation is handled by the phase
+> sequence itself (handoff-interview on phase transitions, git tag rollback for
+> design regressions) — not by a parallel versioning system. Re-opening this design
+> requires explicit DECISIONS.md update, not silent re-implementation.
+
+---
+
+# Constraint Propagation Protocol (ABANDONED)
 
 When an upstream artifact changes, all downstream artifacts that depend on it become
 **stale** and must be reviewed or regenerated before work continues.

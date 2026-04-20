@@ -1,5 +1,23 @@
 # Forge Release Notes Draft
 
+## v0.9.1
+
+Harness meta-audit follow-through.
+
+### Highlights
+
+- `skills/intake/SKILL.md`: new Step 6 "REPAIR baseline bootstrap" — CEO generates `.forge/code-rules.md` + `.forge/contracts/` stubs at intake in repair mode, preventing write-gate self-deadlock on the first fix edit. `.forge/lessons/` also now created at intake (previously omitted despite being required by the delivery gate).
+- `skills/ignite/references/DECISIONS.md`: recorded `repair-baseline` as prompt-only (intentional), documenting why a code-level baseline generator is not shipped and what the escalation path is if repair deadlock is ever reported in the wild.
+- `skills/plan/` deleted (empty ghost directory that conflicted with the real `skills/plans/`). `skills/ignite/references/unused/` renamed to `references/archive/` with an "ABANDONED DESIGN — DO NOT IMPLEMENT" warning header on `constraint-propagation.md` so the abandoned artifact-versioning design does not get silently re-implemented.
+- `EXPRESS_PHASE_GATES` gained a `plan` entry (`requires: ['state.json']`) — sequence/gate symmetry restored so every phase in `EXPRESS_PHASE_SEQUENCE` has a defined gate instead of falling through to `canAdvance: true`.
+- `types/forge-state.d.ts`: JSDoc clarifies that `ForgeRuntime.version` (numeric, runtime schema version) and `ForgeState.version` (semver string, data format version) evolve independently — no runtime behavior change, just prevents future confusion between the two fields.
+
+### Notes
+
+- No breaking changes; existing `.forge/` sessions remain compatible.
+- All 604 tests continue to pass.
+- Meta-audit driver: applying the "declared but no producer-consumer pair = structural anti-pattern" rule to Forge itself.
+
 ## v0.7.0
 
 Multilingual UX and installation clarity release.

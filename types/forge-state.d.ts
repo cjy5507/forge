@@ -210,6 +210,20 @@ export interface ForgeRuntimeEvent {
 }
 
 export interface ForgeRuntime {
+  /**
+   * Runtime schema version. Integer that increments when `ForgeRuntime`
+   * shape changes in a backward-incompatible way (migration required).
+   *
+   * NOT the same as `ForgeState.version` (which is a semver string for
+   * the overall Forge harness data format). If you are reading this to
+   * understand `.forge/state.json` → use `ForgeState.version`. If you
+   * are reading `.forge/runtime.json` to decide whether a migration is
+   * needed → this is the field. The two versions evolve independently.
+   *
+   * Current runtime schema version: 3 (see `DEFAULT_RUNTIME` in forge-io.mjs).
+   * When ForgeRuntime shape changes incompatibly, bump this and add a
+   * migration branch in `normalizeRuntimeState()`.
+   */
   version: number;
   active_tier: ForgeTier;
   detected_locale: string;
@@ -258,6 +272,17 @@ export interface ForgeRuntime {
 }
 
 export interface ForgeState {
+  /**
+   * Forge state data-format version (semver string). Separate from
+   * `ForgeRuntime.version` (numeric runtime-schema version). This one
+   * tracks the shape of `.forge/state.json`; the runtime version tracks
+   * the shape of `.forge/runtime.json`. They evolve independently because
+   * state and runtime concerns have different change velocities.
+   *
+   * Current state version: '0.1.0' (see `templates/state.json`).
+   * There is currently no migration logic that branches on this field —
+   * schema changes should stay additive until migration is needed.
+   */
   version: string;
   project: string;
   phase: string;

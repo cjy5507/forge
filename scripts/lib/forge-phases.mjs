@@ -69,8 +69,13 @@ export const BUILD_PHASE_GATES = {
 
 /** Map express phase IDs to required artifacts that must exist before advancing.
  *  Express gates are lightweight but non-empty — "safety harness" positioning
- *  requires at least minimal sanity checks even in the fast path. */
+ *  requires at least minimal sanity checks even in the fast path.
+ *
+ *  Gate/sequence symmetry: EXPRESS_PHASE_SEQUENCE has {plan, build, ship, complete}.
+ *  `plan` and `complete` both require state.json (intake completed) so every
+ *  phase in the sequence has a defined gate — no silent canAdvance=true fall-through. */
 export const EXPRESS_PHASE_GATES = {
+  plan:  { requires: ['state.json'], produces: [] },
   build: { requires: ['state.json'], produces: [] },
   ship:  { requires: ['state.json'], produces: ['delivery-report'] },
 };
