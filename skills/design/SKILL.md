@@ -113,30 +113,22 @@ Researcher is for EXTERNAL investigation only:
    - CTO and Designer use `ux-brief.md` as an input artifact for the rest of design
    - This is not a full discovery interview; it is a direction-opening layer for design improvement only
 
--0. **Handoff Interview — Design Intake (BEFORE any design work begins)**
-   a. CTO reads spec.md completely, generates technical questions:
-      - Missing data flow details, unclear API boundaries
-      - Unspecified performance/scalability requirements
-      - Ambiguous integration points, unclear state management needs
-      Format: "Q: ... | Domain: technical | Blocker: yes/no | Default assumption: ..."
-
-   b. Designer reads spec.md completely, generates UX questions:
-      - Missing user flows, unspecified edge-case behaviors
-      - Unclear navigation patterns, missing responsive requirements
-      - Ambiguous interaction patterns (what happens on error? on empty state?)
-      Format: "Q: ... | Domain: design | Blocker: yes/no | Default assumption: ..."
-
-   c. CEO triages all questions:
-      - INTERNAL → PM answers from interview knowledge, or CTO/Designer resolves internally
-      - CLIENT → only truly customer-owned decisions (max 1-2 questions batched)
-      - ASSUMPTION OK → record assumption in spec.md, proceed
-
-   d. After questions resolved, CTO and Designer each write an understanding statement:
-      - CTO: "I will build [architecture summary] to support [key requirements]. Key constraints: [list]."
-      - Designer: "I will design [UX summary] for [user types]. Key flows: [list]."
-      - PM reviews these statements against spec intent. Mismatches → correct immediately.
-
-   e. Understanding confirmed → design work begins.
+-0. **Handoff Interview — Design Intake (tier-aware, see `references/handoff-interview.md`)**
+   a. CTO reads spec.md; at the top of `.forge/design/architecture.md` (draft), records
+      any **blockers** (missing API boundaries, unspecified perf budgets, ambiguous
+      integration points) and any **consequential assumptions**. Free-form bullets,
+      no structured Q template.
+   b. Designer reads spec.md; at the top of `.forge/design/components.md` (draft),
+      records any UX blockers (missing flows, unclear navigation, ambiguous states)
+      and consequential assumptions.
+   c. For each blocker, the author pings the direct owner via SendMessage
+      (PM for spec intent, CEO only if ownership is ambiguous or customer-owned).
+      Non-consequential uncertainty is converted into fact-check tasks or QA checks,
+      not questions.
+   d. At `full` tier only, additionally write `.forge/handoff-interviews/design.md`
+      consolidating blockers + assumptions (phase gate enforces this).
+   e. Blockers resolved → design work begins. No separate understanding statement;
+      the draft architecture / components artifact is the understanding record.
 
 -0b. **Lessons Check (harness learning)**
     - CTO loads relevant pattern lessons from ~/.claude/forge-lessons/ when present
@@ -226,23 +218,16 @@ Researcher is for EXTERNAL investigation only:
    - If a real business-level design blocker remains, present it clearly in customer language
    - Otherwise keep the design decision internal and proceed
 
-8. **Pre-Handoff: Generate Lead Dev questions**
-   - CTO anticipates implementation questions Lead Dev will have:
-     - Ambiguous module boundaries, unclear dependency ordering
-     - Missing contract details, unspecified error propagation paths
-     - Performance budget per module, unclear testing requirements
-   - CTO resolves what they can; remaining questions are recorded in the handoff brief
-   - These become the starting point for Lead Dev's Handoff Interview in Phase 3 (Plan)
-
-9. Internal design readiness passes → update state.json: phase=3, phase_id="plan", phase_name="plan", design_approved=true
+8. Internal design readiness passes → update state.json: phase=3, phase_id="plan", phase_name="plan", design_approved=true
    - Update company runtime for planning:
      `node scripts/forge-lane-runtime.mjs set-company-gate --gate plan_readiness --gate-owner lead-dev --delivery-state in_progress`
-   - Update session handoff toward planning (include pre-generated questions):
-     `node scripts/forge-lane-runtime.mjs set-session-brief --goal "Lock the execution plan and task breakdown" --next-owner lead-dev --handoff "{summary + pre-generated questions}"`
+   - Update session handoff toward planning (summary only — blockers are
+     recorded on Lead's own `plan.md` draft during Phase 3 handoff):
+     `node scripts/forge-lane-runtime.mjs set-session-brief --goal "Lock the execution plan and task breakdown" --next-owner lead-dev --handoff "{summary}"`
 
-10. Create git tag: forge/v1-design
+9. Create git tag: forge/v1-design
 
-11. Transition to Phase 3 (forge:plans)
+10. Transition to Phase 3 (forge:plans)
 </Steps>
 
 <Scale_Decision>
@@ -302,10 +287,12 @@ Over-engineering a small project is as bad as under-engineering a large one.
 - Using Researcher for internal codebase analysis (Analyst's job)
 - Dispatching CTO and Designer as isolated subagents when Team is needed
 - CTO and Designer producing independent outputs without SendMessage cross-review
-- Starting design work before Handoff Interview is complete
-- CTO/Designer not writing understanding statements before starting
-- PM rubber-stamping understanding statements without reading them
-- Not generating pre-handoff questions for Lead Dev
+- Starting design work before blockers recorded in the handoff artifact are resolved
+- Writing a separate "understanding statement" or requiring a two-party sign-off
+  when no blockers were recorded (obsolete ceremony — the draft
+  architecture/components files are the record)
+- Routing blocker questions through CEO when the direct owner is obvious
+  (PM for spec, CTO for architecture, Designer for UX)
 - Routing more than 2 questions to client when internal resolution is possible
 </Failure_Modes_To_Avoid>
 

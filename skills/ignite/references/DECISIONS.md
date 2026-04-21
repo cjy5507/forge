@@ -9,7 +9,7 @@ this file first — intentional prompt-only status is recorded here.
 | Protocol | Status | Enforcement |
 |---|---|---|
 | `harness-learning.md` | **Code-enforced** | Reader auto-populates `lessons_brief` at state init; delivery phase gate blocks advance when holes exist but no lessons recorded |
-| `handoff-interview.md` | **Code-enforced (full tier)** | Phase gate requires `.forge/handoff-interviews/{phase}.md` artifact at full tier for phases flagged `handoff_required` |
+| `handoff-interview.md` | **Code-enforced (full tier) / prompt-only (lower tiers, simplified)** | Phase gate requires `.forge/handoff-interviews/{phase}.md` artifact at full tier. At off/light/medium the protocol is a single inline step: blockers + assumptions recorded on the receiving team's own working artifact, direct-owner ping for blockers, no CEO triage hop, no separate understanding statement. See rationale below. |
 | `context-budget.md` | **Prompt-only (intentional)** | See rationale below |
 | `repair-baseline` | **Prompt-only (intentional)** | See rationale below |
 
@@ -138,5 +138,36 @@ measurable impact, escalate to tier-gated static analysis of Agent prompts.
 
 **Content quality is not enforced.** Only artifact existence and a minimum
 byte threshold. The interview's substance is LLM-driven and unchecked by
-code. Rationale: the three-step protocol (read → questions → confirm) is
-behavioral, not structural.
+code. Rationale: the protocol is behavioral, not structural.
+
+## handoff-interview — why lower tiers are a single inline step (v0.9.2+)
+
+**Benchmark evidence (2026-04-21 behavioral audit, n=1 full pipeline):**
+wall-clock 62.2min, agent work 34.5min (55%), **gap time 27.8min (44.7%)**.
+The gap time is dominated by orchestration between agents — the prior
+four-step protocol (read → structured Q template → CEO triage → two-party
+understanding confirmation) accounts for most of it. The structured
+`Q:/Domain:/Blocker:/Default:` format, the CEO middle-hop, and the separate
+understanding statement were all declared-but-no-consumer artifacts: none
+were written to state or referenced by downstream code. Memory-rule
+violation ("declared but no producer-consumer pair = structural
+anti-pattern").
+
+**Simplified lower-tier protocol:**
+
+1. Receiving team reads artifacts.
+2. Records blockers + consequential assumptions as free-form bullets at the
+   top of its own working artifact (architecture.md, plan.md, tasks/{lane}.md,
+   QA test plan).
+3. Pings the direct owner via SendMessage for each blocker (PM / CTO /
+   Designer by domain). No CEO triage hop unless ownership is ambiguous.
+4. Starts work once blockers are resolved. No separate understanding
+   statement — the working artifact is the record.
+
+**Full tier unchanged:** the `.forge/handoff-interviews/{phase}.md` artifact
+gate still runs in `checkPhaseGate`; the artifact format is simplified to
+`Blockers` + `Assumptions recorded` sections, with implicit sign-off.
+
+**Expected savings:** ~14 min per full-pipeline run (from 27.8min gap → ~14min),
+per audit projection. Safety property preserved: blockers are still recorded
+and resolved before receiving team starts substantive work.

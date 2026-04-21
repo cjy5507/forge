@@ -41,17 +41,17 @@ If QA needs to exceed the budget, escalate to Lead Dev with the rationale before
 </Test_Budget>
 
 <Steps>
-0. **Handoff Interview — QA Intake**
-   a. QA Engineer reads:
-      - .forge/spec.md, .forge/design/components.md, .forge/contracts/*.ts
-      - Lead Dev's session handoff notes
-      - Merged code (git log of Phase 4 work)
-   b. QA generates clarification questions:
-      - "Spec says X but I see Y implemented — is this intentional?"
-      - "No test criteria defined for feature Z — what's the expected behavior?"
-      - "Contract type A doesn't match the implementation — which is correct?"
-   c. Lead Dev / CTO answers implementation questions; PM answers spec intent questions
-   d. QA confirms understanding: "I will test [N features] against [these criteria]."
+0. **Handoff Interview — QA Intake (tier-aware, see `references/handoff-interview.md`)**
+   a. QA Engineer reads spec.md, components.md, contracts, Lead Dev's session
+      handoff notes, and merged code (git log of Phase 4 work).
+   b. At the top of the QA test plan, QA records any **blockers** (spec/impl
+      mismatch, missing test criteria, contract/impl drift) and any **consequential
+      assumptions**. Free-form bullets, no structured Q template.
+   c. For each blocker, QA pings the owner directly (Lead Dev or CTO for
+      implementation questions, PM for spec intent). No CEO triage hop.
+   d. At `full` tier only, additionally write `.forge/handoff-interviews/qa.md`
+      (phase gate enforces this). The test plan is the understanding record;
+      no separate statement.
 
 1. Dispatch QA Engineer agent with context:
    - .forge/spec.md (requirements reference)

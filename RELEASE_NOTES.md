@@ -1,5 +1,53 @@
 # Forge Release Notes Draft
 
+## v0.9.2
+
+Handoff-interview latency reduction.
+
+### Highlights
+
+- **Ceremony removed at lower tiers.** The previous four-step handoff protocol
+  (read → structured `Q:/Domain:/Blocker:/Default:` template → CEO triage hop →
+  separate understanding statement + two-party sign-off) is replaced at
+  `off/light/medium` tiers with a single inline step: the receiving team records
+  blockers + consequential assumptions as free-form bullets on its own working
+  artifact (architecture.md, plan.md, tasks/{lane}.md, QA test plan) and pings
+  the direct owner via SendMessage for each blocker. No CEO middle-hop, no
+  separate understanding statement, no two-party sign-off when no blockers were
+  recorded.
+- **Full tier unchanged on the gate.** `checkPhaseGate` still enforces
+  `.forge/handoff-interviews/{phase}.md` at full tier. The artifact format is
+  simplified to `Blockers` + `Assumptions recorded` sections with implicit sign-off.
+- **Obsolete pre-handoff steps removed.** Discovery Round 5's
+  "Pre-Handoff Question Generation" no longer speculates about downstream team
+  questions; the receiving team records its own blockers when it arrives. The
+  design phase's "Pre-Handoff: Generate Lead Dev questions" step is removed for
+  the same reason (was a declared-but-no-consumer artifact).
+- **DECISIONS.md** updated with the rationale and the audit evidence
+  (2026-04-21 behavioral audit: gap time 27.8min / 44.7% of a 62.2min full-run).
+
+### Files touched
+
+- `skills/ignite/references/handoff-interview.md` — rewritten (tier-aware protocol)
+- `skills/ignite/references/DECISIONS.md` — updated enforcement table + v0.9.2 rationale
+- `skills/ignite/SKILL.md` — Core Principles #5 + Phase 1/2/3/4 handoff blurbs simplified
+- `skills/discovery/SKILL.md` — Round 5 pre-handoff softened
+- `skills/design/SKILL.md` — Step 0 collapsed from 5 sub-steps to 5 concise bullets;
+  obsolete Step 8 "Pre-Handoff: Generate Lead Dev questions" removed; Failure_Modes
+  updated
+- `skills/plans/SKILL.md` — Step 0 collapsed
+- `skills/develop/SKILL.md` — Step 0 collapsed; Failure_Modes updated
+- `skills/qa/SKILL.md` — Step 0 collapsed
+
+### Notes
+
+- No code changes; all enforcement behavior is prompt-only at lower tiers and
+  unchanged at full tier. `checkPhaseGate` and `applyPhaseGateCheck` are
+  untouched.
+- All 611 tests continue to pass.
+- Expected wall-clock savings per full-pipeline run: ~14 min (from the 27.8 min
+  of orchestration gap time measured in the 2026-04-21 audit).
+
 ## v0.9.1
 
 Harness meta-audit follow-through.

@@ -71,40 +71,22 @@ Layer 2 — Isolated Subagent (parallel execution):
 -1. **Analysis freshness check**
     - Read analysis metadata — if saved analysis is stale or missing for an existing-code path, route to `forge:analyze` first.
 
-0. **Handoff Interview — Implementation Intake (BEFORE worktree dispatch)**
-   a. Lead Developer reads ALL design artifacts:
-      - .forge/plan.md
-      - .forge/design/architecture.md
-      - .forge/contracts/*.ts
-      - .forge/code-rules.md
-      - .forge/design/components.md
-      - .forge/design/tokens.json
-      - .forge/tasks/{lane}.md briefs
-      - CTO's pre-generated questions from handoff brief
-
-   b. Lead generates implementation questions:
-      - Ambiguous lane boundaries: "Does lane X own this shared state, or lane Y?"
-      - Missing contracts: "The plan references feature Z but no contract exists for it"
-      - Dependency ordering: "Can lane A start before lane B's types are available?"
-      - Testing gaps: "What's the test strategy for [integration point]?"
-      - Performance budgets: "Is there a response time target for [critical path]?"
-      Format: "Q: ... | Domain: architecture/contract/testing | Blocker: yes/no | Default assumption: ..."
-      Only generate questions that materially affect implementation correctness. Convert all non-critical uncertainty into assumptions, fact-check tasks, or QA checks instead of opening a user conversation.
-
-   c. CEO triages questions:
-      - CTO answers architecture/contract questions
-      - Designer answers UX/component questions
-      - PM answers business logic questions
-      - CLIENT → only if truly customer-owned and implementation would otherwise target the wrong behavior (rare at this stage)
-
-   d. Lead writes understanding statement:
-      "I will execute the implementation plan across [N] lanes: [list with boundaries].
-       Critical path: [ordering]. Key risk: [risk]. Test strategy: [approach]."
-
-   e. CTO reviews Lead's understanding statement against architecture intent.
-      Mismatches → correct immediately. Accurate → sign off.
-
-   f. Understanding confirmed → implementation execution begins.
+0. **Handoff Interview — Implementation Intake (tier-aware, see `references/handoff-interview.md`)**
+   a. Lead Developer reads plan, tasks, architecture, contracts, code-rules,
+      components, tokens.
+   b. At the top of each `.forge/tasks/{lane}.md` brief (or `plan.md` for
+      cross-lane issues), Lead records any **blockers** that prevent dispatch
+      (ambiguous lane boundaries, missing contracts, unclear dependency order,
+      unknown test strategy) and any **consequential assumptions**. Free-form
+      bullets, no structured Q template. Convert non-consequential uncertainty
+      into fact-check tasks or QA checks, not questions.
+   c. For each blocker, Lead pings the owner directly via SendMessage
+      (CTO for architecture/contract, Designer for UX, PM for spec intent).
+      No CEO triage hop.
+   d. At `full` tier only, additionally write `.forge/handoff-interviews/develop.md`
+      (phase gate enforces this).
+   e. Blockers resolved → dispatch begins. The task briefs are the understanding
+      record; no separate statement, no two-party sign-off for no-blocker cases.
 
 1. Lead Developer reads:
    - .forge/plan.md
@@ -395,9 +377,9 @@ When inconsistency is found, Lead rejects with explicit correction:
 </Tool_Usage>
 
 <Failure_Modes_To_Avoid>
-- Starting task splitting before Handoff Interview is complete
-- Lead not writing understanding statement before starting execution
-- CTO rubber-stamping Lead's understanding without reviewing it
+- Dispatching lanes before blockers in the handoff artifact are resolved
+- Requiring a separate understanding statement or two-party sign-off when no
+  blockers were recorded (obsolete ceremony — the task briefs are the record)
 - Developers modifying files outside their worktree scope
 - Skipping any tier of code review
 - Merging without all 3 tiers approving

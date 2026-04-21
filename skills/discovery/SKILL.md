@@ -73,14 +73,15 @@ design review, prototyping, or QA.
    - Resolve any critical mismatches
    - Record remaining non-critical unknowns as assumptions, internal validation targets, or QA checks
 
-   Round 5 — Pre-Handoff Question Generation (NEW):
-   - PM anticipates questions the Design team (CTO + Designer) will have:
-     - Technical ambiguities: unclear data flows, missing integration details
-     - UX ambiguities: unspecified user flows, missing edge-case behaviors
-     - Business ambiguities: priority conflicts, unclear scope boundaries
-   - PM attempts to answer from interview knowledge; unresolvable ones go to CEO
-   - CEO triages: answer internally or ask client ONE focused question
-   - Resolved questions are appended to spec.md as "Design Team Pre-Brief" section
+   Round 5 — Pre-handoff stays lightweight:
+   - PM does NOT pre-generate a speculative question list for Design — the
+     receiving team (CTO + Designer) will record its own blockers on its own
+     draft artifact during Phase 2 handoff intake, and will ping PM directly if
+     anything in the spec blocks design work.
+   - The only Round 5 action: if PM *knows* of an ambiguity the spec did not
+     settle (a topic the client deferred, a known integration unknown, a scope
+     boundary the client hedged on), append it to spec.md under a brief
+     "Known open ambiguities" section so Design starts with eyes open.
 
 3. Spec Completion Check:
    - Count critical customer-owned questions in spec

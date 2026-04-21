@@ -37,9 +37,11 @@ partial progress back to the user as if the user were the internal project manag
 3. No Hole Left Behind — every discovered gap must be tracked
 4. Right Architecture, Right Scale — optimal design matched to project scale
 5. No Handoff Without Understanding — no handoff without confirmed comprehension
-   Each phase transition requires a Handoff Interview: the receiving team reads artifacts,
-   generates domain-specific questions, CEO triages (internal vs client), questions are
-   resolved, and receiving team confirms understanding before starting work.
+   Each phase transition runs a tier-aware Handoff Interview. At lower tiers the
+   receiving team records blockers/assumptions inline on its own working artifact
+   and pings the direct owner for any blocker (no CEO triage hop, no structured
+   Q template, no separate understanding statement). At `full` tier a
+   `.forge/handoff-interviews/{phase}.md` artifact is code-enforced before advance.
    Load `references/handoff-interview.md` for the full protocol.
 </Core_Principles>
 
@@ -141,41 +143,34 @@ Phase 1 — DISCOVERY (PM):
      - Client confirms or corrects before moving to next topic
   3. Generate spec.md from template
   4. Internal assumptions and validation targets are recorded
-  5. **Pre-handoff: PM pre-generates questions CTO/Designer will likely have**
-     - PM anticipates technical/design ambiguities in the spec
-     - CEO reviews and resolves what can be answered internally
-  6. CEO reviews spec readiness → internal GO to Phase 2
+  5. CEO reviews spec readiness → internal GO to Phase 2
+     (No pre-handoff question generation — the receiving team will record its
+     own blockers on its own working artifact during Phase 2 handoff intake.)
 
 Phase 2 — DESIGN (CTO + Designer):
-  1. **Handoff Interview: CTO + Designer read spec.md and generate domain questions**
-     - CTO: technical feasibility questions, missing constraints, integration gaps
-     - Designer: UX flow gaps, missing states, interaction ambiguities
-     - CEO triages: internal (PM/CEO answers) vs client-owned (ask client)
-     - Questions resolved before design work begins
+  1. **Handoff Interview (tier-aware)**: CTO + Designer read spec.md; record blockers
+     on their own artifacts and ping PM directly for anything that blocks design.
+     At `full` tier, produce `.forge/handoff-interviews/design.md`.
   2. Invoke forge:design skill
   3. CTO: architecture + code-rules.md + interface contracts
   4. Designer: UI/UX spec + component definitions
   5. Cross-review between CTO and Designer
   6. Fact checker validates all technical claims via context7
-  7. **Pre-handoff: CTO generates implementation questions Lead Dev will need**
-  8. CTO + Designer + fact-checker confirm design readiness → Phase 3
+  7. CTO + Designer + fact-checker confirm design readiness → Phase 3
 
 Phase 3 — PLAN (Lead Dev):
-  1. **Handoff Interview: Lead reads architecture, contracts, code-rules, components**
-     - Lead generates planning questions (ambiguous boundaries, unclear dependencies, oversized lanes)
-     - CEO triages: CTO answers technical, Designer answers UX, client if business-owned
-     - Lead confirms understanding before decomposition begins
+  1. **Handoff Interview (tier-aware)**: Lead reads architecture, contracts,
+     code-rules, components; records blockers on `plan.md` and pings CTO/Designer
+     directly. At `full` tier, produce `.forge/handoff-interviews/plan.md`.
   2. Invoke forge:plans skill
   3. Lead uses Forge's native decomposition helpers to produce the execution plan
   4. Output: `.forge/plan.md`, lane graph, task briefs
   5. Internal planning gate passes → Phase 4
 
 Phase 4 — DEVELOPMENT (Lead + Devs + Publisher):
-  1. **Handoff Interview: Lead reads architecture, contracts, code-rules, components**
-     - Lead reads `.forge/plan.md` and task briefs in addition to the design artifacts
-     - Lead generates implementation questions (ambiguous lane boundaries, unclear contracts)
-     - CEO triages: CTO answers technical, Designer answers UX, client if business-owned
-     - Lead confirms understanding before dispatching implementation work
+  1. **Handoff Interview (tier-aware)**: Lead reads plan + tasks + design artifacts;
+     records lane-boundary blockers inline and pings the owner directly. At `full`
+     tier, produce `.forge/handoff-interviews/develop.md`.
   2. Invoke forge:develop skill
   3. Lead creates git worktrees from the approved execution plan
   4. Each developer/publisher works in isolated worktree

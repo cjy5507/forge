@@ -25,23 +25,19 @@ produce a reviewable execution plan that Develop can consume with minimal ambigu
 </Core_Rules>
 
 <Steps>
-0. **Handoff Interview — Planning Intake**
-   a. Lead Dev reads:
-      - .forge/design/architecture.md
-      - .forge/design/components.md
-      - .forge/design/tokens.json
-      - .forge/contracts/*.ts
-      - .forge/code-rules.md
-      - CTO handoff notes / pre-generated implementation questions
-   b. Lead identifies what still blocks decomposition:
-      - unclear lane boundaries
-      - hidden shared-state coupling
-      - missing contracts or acceptance criteria
-      - uncertain dependency order
-   c. CEO triages unresolved questions internally first.
-   d. Lead writes an understanding statement:
-      "I will convert the approved design into [N] execution lanes with [ordering summary].
-       The critical path is [path]. Main risks are [list]."
+0. **Handoff Interview — Planning Intake (tier-aware, see `references/handoff-interview.md`)**
+   a. Lead Dev reads architecture, components, tokens, contracts, code-rules.
+   b. At the top of `.forge/plan.md` (draft), Lead records any **blockers** that
+      prevent decomposition (unclear lane boundaries, hidden shared-state coupling,
+      missing contracts/AC, uncertain dependency order) and any **consequential
+      assumptions**. Free-form bullets, no structured Q template.
+   c. For each blocker, Lead pings the owner directly via SendMessage
+      (CTO for architecture/contract, Designer for UX, PM only for spec intent).
+      No CEO triage hop.
+   d. At `full` tier only, additionally write `.forge/handoff-interviews/plan.md`
+      (phase gate enforces this).
+   e. Blockers resolved → decomposition begins. The draft plan is the understanding
+      record; no separate statement needed.
 
 1. Generate the first decomposition draft with Forge's native helper:
    `node scripts/forge-lane-runtime.mjs auto-decompose --description "<spec/design summary>"`
