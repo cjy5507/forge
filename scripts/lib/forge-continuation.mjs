@@ -11,6 +11,36 @@ import {
   selectNextLane,
 } from './forge-lanes.mjs';
 
+export function getCompletionBlockers(state = {}, runtime = DEFAULT_RUNTIME) {
+  const safeState = state && typeof state === 'object' ? state : {};
+  const safeRuntime = runtime && typeof runtime === 'object' ? runtime : {};
+  const blockers = [];
+  const lanes = Object.values(normalizeRuntimeLanes(safeRuntime?.lanes || {}));
+  const openLanes = lanes.filter(lane => !['done', 'merged'].includes(String(lane?.status || '').toLowerCase()));
+  const verificationStatus = String(safeRuntime?.verification?.status || '').toLowerCase();
+  const recoveryStatus = String(safeRuntime?.recovery?.latest?.status || '').toLowerCase();
+
+  if (openLanes.length > 0) {
+    blockers.push(`${openLanes.length} unfinished lane${openLanes.length === 1 ? '' : 's'}`);
+  }
+  if (verificationStatus === 'failed') {
+    blockers.push('verification failed');
+  }
+  if (['active', 'escalated'].includes(recoveryStatus)) {
+    blockers.push(`recovery ${recoveryStatus}`);
+  }
+
+  return blockers;
+}
+
+function claimsDelivered(state = {}, runtime = DEFAULT_RUNTIME) {
+  const safeState = state && typeof state === 'object' ? state : {};
+  const phase = resolvePhase(safeState);
+  return String(safeState.status || '').toLowerCase() === 'delivered'
+    || String(runtime?.delivery_readiness || '').toLowerCase() === 'delivered'
+    || phase.id === 'complete';
+}
+
 export function shouldRefreshAnalysis(state = {}, runtime = DEFAULT_RUNTIME, { phaseOverride = '' } = {}) {
   const safeState = state && typeof state === 'object' ? state : {};
   const phase = phaseOverride
@@ -154,14 +184,23 @@ export function selectContinuationTarget(state = {}, runtime = DEFAULT_RUNTIME, 
 }
 
 function isDeliveredProject(state = {}, runtime = DEFAULT_RUNTIME) {
-  const safeState = state && typeof state === 'object' ? state : {};
-  const phase = resolvePhase(safeState);
-  return String(safeState.status || '').toLowerCase() === 'delivered'
-    || String(runtime?.delivery_readiness || '').toLowerCase() === 'delivered'
-    || phase.id === 'complete';
+  return claimsDelivered(state, runtime) && getCompletionBlockers(state, runtime).length === 0;
 }
 
 export function selectResumeSkill(state = {}, runtime = DEFAULT_RUNTIME) {
+  const completionBlockers = getCompletionBlockers(state, runtime);
+  if (claimsDelivered(state, runtime) && completionBlockers.length > 0) {
+    return {
+      skill: 'continue',
+      reason: `completion blockers remain: ${completionBlockers.join(', ')}`,
+      continuation: {
+        kind: 'completion_blocker',
+        target: resolvePhase(state).id,
+        detail: completionBlockers.join(', '),
+      },
+    };
+  }
+
   if (isDeliveredProject(state, runtime)) {
     return {
       skill: 'info',
@@ -234,6 +273,8 @@ export function deriveNextAction(state = {}, runtime = DEFAULT_RUNTIME) {
     }
   } else if (continuation.kind === 'phase') {
     summary = `Continue phase ${continuation.target}`;
+  } else if (continuation.kind === 'completion_blocker') {
+    summary = `Resolve completion blockers — ${continuation.detail}`;
   }
 
   return normalizeNextAction({

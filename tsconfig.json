@@ -17,8 +17,5 @@
     "scripts/**/*.mjs",
     "scripts/**/*.ts",
     "types/**/*.d.ts"
-  ],
-  "exclude": [
-    "scripts/forge.mjs"
   ]
 }

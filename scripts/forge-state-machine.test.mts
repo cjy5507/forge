@@ -103,6 +103,35 @@ describe('validateStateConsistency', () => {
     expect(result.runtimeFixes.delivery_readiness).toBe('completed');
   });
 
+  it('blocks terminal delivery claims when runtime work remains', () => {
+    const state = { phase: 'complete', phase_id: 'complete', mode: 'build', status: 'delivered' };
+    const runtime = {
+      delivery_readiness: 'delivered',
+      lanes: {
+        api: { id: 'api', status: 'pending' },
+      },
+      verification: {
+        status: 'failed',
+        summary: 'test failed',
+      },
+      recovery: {
+        latest: {
+          status: 'active',
+          summary: 'retry tests',
+        },
+      },
+      internal_blockers: [],
+    };
+
+    const result = validateStateConsistency(state, runtime);
+    expect(result.valid).toBe(false);
+    expect(result.runtimeFixes.delivery_readiness).toBe('blocked');
+    expect(result.runtimeFixes.internal_blockers[0].source).toBe('completion_guard');
+    expect(result.runtimeFixes.internal_blockers[0].summary).toContain('unfinished lane');
+    expect(result.runtimeFixes.internal_blockers[0].summary).toContain('verification failed');
+    expect(result.runtimeFixes.internal_blockers[0].summary).toContain('recovery active');
+  });
+
   it('handles null inputs gracefully', () => {
     expect(validateStateConsistency(null, null).valid).toBe(true);
     expect(validateStateConsistency(null, {}).valid).toBe(true);

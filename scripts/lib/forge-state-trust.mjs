@@ -7,6 +7,7 @@ import {
   stripIntegrityMetadata,
 } from './forge-io.mjs';
 import { getPhaseSequence, resolvePhase } from './forge-phases.mjs';
+import { normalizeRuntimeLanes } from './forge-lanes.mjs';
 
 export const STATE_PARSE_WARNING = 'Unable to parse .forge/state.json; Forge is using a degraded fallback view.';
 export const RUNTIME_PARSE_WARNING = 'Unable to parse .forge/runtime.json; Forge is using a degraded runtime fallback.';
@@ -14,6 +15,7 @@ export const STATE_INTEGRITY_WARNING = 'Integrity fingerprint mismatch in .forge
 export const RUNTIME_INTEGRITY_WARNING = 'Integrity fingerprint mismatch in .forge/runtime.json; the file was likely edited outside Forge.';
 const STATE_PATH = '.forge/state.json';
 const RUNTIME_PATH = '.forge/runtime.json';
+const COMPLETION_GUARD_SOURCE = 'completion_guard';
 
 function isRecord(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -61,6 +63,39 @@ function getIntegrityWarning(path, value) {
   }
 
   return path === STATE_PATH ? STATE_INTEGRITY_WARNING : RUNTIME_INTEGRITY_WARNING;
+}
+
+function getRuntimeCompletionBlockers(runtime = {}) {
+  const blockers = [];
+  const lanes = Object.values(normalizeRuntimeLanes(runtime?.lanes || {}));
+  const openLanes = lanes.filter(lane => !['done', 'merged'].includes(String(lane?.status || '').toLowerCase()));
+  const verificationStatus = String(runtime?.verification?.status || '').toLowerCase();
+  const recoveryStatus = String(runtime?.recovery?.latest?.status || '').toLowerCase();
+
+  if (openLanes.length > 0) {
+    blockers.push(`${openLanes.length} unfinished lane${openLanes.length === 1 ? '' : 's'}`);
+  }
+  if (verificationStatus === 'failed') {
+    blockers.push('verification failed');
+  }
+  if (['active', 'escalated'].includes(recoveryStatus)) {
+    blockers.push(`recovery ${recoveryStatus}`);
+  }
+
+  return blockers;
+}
+
+function claimsTerminalDelivery(state = {}, runtime = {}) {
+  const phase = resolvePhase(state);
+  return phase.id === 'complete'
+    || String(state?.status || '').toLowerCase() === 'delivered'
+    || String(runtime?.delivery_readiness || '').toLowerCase() === 'delivered';
+}
+
+function clearCompletionGuardBlockers(blockers = []) {
+  return Array.isArray(blockers)
+    ? blockers.filter(blocker => !(blocker && typeof blocker === 'object' && blocker.source === COMPLETION_GUARD_SOURCE))
+    : [];
 }
 
 export function getStateShapeWarnings(value) {
@@ -158,6 +193,23 @@ export function validateStateConsistency(state, runtime) {
   if ((state.status === 'completed' || state.status === 'cancelled') && phase.id !== 'complete') {
     corrections.push(`status=${state.status} but phase=${phase.id} — setting delivery_readiness`);
     runtimeFixes.delivery_readiness = state.status === 'completed' ? 'completed' : 'cancelled';
+  }
+
+  const completionBlockers = getRuntimeCompletionBlockers(runtime);
+  if (claimsTerminalDelivery(state, runtime) && completionBlockers.length > 0) {
+    const summary = `Completion blocked: ${completionBlockers.join(', ')}`;
+    corrections.push(summary);
+    runtimeFixes.delivery_readiness = 'blocked';
+    runtimeFixes.internal_blockers = [
+      ...clearCompletionGuardBlockers(runtime.internal_blockers),
+      {
+        source: COMPLETION_GUARD_SOURCE,
+        summary,
+        owner: 'lead-dev',
+        severity: 'blocker',
+        phase: phase.id,
+      },
+    ];
   }
 
   return {

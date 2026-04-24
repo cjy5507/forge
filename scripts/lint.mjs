@@ -119,6 +119,9 @@ function validatePackageEntrypoints() {
     if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
       fail(`bin target for ${name} does not exist: ${relativePath}`);
     }
+    if (String(relativePath).endsWith('.mjs') && isBinaryFile(fullPath)) {
+      fail(`bin target for ${name} must be auditable JavaScript, not a binary .mjs file: ${relativePath}`);
+    }
   }
 
   return bins.length;

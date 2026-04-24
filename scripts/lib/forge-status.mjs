@@ -3,6 +3,7 @@ import { basename } from 'path';
 import { describeCrossHostResume } from './forge-host.mjs';
 import { buildHealthReport } from './forge-health.mjs';
 import { readForgeState, readRuntimeState, normalizeRuntimeState } from './forge-session.mjs';
+import { getCompletionBlockers } from './forge-continuation.mjs';
 import { getStateTrustWarnings } from './forge-state-trust.mjs';
 import { resolvePhase } from './forge-phases.mjs';
 import { summarizeLaneCounts, normalizeRuntimeLanes } from './forge-lanes.mjs';
@@ -95,6 +96,26 @@ function getLatestForgeTag(cwd = '.') {
     .filter(Boolean)[0] || '';
 }
 
+function uniqueStrings(values = []) {
+  return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
+}
+
+function selectHostSupportWarning(health) {
+  if (!health?.host) {
+    return '';
+  }
+  if (health.host.support_level === 'degraded') {
+    return health.warnings.find(warning => warning.includes('degraded mode')) || '';
+  }
+  if (health.host.support_level === 'unknown') {
+    return health.warnings.find(warning => warning.includes('unknown to Forge')) || '';
+  }
+  if (health.host.missing_package_paths?.length) {
+    return health.warnings.find(warning => warning.includes('Missing packaged host surfaces')) || '';
+  }
+  return '';
+}
+
 export function buildStatusModel({
   cwd = '.',
   state = undefined,
@@ -154,6 +175,9 @@ export function buildStatusModel({
   const mergeReadyLanes = lanes.filter(
     lane => lane.review_state === 'approved' || lane.merge_state === 'ready' || lane.merge_state === 'queued',
   );
+  const completionBlockers = getCompletionBlockers(currentState, currentRuntime);
+  const verificationStatus = String(currentRuntime.verification?.status || '').toLowerCase();
+  const recoveryStatus = String(currentRuntime.recovery?.latest?.status || '').toLowerCase();
 
   let supportSummary = '';
   if (currentRuntime.customer_blockers?.length) {
@@ -162,8 +186,10 @@ export function buildStatusModel({
   } else if (currentRuntime.internal_blockers?.length) {
     const blocker = currentRuntime.internal_blockers[0];
     supportSummary = `Blocked: ${blocker.summary || blocker} (owner: ${currentRuntime.active_gate_owner || 'unknown'})`;
-  } else if (currentRuntime.delivery_readiness === 'delivered' || phase.id === 'complete') {
-    supportSummary = 'Delivered';
+  } else if (verificationStatus === 'failed') {
+    supportSummary = `Verification failed${currentRuntime.verification?.summary ? `: ${currentRuntime.verification.summary}` : ''}`;
+  } else if (['active', 'escalated'].includes(recoveryStatus)) {
+    supportSummary = `Recovery ${recoveryStatus}${currentRuntime.recovery?.latest?.summary ? `: ${currentRuntime.recovery.latest.summary}` : ''}`;
   } else if (currentRuntime.delivery_readiness === 'ready_for_review') {
     supportSummary = 'Ready for review — run forge deliver to finalize';
   } else if (rebasingLanes.length > 0) {
@@ -175,6 +201,12 @@ export function buildStatusModel({
   } else if (counts.in_progress > 0) {
     const activeNames = lanes.filter(lane => lane.status === 'in_progress').map(lane => lane.id);
     supportSummary = `Active: ${activeNames.join(', ')}.`;
+  } else if (lanes.length > 0) {
+    supportSummary = `Unfinished lanes: ${lanes.map(lane => lane.id).join(', ')}.`;
+  } else if (currentRuntime.delivery_readiness === 'delivered' || phase.id === 'complete') {
+    supportSummary = completionBlockers.length > 0
+      ? `Completion blocked: ${completionBlockers.join(', ')}`
+      : 'Delivered';
   } else {
     supportSummary = `Phase ${PHASE_LABELS[phase.id] || phase.id} in progress`;
   }
@@ -235,13 +267,13 @@ export function buildStatusModel({
       failures: currentRuntime.stats?.failure_count || 0,
       stops: currentRuntime.stats?.stop_block_count || 0,
     },
-    host_support_warning: health.warnings[0] || '',
+    host_support_warning: selectHostSupportWarning(health),
     host_handoff: hostHandoff,
-    state_trust_warnings: [
+    state_trust_warnings: uniqueStrings([
       ...trustWarnings,
       ...(currentState._trust_warnings || []),
       ...(currentRuntime._trust_warnings || []),
-    ].filter(Boolean),
+    ]),
   };
 }
 

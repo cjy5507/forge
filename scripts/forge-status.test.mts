@@ -470,4 +470,86 @@ describe('forge status helper', () => {
     expect(text).toContain('Verification: passed');
     expect(text).toContain('Recovery: active');
   });
+
+  it('does not report delivered while completion blockers remain', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'blocked-complete-app',
+      phase: 'complete',
+      phase_id: 'complete',
+      status: 'delivered',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      delivery_readiness: 'delivered',
+      lanes: {
+        api: {
+          id: 'api',
+          status: 'pending',
+          owner_role: 'developer',
+        },
+      },
+      verification: {
+        status: 'failed',
+        summary: 'test failed via "npm run test".',
+      },
+      recovery: {
+        latest: {
+          status: 'active',
+          summary: 'Retry targeted verification.',
+        },
+      },
+    });
+
+    const model = buildStatusModel({ cwd });
+    expect(model?.next_action.summary).toContain('Resolve completion blockers');
+    expect(model?.support_summary).toContain('Verification failed');
+
+    const text = renderStatusText(model, { verbose: true });
+    expect(text).not.toContain('\nDelivered\n');
+    expect(text).toContain('Lanes: 0/1 done');
+    expect(text).toContain('Verification: failed');
+    expect(text).toContain('Recovery: active');
+  });
+
+  it('deduplicates persisted and derived trust warnings', () => {
+    const cwd = makeWorkspace();
+    writeFileSync(join(cwd, '.forge', 'state.json'), JSON.stringify({
+      phase: 'develop',
+      phase_id: null,
+      phase_name: 'develop',
+      mode: 'build',
+      status: 'active',
+      agents_active: [],
+      tasks: [],
+      holes: [],
+      pr_queue: [],
+      _trust_warnings: [
+        'Critical fields are invalid in .forge/state.json: phase_id',
+        'Critical fields are invalid in .forge/state.json: phase_id',
+      ],
+    }, null, 2));
+
+    const model = buildStatusModel({ cwd });
+    const matching = model?.state_trust_warnings?.filter(warning => warning.includes('Critical fields are invalid in .forge/state.json')) || [];
+    expect(matching).toHaveLength(1);
+  });
+
+  it('does not persist derived trust warnings on state writes', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'clean-write-app',
+      phase: 'develop',
+      phase_id: 'develop',
+      spec_approved: true,
+      design_approved: true,
+      _trust_warnings: ['stale warning from a previous read'],
+    });
+
+    const state = JSON.parse(readFileSync(join(cwd, '.forge', 'state.json'), 'utf8'));
+    const runtime = JSON.parse(readFileSync(join(cwd, '.forge', 'runtime.json'), 'utf8'));
+    expect(state._trust_warnings).toBeUndefined();
+    expect(runtime._trust_warnings).toBeUndefined();
+  });
 });

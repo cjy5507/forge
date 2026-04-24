@@ -30,6 +30,14 @@ afterEach(() => {
 });
 
 describe('forge CLI scripts', () => {
+  it('top-level forge wrapper dispatches to status', () => {
+    const cwd = makeWorkspace();
+    const result = runScript('forge-cli.mjs', ['status', '--json'], cwd);
+
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ project: '' });
+  });
+
   it('forge-status --json returns valid status model', () => {
     const cwd = makeWorkspace();
     const result = runScript('forge-status.mjs', ['--json'], cwd);

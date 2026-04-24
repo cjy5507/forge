@@ -5,9 +5,11 @@ import { getForgeHostAdapterContract, getForgeHostSupportProfile } from './forge
 import { getForgeInstallStateFileName } from './forge-setup-manifest.mjs';
 import { getVerificationArtifactPath, readVerificationArtifact } from './forge-verification.mjs';
 import { readForgeState, readRuntimeState } from './forge-session.mjs';
+import { getCompletionBlockers } from './forge-continuation.mjs';
 import { getStateTrustWarnings } from './forge-state-trust.mjs';
 import { buildForgeHookProfileSummary, isHookProfileEnabled, normalizeHookProfile, parseDisabledHooks } from './forge-hook-controls.mjs';
 import { readJsonFile } from './forge-io.mjs';
+import { resolvePhase } from './forge-phases.mjs';
 
 function formatDegradedMode(mode = '') {
   return String(mode || '')
@@ -44,6 +46,14 @@ export function buildHealthReport({
   const missingPackagePaths = packagePaths.filter(relativePath => !existsSync(join(cwd, relativePath)));
   const trustWarnings = getStateTrustWarnings(cwd);
   const analysis = currentRuntime?.analysis || currentState?.analysis || {};
+  const verificationStatus = String(currentRuntime?.verification?.status || '').toLowerCase();
+  const recoveryStatus = String(currentRuntime?.recovery?.latest?.status || '').toLowerCase();
+  const completionBlockers = getCompletionBlockers(currentState || {}, currentRuntime || {});
+  const deliveryClaimed = Boolean(currentState) && (
+    String(currentState?.status || '').toLowerCase() === 'delivered'
+    || String(currentRuntime?.delivery_readiness || '').toLowerCase() === 'delivered'
+    || resolvePhase(currentState).id === 'complete'
+  );
 
   const warnings = [];
   if (profile.supportLevel === 'degraded') {
@@ -62,6 +72,18 @@ export function buildHealthReport({
 
   if (analysis?.artifact_path && analysis?.stale) {
     warnings.push(`Saved analysis is stale: ${analysis.artifact_path}`);
+  }
+
+  if (verificationStatus === 'failed') {
+    warnings.push(`Verification failed${currentRuntime?.verification?.summary ? `: ${currentRuntime.verification.summary}` : ''}`);
+  }
+
+  if (['active', 'escalated'].includes(recoveryStatus)) {
+    warnings.push(`Recovery ${recoveryStatus}${currentRuntime?.recovery?.latest?.summary ? `: ${currentRuntime.recovery.latest.summary}` : ''}`);
+  }
+
+  if (deliveryClaimed && completionBlockers.length > 0) {
+    warnings.push(`Completion blocked: ${completionBlockers.join(', ')}`);
   }
 
   const report = {

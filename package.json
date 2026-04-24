@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
-    "forge": "./scripts/forge.mjs",
+    "forge": "./scripts/forge-cli.mjs",
     "forge-behavioral-audit": "./scripts/forge-behavioral-audit.mjs",
     "forge-continue": "./scripts/forge-continue.mjs",
     "forge-eval": "./scripts/forge-eval.mjs",

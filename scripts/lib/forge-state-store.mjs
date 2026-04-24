@@ -24,6 +24,10 @@ import { initializeLessonsBrief } from './forge-lessons-loader.mjs';
 
 const PHASE_GATE_BLOCKER_SOURCE = 'phase_gate';
 
+function uniqueStrings(values = []) {
+  return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
+}
+
 function buildPhaseGateWarning(phase, gateResult) {
   return `Phase ${phase.id} requires missing artifacts: ${gateResult.missing.join(', ')}`;
 }
@@ -55,15 +59,13 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
     }
 
     const normalized = normalizeStateShape(raw);
-    const trustWarnings = [
+    const trustWarnings = uniqueStrings([
       ...(stateResult.error ? [STATE_PARSE_WARNING] : []),
       ...(stateResult.error ? [] : getStateShapeWarnings(raw)),
-    ];
+    ]);
+    delete normalized._trust_warnings;
     if (trustWarnings.length > 0) {
-      normalized._trust_warnings = [
-        ...(normalized._trust_warnings || []),
-        ...trustWarnings,
-      ];
+      normalized._trust_warnings = trustWarnings;
     }
     return normalized;
   }
@@ -75,6 +77,7 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
         ...normalizeRuntimeState(runtime, { state: state !== undefined ? state : readForgeState(cwd) }),
         updated_at: new Date().toISOString(),
       };
+      delete next._trust_warnings;
 
       const stamped = stampIntegrity(next, 'runtime');
       writeJsonFile(getRuntimePath(cwd), stamped);
@@ -138,6 +141,7 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
     return withForgeLock(cwd, () => {
       ensureForgeProjectLayout(cwd);
       const normalized = normalizeStateShape(state);
+      delete normalized._trust_warnings;
       normalized.updated_at = new Date().toISOString();
 
       const previousState = readJsonFile(getStatePath(cwd));
@@ -178,15 +182,13 @@ export function createStateStore({ normalizeStateShape, normalizeRuntimeState })
       runtimeResult.value,
       { state: state !== undefined ? state : readForgeState(cwd) },
     );
-    const trustWarnings = [
+    const trustWarnings = uniqueStrings([
       ...(runtimeResult.error ? [RUNTIME_PARSE_WARNING] : []),
       ...(runtimeResult.error ? [] : getRuntimeShapeWarnings(runtimeResult.value)),
-    ];
+    ]);
+    delete normalized._trust_warnings;
     if (trustWarnings.length > 0) {
-      normalized._trust_warnings = [
-        ...(normalized._trust_warnings || []),
-        ...trustWarnings,
-      ];
+      normalized._trust_warnings = trustWarnings;
     }
     return normalized;
   }

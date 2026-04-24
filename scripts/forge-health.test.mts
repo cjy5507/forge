@@ -152,6 +152,43 @@ describe('forge health surface', () => {
     expect(report.runtime.latest_decision.summary).toContain('Blocked stop');
     expect(report.runtime.verification_status).toBe('passed');
     expect(report.runtime.recovery_status).toBe('active');
+    expect(report.warnings).toContain('Recovery active: Lint failed.');
+  });
+
+  it('warns when a complete project still has failed verification or unfinished lanes', () => {
+    const cwd = makeWorkspace();
+    writeForgeState(cwd, {
+      project: 'blocked-complete-app',
+      phase: 'complete',
+      phase_id: 'complete',
+      status: 'delivered',
+      spec_approved: true,
+      design_approved: true,
+    });
+    writeRuntimeState(cwd, {
+      delivery_readiness: 'delivered',
+      lanes: {
+        api: {
+          id: 'api',
+          status: 'pending',
+        },
+      },
+      verification: {
+        status: 'failed',
+        summary: 'test failed via "npm run test".',
+      },
+      recovery: {
+        latest: {
+          status: 'active',
+          summary: 'Retry targeted verification.',
+        },
+      },
+    });
+
+    const report = buildHealthReport({ cwd });
+    expect(report.warnings).toContain('Verification failed: test failed via "npm run test".');
+    expect(report.warnings).toContain('Recovery active: Retry targeted verification.');
+    expect(report.warnings).toContain('Completion blocked: 1 unfinished lane, verification failed, recovery active');
   });
 
   it('surfaces verification artifact details in audit output', () => {
